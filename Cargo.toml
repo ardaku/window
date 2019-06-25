@@ -1,7 +1,24 @@
+# Window
+#
+# Copyright © 2019 Jeron Aldaron Lau.
+# Dual-licensed under either the MIT License or the Boost Software License,
+# Version 1.0.  (See accompanying file LICENSE_BSL.txt or copy at
+# https://www.boost.org/LICENSE_1_0.txt and accompanying file LICENSE_MIT.txt or
+# copy at https://opensource.org/licenses/MIT)
+
 [package]
 name = "window"
 version = "0.1.0"
-authors = ["Jeron Aldaron Lau <jeronaldaron@gmail.com>"]
+authors = ["Jeron Aldaron Lau <jeronlau@plopgrizzly.com>"]
 edition = "2018"
+
+license = "MIT / BSL-1.0"
+description = "Minimal Rust code for creating a window, automatically choosing a backend window manager and graphics API."
+documentation = "https://docs.rs/window"
+homepage = "https://jeronlau.plopgrizzly.com/window/"
+repository = "https://github.com/JeronAldaron/window"
+readme = "README.md"
+keywords = ["wm", "platform-agnostic", "cross-platform", "manager", "graphics"]
+categories = ["graphics", "gui", "multimedia", "rendering", "rendering::engine"]
 
 [dependencies]
