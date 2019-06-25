@@ -21,6 +21,8 @@ Other Rust window creation libraries require you to build for a specific backend
 - Nintendo Switch
 - XBOX
 - PlayStation
+- Wasm Canvas
 
 ### Graphics APIs
+- WebGL
 - Vulkan
