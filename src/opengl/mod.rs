@@ -224,9 +224,23 @@ impl Draw for OpenGL {
                 b"rotation\0".as_ptr() as *const _ as *const _,
             )
         };
+
+        self.background(0.0, 0.0, 1.0);
     }
 
-    fn redraw(&mut self) {
+    fn background(&mut self, r: f32, g: f32, b: f32) {
+        unsafe {
+            glClearColor(r, g, b, 0.5); // TODO ?
+        } 
+    }
+
+    fn begin_draw(&mut self) {
+        unsafe {
+            glClear(0x00004000 /*GL_COLOR_BUFFER_BIT*/);
+        }
+    }
+
+    fn finish_draw(&mut self) {
         unsafe {
             eglSwapBuffers(self.display, self.surface);
         }
@@ -263,9 +277,6 @@ impl Draw for OpenGL {
                 0, /*GL_FALSE*/
                 rotation.as_ptr(),
             );
-
-            glClearColor(0.0, 0.0, 1.0, 0.5);
-            glClear(0x00004000 /*GL_COLOR_BUFFER_BIT*/);
 
             glVertexAttribPointer(
                 self.gl_pos,

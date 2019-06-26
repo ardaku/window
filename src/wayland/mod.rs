@@ -463,6 +463,9 @@ unsafe extern "C" fn redraw_wl(
     let diff_nanos = diff_millis as u64 * 1000000;
     (*wayland).last_millis = millis;
 
+    // Redraw on the screen.
+    (*c).draw.begin_draw();
+
     ((*c).redraw)(diff_nanos);
 
     // Get ready for next frame.
@@ -480,7 +483,7 @@ unsafe extern "C" fn redraw_wl(
     );
 
     // Redraw on the screen.
-    (*c).draw.redraw();
+    (*c).draw.finish_draw();
 }
 
 unsafe extern "C" fn configure_callback(
@@ -1026,7 +1029,7 @@ impl Nwin for WaylandWindow {
     }
 }
 
-pub(super) fn new(window: &mut crate::Window) -> Option<()> {
+pub(super) fn new(name: &str, window: &mut crate::Window) -> Option<()> {
     let wldisplay = unsafe { wl_display_connect(std::ptr::null_mut()) };
     if wldisplay.is_null() {
         return None;
@@ -1153,7 +1156,8 @@ pub(super) fn new(window: &mut crate::Window) -> Option<()> {
         );
     }
 
-    let window_title = "Cala Window 🙂️\0";
+    let mut window_title = name.to_string();
+    window_title.push('\0');
 
     // Set window title.
     unsafe {

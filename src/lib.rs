@@ -60,8 +60,12 @@ trait Draw {
     fn handle(&self) -> DrawHandle;
     /// Finish initializing graphics context.
     fn connect(&mut self, connection: *mut c_void);
+    /// Begin draw (clear screen).
+    fn begin_draw(&mut self);
     /// Redraw on the screen.
-    fn redraw(&mut self);
+    fn finish_draw(&mut self);
+    /// Change the background color.
+    fn background(&mut self, r: f32, g: f32, b: f32);
     /// Test drawing.
     fn test(&mut self);
 }
@@ -75,7 +79,7 @@ pub struct Window {
 
 impl Window {
     /// Start the Wayland + OpenGL application.
-    pub fn new(run: fn(nanos: u64) -> ()) -> Box<Self> {
+    pub fn new(name: &str, run: fn(nanos: u64) -> ()) -> Box<Self> {
         let mut window: Box<Window> = unsafe { std::mem::uninitialized() };
 
         /*********************/
@@ -95,7 +99,7 @@ impl Window {
         #[cfg(unix)]
         {
             if win.is_none() {
-                win = wayland::new(&mut window);
+                win = wayland::new(name, &mut window);
             }
         }
 
@@ -154,6 +158,11 @@ impl Window {
     /// Run the next frame in the window.
     pub fn run(&mut self) -> bool {
         self.nwin.run()
+    }
+
+    /// Change the background color.
+    pub fn background(&mut self, r: f32, g: f32, b: f32) {
+        self.draw.background(r, g, b)
     }
 
     pub fn test(&mut self) {
