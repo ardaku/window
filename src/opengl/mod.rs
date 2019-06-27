@@ -3,6 +3,7 @@ use std::ffi::c_void;
 use super::Draw;
 use super::DrawHandle;
 use super::Window;
+use crate::Nshader;
 
 mod platform;
 
@@ -91,6 +92,22 @@ extern "C" {
     fn glEnableVertexAttribArray(index: u32) -> ();
     fn glDrawArrays(mode: u32, first: i32, count: i32);
     fn glDisableVertexAttribArray(index: u32) -> ();
+}
+
+pub struct Shader {
+    
+}
+
+impl Shader {
+    pub fn new(builder: crate::ShaderBuilder) -> Self {
+        Shader {
+        }
+    }
+}
+
+impl Nshader for Shader {
+    fn draw(&mut self) {
+    }
 }
 
 pub struct OpenGL {
@@ -232,6 +249,10 @@ impl Draw for OpenGL {
         unsafe {
             glClearColor(r, g, b, 0.5); // TODO ?
         } 
+    }
+
+    fn shader_new(&mut self, builder: crate::ShaderBuilder) -> Box<Nshader> {
+        Box::new(Shader::new(builder))
     }
 
     fn begin_draw(&mut self) {

@@ -66,8 +66,27 @@ trait Draw {
     fn finish_draw(&mut self);
     /// Change the background color.
     fn background(&mut self, r: f32, g: f32, b: f32);
+    /// Create a shader.
+    fn shader_new(&mut self, builder: ShaderBuilder) -> Box<Nshader>;
     /// Test drawing.
     fn test(&mut self);
+}
+
+trait Nshader {
+    fn draw(&mut self);
+}
+
+/// A shader.
+pub struct Shader(Box<Nshader>);
+
+/// A builder for portable shaders.
+pub struct ShaderBuilder {
+    pub transform: u8,
+    pub group: u8,
+    pub tint: u8,
+    pub gradient: u8,
+    pub opengl_frag: &'static str,
+    pub opengl_vert: &'static str,
 }
 
 /// A window on the monitor.
@@ -98,23 +117,13 @@ impl Window {
         // Try to initialize Wayland first.
         #[cfg(unix)]
         {
-            if win.is_none() {
-                win = wayland::new(name, &mut window);
-            }
+            win = win.or_else(|| wayland::new(name, &mut window));
         }
 
         // Hopefully we found one of the backends.
         win.or_else(|| {
             panic!("Couldn't find a window manager.");
         });
-        /*    unsafe {
-            std::ptr::write(
-                &mut window.nwin,
-                win.or_else(|| {
-                    panic!("Couldn't find a window manager.");
-                }).unwrap(),
-            );
-        }*/
 
         /**********************/
         /* Initialize Drawing */
@@ -163,6 +172,11 @@ impl Window {
     /// Change the background color.
     pub fn background(&mut self, r: f32, g: f32, b: f32) {
         self.draw.background(r, g, b)
+    }
+
+    /// Build a shader program.
+    pub fn shader_new(&mut self, builder: ShaderBuilder) -> Shader {
+        Shader(self.draw.shader_new(builder))
     }
 
     pub fn test(&mut self) {
