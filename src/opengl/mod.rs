@@ -4,8 +4,16 @@ use super::Draw;
 use super::DrawHandle;
 use super::Window;
 use crate::Nshader;
+use crate::Nshape;
 
 mod platform;
+
+// Position
+const GL_ATTRIB_POS: u32 = 0;
+// Color
+const GL_ATTRIB_COL: u32 = 1;
+// Texture Coordinates Begin (May have multiple)
+const GL_ATTRIB_TEX: u32 = 2;
 
 extern "C" {
     fn eglGetDisplay(
@@ -92,16 +100,32 @@ extern "C" {
     fn glEnableVertexAttribArray(index: u32) -> ();
     fn glDrawArrays(mode: u32, first: i32, count: i32);
     fn glDisableVertexAttribArray(index: u32) -> ();
+    fn glGenBuffers(n: i32, buffers: *mut u32) -> ();
+    fn glBindBuffer(target: u32, buffer: u32) -> ();
+    fn glBufferData(target: u32, size: usize, data: *const c_void, usage: u32)
+        -> ();
 }
 
 pub struct Shader {
-    
+    program: u32,
+    gradient: bool,
+    groups: Vec<u32>,
+    transforms: Vec<i32>,
+}
+
+pub struct Shape {
+}
+
+impl Shape {
+    pub fn new(vertices: &[f32], indices: &[u16]) -> Shape {
+        Shape {
+        }
+    }
 }
 
 impl Shader {
     pub fn new(builder: crate::ShaderBuilder) -> Self {
-        Shader {
-        }
+        create_program(builder)
     }
 }
 
@@ -110,15 +134,13 @@ impl Nshader for Shader {
     }
 }
 
+impl Nshape for Shape {}
+
 pub struct OpenGL {
     surface: *mut c_void,
     display: *mut c_void,
     context: *mut c_void,
     config: *mut c_void,
-
-    pub(super) gl_rotation_uniform: i32,
-    pub(super) gl_pos: u32,
-    pub(super) gl_col: u32,
 }
 
 impl Drop for OpenGL {
@@ -162,86 +184,7 @@ impl Draw for OpenGL {
         };
         debug_assert_ne!(ret, 0);
 
-        // Initialize OpenGL
-        let frag = create_shader(
-            b"precision mediump float;
-            varying vec4 v_color;
-            void main() {
-                gl_FragColor = v_color;
-            }\0"
-            .as_ptr() as *const _ as *const _,
-            0x8B30, /*GL_FRAGMENT_SHADER*/
-        );
-        let vert = create_shader(
-            b"uniform mat4 rotation;
-            attribute vec4 pos;
-            attribute vec4 color;
-            varying vec4 v_color;
-            void main() {
-                gl_Position = rotation * pos;
-                v_color = color;
-            }\0"
-            .as_ptr() as *const _ as *const _,
-            0x8B31, /*GL_VERTEX_SHADER*/
-        );
-
-        let program = unsafe { glCreateProgram() };
-        unsafe {
-            glAttachShader(program, frag);
-            glAttachShader(program, vert);
-            glLinkProgram(program);
-        }
-
-        let mut status = unsafe { std::mem::uninitialized() };
-        unsafe {
-            glGetProgramiv(
-                program,
-                0x8B82, /*GL_LINK_STATUS*/
-                &mut status,
-            );
-        }
-        if status == 0 {
-            let mut log = [0u8; 1000];
-            let mut len = unsafe { std::mem::uninitialized() };
-            unsafe {
-                glGetProgramInfoLog(
-                    program,
-                    1000,
-                    &mut len,
-                    log.as_mut_ptr() as *mut _ as *mut _,
-                );
-            }
-            let log = String::from_utf8_lossy(&log);
-            panic!("Error: linking:\n{}", log);
-        }
-
-        unsafe {
-            glUseProgram(program);
-        }
-
-        self.gl_pos = 0;
-        self.gl_col = 1;
-
-        unsafe {
-            glBindAttribLocation(
-                program,
-                self.gl_pos,
-                b"pos\0".as_ptr() as *const _ as *const _,
-            );
-            glBindAttribLocation(
-                program,
-                self.gl_col,
-                b"color\0".as_ptr() as *const _ as *const _,
-            );
-            glLinkProgram(program);
-        }
-        self.gl_rotation_uniform = unsafe {
-            glGetUniformLocation(
-                program,
-                b"rotation\0".as_ptr() as *const _ as *const _,
-            )
-        };
-
+        // Set default background for OpenGL.
         self.background(0.0, 0.0, 1.0);
     }
 
@@ -253,6 +196,10 @@ impl Draw for OpenGL {
 
     fn shader_new(&mut self, builder: crate::ShaderBuilder) -> Box<Nshader> {
         Box::new(Shader::new(builder))
+    }
+
+    fn shape_new(&mut self, vertices: &[f32], indices: &[u16]) -> Box<Nshape> {
+        Box::new(Shape::new(vertices, indices))
     }
 
     fn begin_draw(&mut self) {
@@ -268,11 +215,11 @@ impl Draw for OpenGL {
     }
 
     fn test(&mut self) {
-        let timer = 0; // TODO with nanos
-        let angle = (timer % 360) as f32 * std::f32::consts::PI / 180.0;
+        // let timer = 0; // TODO with nanos
+        // let angle = (timer % 360) as f32 * std::f32::consts::PI / 180.0;
 
         unsafe {
-            #[rustfmt::skip]
+            /*#[rustfmt::skip]
             let verts = [
                 -0.5, -0.5,
                 0.5,  -0.5,
@@ -300,7 +247,7 @@ impl Draw for OpenGL {
             );
 
             glVertexAttribPointer(
-                self.gl_pos,
+                GL_ATTRIB_POS,
                 2,
                 0x1406, /*GL_FLOAT*/
                 0x1406, /*GL_FLOAT*/
@@ -308,21 +255,136 @@ impl Draw for OpenGL {
                 verts.as_ptr(),
             );
             glVertexAttribPointer(
-                self.gl_col,
+                GL_ATTRIB_COL,
                 3,
                 0x1406, /*GL_FLOAT*/
                 0,      /*GL_FALSE*/
                 0,
                 colors.as_ptr(),
             );
-            glEnableVertexAttribArray(self.gl_pos);
-            glEnableVertexAttribArray(self.gl_col);
+            glEnableVertexAttribArray(GL_ATTRIB_POS);
+            glEnableVertexAttribArray(GL_ATTRIB_COL);
 
             glDrawArrays(0x0004 /*GL_TRIANGLES*/, 0, 3);
 
-            glDisableVertexAttribArray(self.gl_pos);
-            glDisableVertexAttribArray(self.gl_col);
+            glDisableVertexAttribArray(GL_ATTRIB_POS);
+            glDisableVertexAttribArray(GL_ATTRIB_COL);*/
         }
+    }
+}
+
+// Create an OpenGL vertex buffer object.
+fn create_vbo(vertices: &[f32], indices: &[u16]) -> u32 {
+    unsafe {
+        let mut buffers = [std::mem::uninitialized()];
+        glGenBuffers(1 /*1 buffer*/, buffers.as_mut_ptr());
+        glBindBuffer(0x8892 /*GL_ARRAY_BUFFER*/, buffers[0]);
+        // TODO: maybe use glMapBuffer & glUnmapBuffer instead?
+        glBufferData(
+            0x8892 /*GL_ARRAY_BUFFER*/,
+            (vertices.len() * std::mem::size_of::<f32>()) as usize,
+            vertices.as_ptr() as *const _,
+            0x88E8 /*GL_DYNAMIC_DRAW*/,
+        );
+//        glVertexAttribPointer(position as u32, 2, 0x1406 /*GL_FLOAT*/, 0, 0, std::ptr::null());
+        buffers[0]
+    }
+}
+
+/// Create a shader program.
+fn create_program(builder: crate::ShaderBuilder) -> Shader {
+    // Convert a number to text.
+    fn num_to_text(l: u8) -> [u8; 2] {
+        if l >= 128 {
+            panic!("Number too high");
+        }
+
+        let a = (l >> 4) + b'a';
+        let b = (l << 4) + b'a';
+
+        [a, b]
+    }
+
+    let frag = create_shader(
+        builder.opengl_frag.as_ptr() as *const _ as *const _,
+        0x8B30, /*GL_FRAGMENT_SHADER*/
+    );
+    let vert = create_shader(
+        builder.opengl_vert.as_ptr() as *const _ as *const _,
+        0x8B31, /*GL_VERTEX_SHADER*/
+    );
+    let program = unsafe { glCreateProgram() };
+    unsafe {
+        glAttachShader(program, frag);
+        glAttachShader(program, vert);
+        glLinkProgram(program);
+    }
+    let mut status = unsafe { std::mem::uninitialized() };
+    unsafe {
+        glGetProgramiv(program, 0x8B82, /*GL_LINK_STATUS*/ &mut status);
+    }
+    if status == 0 {
+        let mut log = [0u8; 1000];
+        let mut len = unsafe { std::mem::uninitialized() };
+        unsafe {
+            glGetProgramInfoLog(
+                program,
+                1000,
+                &mut len,
+                log.as_mut_ptr() as *mut _ as *mut _,
+            );
+        }
+        let log = String::from_utf8_lossy(&log);
+        panic!("Error: linking:\n{}", log);
+    }
+    // Bind the shader program.
+    unsafe {
+        glUseProgram(program);
+    }
+    // Vertex attributes
+    unsafe {
+        // All shader programs have position.
+        glBindAttribLocation(program, GL_ATTRIB_POS, b"pos\0".as_ptr() as *const _ as *const _);
+        // 
+        if builder.gradient {
+            glBindAttribLocation(
+                program,
+                GL_ATTRIB_COL,
+                b"col\0".as_ptr() as *const _ as *const _,
+            );
+        }
+        glLinkProgram(program);
+    }
+    // Uniforms
+    let mut groups = Vec::with_capacity(builder.group as usize);
+    let mut transforms = Vec::with_capacity(builder.transform as usize);
+    /*// 
+    for group in builder.groups.iter() {
+        
+    }*/
+
+    for transform in 0..builder.transform {
+        let ntt = num_to_text(transform);
+        let ntt = [ntt[0] as char, ntt[1] as char];
+        let id = format!("transform_{}{}\0", ntt[0], ntt[1]);
+        let handle = unsafe {
+            glGetUniformLocation(program, id.as_ptr() as *const _ as *const _)
+        };
+        assert!(handle > -1);
+        transforms.push(handle);
+    }
+
+/*    // Get Vertex Attributes
+    let position = unsafe { (opengl.vdata)(program, b"position\0".as_ptr() as *const _) };
+    let texpos = unsafe { (opengl.vdata)(program, b"texpos\0".as_ptr() as *const _) };
+    // Enable Vertex Attributes
+    unsafe {
+        (opengl.enable_vdata)(position as u32);
+        (opengl.enable_vdata)(texpos as u32);
+    }*/
+
+    Shader {
+        program, gradient: builder.gradient, groups, transforms,
     }
 }
 
@@ -433,10 +495,6 @@ pub(super) fn new(window: &mut Window) -> Option<Box<Draw>> {
         config,
         context,
         surface: std::ptr::null_mut(),
-
-        gl_rotation_uniform: 0, //unsafe { std::mem::uninitialized() },
-        gl_pos: 0,              //unsafe { std::mem::uninitialized() },
-        gl_col: 0,              //unsafe { std::mem::uninitialized() },
     };
 
     Some(Box::new(draw))

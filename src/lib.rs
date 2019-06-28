@@ -68,6 +68,8 @@ trait Draw {
     fn background(&mut self, r: f32, g: f32, b: f32);
     /// Create a shader.
     fn shader_new(&mut self, builder: ShaderBuilder) -> Box<Nshader>;
+    /// Create a shape.
+    fn shape_new(&mut self, vertices: &[f32], indices: &[u16]) -> Box<Nshape>;
     /// Test drawing.
     fn test(&mut self);
 }
@@ -76,6 +78,13 @@ trait Nshader {
     fn draw(&mut self);
 }
 
+trait Nshape {
+//    fn draw(&mut self);
+}
+
+/// A shape.
+pub struct Shape(Box<Nshape>);
+
 /// A shader.
 pub struct Shader(Box<Nshader>);
 
@@ -83,8 +92,8 @@ pub struct Shader(Box<Nshader>);
 pub struct ShaderBuilder {
     pub transform: u8,
     pub group: u8,
-    pub tint: u8,
-    pub gradient: u8,
+    pub tint: bool,
+    pub gradient: bool,
     pub opengl_frag: &'static str,
     pub opengl_vert: &'static str,
 }
@@ -179,6 +188,12 @@ impl Window {
         Shader(self.draw.shader_new(builder))
     }
 
+    /// Create a new shape.
+    pub fn shape_new(&mut self, vertices: &[f32], indices: &[u16]) -> Shape {
+        Shape(self.draw.shape_new(vertices, indices))
+    }
+
+    /// 
     pub fn test(&mut self) {
         self.draw.test();
     }
