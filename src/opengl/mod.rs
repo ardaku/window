@@ -5,6 +5,7 @@ use super::DrawHandle;
 use super::Window;
 use crate::Nshader;
 use crate::Nshape;
+use crate::Nvertices;
 
 mod platform;
 
@@ -106,6 +107,7 @@ extern "C" {
         -> ();
 }
 
+/// A shader.  Shaders are a program that runs on the GPU to render a `Shape`.
 pub struct Shader {
     program: u32,
     gradient: bool,
@@ -113,12 +115,27 @@ pub struct Shader {
     transforms: Vec<i32>,
 }
 
+/// A list of vertices.
+pub struct Vertices {
+    
+}
+
+impl Vertices {
+    pub fn new(vertices: &[f32], gradient: Option<&[f32]>, graphic_coords: Vec<&[f32]>) -> Vertices
+    {
+        Vertices {}
+    }
+}
+
+/// A shape.  Shapes are a list of indices into `Vertices`.
 pub struct Shape {
+    
 }
 
 impl Shape {
-    pub fn new(vertices: &[f32], indices: &[u16]) -> Shape {
+    pub fn new(indices: &[u16]) -> Shape {
         Shape {
+            
         }
     }
 }
@@ -135,6 +152,7 @@ impl Nshader for Shader {
 }
 
 impl Nshape for Shape {}
+impl Nvertices for Vertices {}
 
 pub struct OpenGL {
     surface: *mut c_void,
@@ -198,8 +216,12 @@ impl Draw for OpenGL {
         Box::new(Shader::new(builder))
     }
 
-    fn shape_new(&mut self, vertices: &[f32], indices: &[u16]) -> Box<Nshape> {
-        Box::new(Shape::new(vertices, indices))
+    fn vertices_new(&mut self, vertices: &[f32], gradient: Option<&[f32]>, graphic_coords: Vec<&[f32]>) -> Box<Nvertices> {
+        Box::new(Vertices::new(vertices, gradient, graphic_coords))
+    }
+
+    fn shape_new(&mut self, indices: &[u16]) -> Box<Nshape> {
+        Box::new(Shape::new(indices))
     }
 
     fn begin_draw(&mut self) {

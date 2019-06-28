@@ -68,8 +68,10 @@ trait Draw {
     fn background(&mut self, r: f32, g: f32, b: f32);
     /// Create a shader.
     fn shader_new(&mut self, builder: ShaderBuilder) -> Box<Nshader>;
+    /// Create a collection of vertices.
+    fn vertices_new(&mut self, vertices: &[f32], gradient: Option<&[f32]>, graphic_coords: Vec<&[f32]>) -> Box<Nvertices>;
     /// Create a shape.
-    fn shape_new(&mut self, vertices: &[f32], indices: &[u16]) -> Box<Nshape>;
+    fn shape_new(&mut self, indices: &[u16]) -> Box<Nshape>;
     /// Test drawing.
     fn test(&mut self);
 }
@@ -78,15 +80,17 @@ trait Nshader {
     fn draw(&mut self);
 }
 
-trait Nshape {
-//    fn draw(&mut self);
-}
+trait Nshape {}
+trait Nvertices {}
 
 /// A shape.
 pub struct Shape(Box<Nshape>);
 
 /// A shader.
 pub struct Shader(Box<Nshader>);
+
+/// A vertex list.
+pub struct VertexList(Box<Nvertices>);
 
 /// A builder for portable shaders.
 pub struct ShaderBuilder {
@@ -188,9 +192,14 @@ impl Window {
         Shader(self.draw.shader_new(builder))
     }
 
+    /// Create a new vertex list.
+    pub fn vertex_list_new(&mut self, vertices: &[f32], gradient: Option<&[f32]>, graphic_coords: Vec<&[f32]>) -> VertexList {
+        VertexList(self.draw.vertices_new(vertices, gradient, graphic_coords))
+    }
+
     /// Create a new shape.
-    pub fn shape_new(&mut self, vertices: &[f32], indices: &[u16]) -> Shape {
-        Shape(self.draw.shape_new(vertices, indices))
+    pub fn shape_new(&mut self, indices: &[u16]) -> Shape {
+        Shape(self.draw.shape_new(indices))
     }
 
     /// 
