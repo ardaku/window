@@ -117,25 +117,32 @@ pub struct Shader {
 
 /// A list of vertices.
 pub struct Vertices {
-    
+    vbo: u32,
+    dim: u8,
+    gradient: u8,
+    graphic_coords: u8,
 }
 
 impl Vertices {
-    pub fn new(vertices: &[f32], gradient: Option<&[f32]>, graphic_coords: Vec<&[f32]>) -> Vertices
+    /// Create a new `VertexList`.  `dim`: 0 or 2~4 dimensions.  `gradient` is 3(RGB) or 4(RGBA).  `graphic_coords` is how many graphics need coordinates.
+    pub fn new(vertices: &[f32], dim: u8, gradient: u8, graphic_coords: u8) -> Vertices
     {
-        Vertices {}
+        Vertices {
+            vbo: create_vbo(vertices),
+            dim, gradient, graphic_coords,
+        }
     }
 }
 
 /// A shape.  Shapes are a list of indices into `Vertices`.
 pub struct Shape {
-    
+    indices: Vec<u16>,
 }
 
 impl Shape {
     pub fn new(indices: &[u16]) -> Shape {
         Shape {
-            
+            indices: indices.to_vec() // TODO: use vec??
         }
     }
 }
@@ -216,8 +223,8 @@ impl Draw for OpenGL {
         Box::new(Shader::new(builder))
     }
 
-    fn vertices_new(&mut self, vertices: &[f32], gradient: Option<&[f32]>, graphic_coords: Vec<&[f32]>) -> Box<Nvertices> {
-        Box::new(Vertices::new(vertices, gradient, graphic_coords))
+    fn vertices_new(&mut self, vertices: &[f32], dim: u8, gradient: u8, graphic_coords: u8) -> Box<Nvertices> {
+        Box::new(Vertices::new(vertices, dim, gradient, graphic_coords))
     }
 
     fn shape_new(&mut self, indices: &[u16]) -> Box<Nshape> {
@@ -296,7 +303,7 @@ impl Draw for OpenGL {
 }
 
 // Create an OpenGL vertex buffer object.
-fn create_vbo(vertices: &[f32], indices: &[u16]) -> u32 {
+fn create_vbo(vertices: &[f32]) -> u32 {
     unsafe {
         let mut buffers = [std::mem::uninitialized()];
         glGenBuffers(1 /*1 buffer*/, buffers.as_mut_ptr());
@@ -304,9 +311,9 @@ fn create_vbo(vertices: &[f32], indices: &[u16]) -> u32 {
         // TODO: maybe use glMapBuffer & glUnmapBuffer instead?
         glBufferData(
             0x8892 /*GL_ARRAY_BUFFER*/,
-            (vertices.len() * std::mem::size_of::<f32>()) as usize,
+            vertices.len() * std::mem::size_of::<f32>(),
             vertices.as_ptr() as *const _,
-            0x88E8 /*GL_DYNAMIC_DRAW*/,
+            0x88E4 /*GL_STATIC_DRAW - never changes */,
         );
 //        glVertexAttribPointer(position as u32, 2, 0x1406 /*GL_FLOAT*/, 0, 0, std::ptr::null());
         buffers[0]

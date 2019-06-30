@@ -69,7 +69,7 @@ trait Draw {
     /// Create a shader.
     fn shader_new(&mut self, builder: ShaderBuilder) -> Box<Nshader>;
     /// Create a collection of vertices.
-    fn vertices_new(&mut self, vertices: &[f32], gradient: Option<&[f32]>, graphic_coords: Vec<&[f32]>) -> Box<Nvertices>;
+    fn vertices_new(&mut self, vertices: &[f32], dim: u8, gradient: u8, graphic_coords: u8) -> Box<Nvertices>;
     /// Create a shape.
     fn shape_new(&mut self, indices: &[u16]) -> Box<Nshape>;
     /// Test drawing.
@@ -193,8 +193,8 @@ impl Window {
     }
 
     /// Create a new vertex list.
-    pub fn vertex_list_new(&mut self, vertices: &[f32], gradient: Option<&[f32]>, graphic_coords: Vec<&[f32]>) -> VertexList {
-        VertexList(self.draw.vertices_new(vertices, gradient, graphic_coords))
+    pub fn vertex_list_new(&mut self, vertices: &[f32], dim: u8, gradient: u8, graphic_coords: u8) -> VertexList {
+        VertexList(self.draw.vertices_new(vertices, dim, gradient, graphic_coords))
     }
 
     /// Create a new shape.
