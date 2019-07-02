@@ -109,10 +109,16 @@ extern "C" {
 
 /// A shader.  Shaders are a program that runs on the GPU to render a `Shape`.
 pub struct Shader {
+    // An OpenGL shader program ID.
     program: u32,
+    // True if OpenGL color vertex attribute exists.
     gradient: bool,
+    // TODO
     groups: Vec<u32>,
+    // TODO
     transforms: Vec<i32>,
+    // True if 3D.
+    depth: bool,
 }
 
 /// A list of vertices.
@@ -208,6 +214,9 @@ impl Draw for OpenGL {
             )
         };
         debug_assert_ne!(ret, 0);
+
+        // Configuration (TODO)
+        // glEnable(GL_CULL_FACES);
 
         // Set default background for OpenGL.
         self.background(0.0, 0.0, 1.0);
@@ -413,7 +422,7 @@ fn create_program(builder: crate::ShaderBuilder) -> Shader {
     }*/
 
     Shader {
-        program, gradient: builder.gradient, groups, transforms,
+        program, gradient: builder.gradient, groups, transforms, depth: builder.depth
     }
 }
 

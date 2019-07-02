@@ -98,6 +98,7 @@ pub struct ShaderBuilder {
     pub group: u8,
     pub tint: bool,
     pub gradient: bool,
+    pub depth: bool,
     pub opengl_frag: &'static str,
     pub opengl_vert: &'static str,
 }
