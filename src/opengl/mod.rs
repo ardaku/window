@@ -119,6 +119,8 @@ pub struct Shader {
     transforms: Vec<i32>,
     // True if 3D.
     depth: bool,
+    // True if transparency is allowed.
+    blending: bool,
 }
 
 /// A list of vertices.
@@ -160,7 +162,16 @@ impl Shader {
 }
 
 impl Nshader for Shader {
-    fn draw(&mut self) {
+    fn depth(&self) -> bool {
+        self.depth
+    }
+
+    fn gradient(&self) -> bool {
+        self.gradient
+    }
+
+    fn blending(&self) -> bool {
+        self.blending
     }
 }
 
@@ -422,7 +433,7 @@ fn create_program(builder: crate::ShaderBuilder) -> Shader {
     }*/
 
     Shader {
-        program, gradient: builder.gradient, groups, transforms, depth: builder.depth
+        program, gradient: builder.gradient, groups, transforms, depth: builder.depth, blending: builder.blend
     }
 }
 

@@ -77,7 +77,9 @@ trait Draw {
 }
 
 trait Nshader {
-    fn draw(&mut self);
+    fn depth(&self) -> bool;
+    fn gradient(&self) -> bool;
+    fn blending(&self) -> bool;
 }
 
 trait Nshape {}
@@ -92,6 +94,30 @@ pub struct Shader(Box<Nshader>);
 /// A vertex list.
 pub struct VertexList(Box<Nvertices>);
 
+/// A shape builder.
+pub struct ShapeBuilder<'a> {
+    shader: &'a mut Shader,
+}
+
+impl<'a> ShapeBuilder<'a> {
+    /// Create a new `ShapeBuilder` for a specific `Shader`.
+    pub fn new(shader: &'a mut Shader) -> ShapeBuilder<'a> {
+        ShapeBuilder {
+            shader,
+        }
+    }
+
+    /// Add a face to the shape.
+    pub fn face(&mut self, ) {
+        let dimensions = if self.shader.0.depth() {
+            3
+        } else {
+            2
+        };
+        
+    }
+}
+
 /// A builder for portable shaders.
 pub struct ShaderBuilder {
     pub transform: u8,
@@ -99,6 +125,7 @@ pub struct ShaderBuilder {
     pub tint: bool,
     pub gradient: bool,
     pub depth: bool,
+    pub blend: bool,
     pub opengl_frag: &'static str,
     pub opengl_vert: &'static str,
 }
