@@ -24,7 +24,7 @@ extern "C" {
 #[cfg(debug_assertions)]
 macro_rules! gl_assert {
     () => {
-        match unsafe { glGetError() } {
+        /*        match unsafe { glGetError() } {
             0 => {},
             0x0500 => panic!("OpenGL: Invalid Enum"),
             0x0501 => panic!("OpenGL: Invalid Value"),
@@ -33,13 +33,13 @@ macro_rules! gl_assert {
             0x0504 => panic!("OpenGL: Invalid Stack Underflow"),
             0x0505 => panic!("OpenGL: Invalid Out of Memory"),
             _ => panic!("OpenGL: Unknown Error"),
-        }
-    }
+        }*/
+    };
 }
 
 #[cfg(not(debug_assertions))]
 macro_rules! gl_assert {
-    () => {}
+    () => {};
 }
 
 extern "C" {
@@ -129,8 +129,12 @@ extern "C" {
     fn glDisableVertexAttribArray(index: u32) -> ();
     fn glGenBuffers(n: i32, buffers: *mut u32) -> ();
     fn glBindBuffer(target: u32, buffer: u32) -> ();
-    fn glBufferData(target: u32, size: usize, data: *const c_void, usage: u32)
-        -> ();
+    fn glBufferData(
+        target: u32,
+        size: isize,
+        data: *const c_void,
+        usage: u32,
+    ) -> ();
 }
 
 /// A shader.  Shaders are a program that runs on the GPU to render a `Shape`.
@@ -152,9 +156,6 @@ pub struct Shader {
 /// A list of vertices.
 pub struct Vertices {
     vbo: u32,
-//    dim: u8,
-//    gradient: u8,
-//    graphic_coords: u8,
 }
 
 impl Vertices {
@@ -162,7 +163,6 @@ impl Vertices {
     pub fn new(vertices: &[f32]) -> Vertices {
         Vertices {
             vbo: create_vbo(vertices),
-//            dim, gradient, graphic_coords,
         }
     }
 }
@@ -175,7 +175,7 @@ pub struct Shape {
 impl Shape {
     pub fn new(builder: crate::ShapeBuilder) -> Shape {
         Shape {
-            indices: builder.indices.to_vec() // TODO: use vec??
+            indices: builder.indices.to_vec(), // TODO: use vec??
         }
     }
 }
@@ -201,6 +201,7 @@ impl Nshader for Shader {
 
     fn bind(&self) {
         unsafe {
+            debug_assert_ne!(self.program, 0);
             glUseProgram(self.program);
             gl_assert!();
         }
@@ -214,6 +215,7 @@ impl Nshader for Shader {
 impl Nshape for Shape {}
 impl Nvertices for Vertices {
     fn bind(&self) {
+        debug_assert_ne!(self.vbo, 0);
         unsafe {
             glBindBuffer(0x8892 /*GL_ARRAY_BUFFER*/, self.vbo);
             gl_assert!();
@@ -280,7 +282,7 @@ impl Draw for OpenGL {
         unsafe {
             glClearColor(r, g, b, 0.5); // TODO ?
             gl_assert!();
-        } 
+        }
     }
 
     fn shader_new(&mut self, builder: crate::ShaderBuilder) -> Box<Nshader> {
@@ -312,7 +314,6 @@ impl Draw for OpenGL {
         shader.bind();
 
         // TEST
-
         let timer = 0; // TODO with nanos
         let angle = (timer % 360) as f32 * std::f32::consts::PI / 180.0;
 
@@ -338,6 +339,7 @@ impl Draw for OpenGL {
             }
 
             let stride = 2 + if shader.gradient() { 3 } else { 0 };
+            let stride = (stride * std::mem::size_of::<f32>()) as i32;
 
             vertlist.bind();
 
@@ -399,14 +401,12 @@ fn create_vbo(vertices: &[f32]) -> u32 {
         gl_assert!();
         // TODO: maybe use glMapBuffer & glUnmapBuffer instead?
         glBufferData(
-            0x8892 /*GL_ARRAY_BUFFER*/,
-            vertices.len() * std::mem::size_of::<f32>(),
+            0x8892, /*GL_ARRAY_BUFFER*/
+            (vertices.len() * std::mem::size_of::<f32>()) as isize,
             vertices.as_ptr() as *const _,
-            0x88E4 /*GL_STATIC_DRAW - never changes */,
+            0x88E4, /*GL_STATIC_DRAW - never changes (0x88E8 - dynamic) */
         );
         gl_assert!();
-//        glVertexAttribPointer(position as u32, 2, 0x1406 /*GL_FLOAT*/, 0, 0, std::ptr::null());
-//        gl_assert!();
         buffers[0]
     }
 }
@@ -471,9 +471,13 @@ fn create_program(builder: crate::ShaderBuilder) -> Shader {
     // Vertex attributes
     unsafe {
         // All shader programs have position.
-        glBindAttribLocation(program, GL_ATTRIB_POS, b"pos\0".as_ptr() as *const _ as *const _);
+        glBindAttribLocation(
+            program,
+            GL_ATTRIB_POS,
+            b"pos\0".as_ptr() as *const _ as *const _,
+        );
         gl_assert!();
-        // 
+        //
         if builder.gradient {
             glBindAttribLocation(
                 program,
@@ -482,15 +486,15 @@ fn create_program(builder: crate::ShaderBuilder) -> Shader {
             );
             gl_assert!();
         }
-//        glLinkProgram(program);
-//        gl_assert!();
+        glLinkProgram(program);
+        gl_assert!();
     }
     // Uniforms
     let mut groups = Vec::with_capacity(builder.group as usize);
     let mut transforms = Vec::with_capacity(builder.transform as usize);
-    /*// 
+    /*//
     for group in builder.groups.iter() {
-        
+
     }*/
 
     for transform in 0..builder.transform {
@@ -505,17 +509,13 @@ fn create_program(builder: crate::ShaderBuilder) -> Shader {
         transforms.push(handle);
     }
 
-/*    // Get Vertex Attributes
-    let position = unsafe { (opengl.vdata)(program, b"position\0".as_ptr() as *const _) };
-    let texpos = unsafe { (opengl.vdata)(program, b"texpos\0".as_ptr() as *const _) };
-    // Enable Vertex Attributes
-    unsafe {
-        (opengl.enable_vdata)(position as u32);
-        (opengl.enable_vdata)(texpos as u32);
-    }*/
-
     Shader {
-        program, gradient: builder.gradient, groups, transforms, depth: builder.depth, blending: builder.blend
+        program,
+        gradient: builder.gradient,
+        groups,
+        transforms,
+        depth: builder.depth,
+        blending: builder.blend,
     }
 }
 

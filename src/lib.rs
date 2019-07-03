@@ -124,18 +124,15 @@ impl<'a> ShapeBuilder<'a> {
     }
 
     /// Add a face to the shape.
-    pub fn face(mut self, matrix: [[f32;4];4]) -> Self {
-        let dimensions = if self.shader.0.depth() {
-            3
-        } else {
-            2
-        };
-        let components = if self.shader.0.blending() {
-            4
-        } else {
-            3
-        };
-        let stride = dimensions + if self.shader.0.gradient() { components } else { 0 };
+    pub fn face(mut self, matrix: [[f32; 4]; 4]) -> Self {
+        let dimensions = if self.shader.0.depth() { 3 } else { 2 };
+        let components = if self.shader.0.blending() { 4 } else { 3 };
+        let stride = dimensions
+            + if self.shader.0.gradient() {
+                components
+            } else {
+                0
+            };
         assert!(self.vertices.len() % stride == 0);
         let mut index = 0;
         let mut shader1 = match self.shader.1 {
@@ -143,26 +140,38 @@ impl<'a> ShapeBuilder<'a> {
             Either::VertList(_) => panic!("Already built!"),
         };
         loop {
-            if index == self.vertices.len() { break }
+            if index == self.vertices.len() {
+                break;
+            }
             // Read vertex position.
             let vertex = if dimensions == 2 {
                 [self.vertices[index + 0], self.vertices[index + 1], 0.0]
             } else {
-                [self.vertices[index + 0], self.vertices[index + 1], self.vertices[index + 2]]
+                [
+                    self.vertices[index + 0],
+                    self.vertices[index + 1],
+                    self.vertices[index + 2],
+                ]
             };
             // Transform vertex position.
             let vertex = [
-		        matrix[0][0]*vertex[0] + matrix[0][1]*vertex[1]
-                    + matrix[0][2]*vertex[2] + matrix[0][3],
-		        matrix[1][0]*vertex[0] + matrix[1][1]*vertex[1]
-                    + matrix[1][2]*vertex[2] + matrix[1][3],
-		        matrix[2][0]*vertex[0] + matrix[2][1]*vertex[1]
-                    + matrix[2][2]*vertex[2] + matrix[2][3],
+                matrix[0][0] * vertex[0]
+                    + matrix[0][1] * vertex[1]
+                    + matrix[0][2] * vertex[2]
+                    + matrix[0][3],
+                matrix[1][0] * vertex[0]
+                    + matrix[1][1] * vertex[1]
+                    + matrix[1][2] * vertex[2]
+                    + matrix[1][3],
+                matrix[2][0] * vertex[0]
+                    + matrix[2][1] * vertex[1]
+                    + matrix[2][2] * vertex[2]
+                    + matrix[2][3],
             ];
             // Find index
             let mut jndex = 0;
             self.indices.push('l: loop {
-                // 
+                //
                 if jndex == shader1.len() {
                     let rtn = jndex / stride;
                     for k in 0..dimensions {
@@ -173,7 +182,7 @@ impl<'a> ShapeBuilder<'a> {
                     }
                     break 'l rtn as u16;
                 }
-                // 
+                //
                 let mut equal = true;
                 'b: for k in 0..stride {
                     if self.vertices[index + k] != shader1[jndex + k] {
@@ -310,10 +319,14 @@ impl Window {
 
     /// Draw a shape.
     pub fn draw(&mut self, shader: &Shader, shape: &Shape) {
-        self.draw.draw(&*shader.0, &**match shader.1 {
-            Either::Builder(_) => panic!("Not built yet!"),
-            Either::VertList(ref a) => a,
-        }, &*shape.0);
+        self.draw.draw(
+            &*shader.0,
+            &**match shader.1 {
+                Either::Builder(_) => panic!("Not built yet!"),
+                Either::VertList(ref a) => a,
+            },
+            &*shape.0,
+        );
     }
 
     /// Build a shader.
