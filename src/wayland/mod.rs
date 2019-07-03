@@ -576,30 +576,6 @@ unsafe extern "C" fn keyboard_handle_key(
         (*c).configured = 1;
 
         if (*c).fullscreen {
-            /*if (*c).is_restored != 0 {
-                // Restore
-                extern "C" {
-                    fn wl_proxy_marshal(p: *mut c_void, opcode: u32) -> ();
-                }
-
-                wl_proxy_marshal((*c).shell_surface, 3 /*toplevel*/);
-            } else {
-                // Maximize
-                extern "C" {
-                    fn wl_proxy_marshal(
-                        p: *mut c_void,
-                        opcode: u32,
-                        a: *mut c_void,
-                    ) -> ();
-                }
-
-                wl_proxy_marshal(
-                    (*c).shell_surface,
-                    7, /*maximized*/
-                    std::ptr::null_mut(),
-                );
-            }*/
-
             // UnFullscreen
             extern "C" {
                 fn wl_proxy_marshal(
@@ -616,24 +592,6 @@ unsafe extern "C" fn keyboard_handle_key(
 
             (*c).fullscreen = false;
         } else {
-            /*extern "C" {
-                fn wl_proxy_marshal(
-                    p: *mut c_void,
-                    opcode: u32,
-                    a: u32,
-                    b: u32,
-                    c: *mut c_void,
-                ) -> ();
-            }
-
-            wl_proxy_marshal(
-                (*c).shell_surface,
-                5,    /*fullscreen*/
-                0u32, /* WL_SHELL_SURFACE_FULLSCREEN_METHOD_DEFAULT */
-                0u32,
-                std::ptr::null_mut(),
-            );*/
-
             // Fullscreen
             extern "C" {
                 fn wl_proxy_marshal(
