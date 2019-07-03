@@ -125,7 +125,8 @@ extern "C" {
         ptr: *const f32,
     ) -> ();
     fn glEnableVertexAttribArray(index: u32) -> ();
-    fn glDrawArrays(mode: u32, first: i32, count: i32);
+//    fn glDrawArrays(mode: u32, first: i32, count: i32);
+    fn glDrawElements(mode: u32, count: i32, draw_type: u32, indices: *const c_void) -> ();
     fn glDisableVertexAttribArray(index: u32) -> ();
     fn glGenBuffers(n: i32, buffers: *mut u32) -> ();
     fn glBindBuffer(target: u32, buffer: u32) -> ();
@@ -212,7 +213,16 @@ impl Nshader for Shader {
     }
 }
 
-impl Nshape for Shape {}
+impl Nshape for Shape {
+    fn len(&self) -> i32 {
+        self.indices.len() as i32
+    }
+
+    fn ptr(&self) -> *const c_void {
+        self.indices.as_ptr() as *const _ as *const _
+    }
+}
+
 impl Nvertices for Vertices {
     fn bind(&self) {
         debug_assert_ne!(self.vbo, 0);
@@ -377,7 +387,7 @@ impl Draw for OpenGL {
             }
 
             // Draw
-            glDrawArrays(0x0004 /*GL_TRIANGLES*/, 0, 3);
+            glDrawElements(0x0004 /*GL_TRIANGLES*/, shape.len(), 0x1403 /*GL_UNSIGNED_SHORT*/, shape.ptr());
             gl_assert!();
 
             // Disable
@@ -392,7 +402,7 @@ impl Draw for OpenGL {
 }
 
 // Create an OpenGL vertex buffer object.
-fn create_vbo(vertices: &[f32]) -> u32 {
+fn create_vbo<T>(vertices: &[T]) -> u32 {
     unsafe {
         let mut buffers = [std::mem::uninitialized()];
         glGenBuffers(1 /*1 buffer*/, buffers.as_mut_ptr());
@@ -402,7 +412,7 @@ fn create_vbo(vertices: &[f32]) -> u32 {
         // TODO: maybe use glMapBuffer & glUnmapBuffer instead?
         glBufferData(
             0x8892, /*GL_ARRAY_BUFFER*/
-            (vertices.len() * std::mem::size_of::<f32>()) as isize,
+            (vertices.len() * std::mem::size_of::<T>()) as isize,
             vertices.as_ptr() as *const _,
             0x88E4, /*GL_STATIC_DRAW - never changes (0x88E8 - dynamic) */
         );

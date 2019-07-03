@@ -84,7 +84,11 @@ trait Nshader {
     fn transform(&self, index: usize) -> Option<&i32>;
 }
 
-trait Nshape {}
+trait Nshape {
+    fn len(&self) -> i32;
+    fn ptr(&self) -> *const c_void;
+}
+
 trait Nvertices {
     fn bind(&self);
 }
