@@ -69,34 +69,42 @@ trait Draw {
     /// Create a shader.
     fn shader_new(&mut self, builder: ShaderBuilder) -> Box<Nshader>;
     /// Create a collection of vertices.
-    fn vertices_new(&mut self, vertices: &[f32], dim: u8, gradient: u8, graphic_coords: u8) -> Box<Nvertices>;
+    fn vertices_new(&mut self, vertices: &[f32]) -> Box<Nvertices>;
     /// Create a shape.
-    fn shape_new(&mut self, indices: &[u16]) -> Box<Nshape>;
-    /// Test drawing.
-    fn test(&mut self);
+    fn shape_new(&mut self, builder: ShapeBuilder) -> Box<Nshape>;
+    // Draw a shape.
+    fn draw(&mut self, shader: &Nshader, vertlist: &Nvertices, shape: &Nshape);
 }
 
 trait Nshader {
     fn depth(&self) -> bool;
     fn gradient(&self) -> bool;
     fn blending(&self) -> bool;
+    fn bind(&self);
+    fn transform(&self, index: usize) -> Option<&i32>;
 }
 
 trait Nshape {}
-trait Nvertices {}
+trait Nvertices {
+    fn bind(&self);
+}
 
 /// A shape.
 pub struct Shape(Box<Nshape>);
 
-/// A shader.
-pub struct Shader(Box<Nshader>);
+enum Either {
+    Builder(Vec<f32>),
+    VertList(Box<Nvertices>),
+}
 
-/// A vertex list.
-pub struct VertexList(Box<Nvertices>);
+/// A shader.
+pub struct Shader(Box<Nshader>, Either);
 
 /// A shape builder.
 pub struct ShapeBuilder<'a> {
     shader: &'a mut Shader,
+    indices: Vec<u16>,
+    vertices: Vec<f32>,
 }
 
 impl<'a> ShapeBuilder<'a> {
@@ -104,17 +112,92 @@ impl<'a> ShapeBuilder<'a> {
     pub fn new(shader: &'a mut Shader) -> ShapeBuilder<'a> {
         ShapeBuilder {
             shader,
+            indices: Vec::new(),
+            vertices: Vec::new(),
         }
     }
 
+    /// Set vertices for shape.
+    pub fn vert(mut self, vertices: &[f32]) -> Self {
+        self.vertices = vertices.to_vec();
+        self
+    }
+
     /// Add a face to the shape.
-    pub fn face(&mut self, ) {
+    pub fn face(mut self, matrix: [[f32;4];4]) -> Self {
         let dimensions = if self.shader.0.depth() {
             3
         } else {
             2
         };
-        
+        let components = if self.shader.0.blending() {
+            4
+        } else {
+            3
+        };
+        let stride = dimensions + if self.shader.0.gradient() { components } else { 0 };
+        assert!(self.vertices.len() % stride == 0);
+        let mut index = 0;
+        let mut shader1 = match self.shader.1 {
+            Either::Builder(ref mut list) => list,
+            Either::VertList(_) => panic!("Already built!"),
+        };
+        loop {
+            if index == self.vertices.len() { break }
+            // Read vertex position.
+            let vertex = if dimensions == 2 {
+                [self.vertices[index + 0], self.vertices[index + 1], 0.0]
+            } else {
+                [self.vertices[index + 0], self.vertices[index + 1], self.vertices[index + 2]]
+            };
+            // Transform vertex position.
+            let vertex = [
+		        matrix[0][0]*vertex[0] + matrix[0][1]*vertex[1]
+                    + matrix[0][2]*vertex[2] + matrix[0][3],
+		        matrix[1][0]*vertex[0] + matrix[1][1]*vertex[1]
+                    + matrix[1][2]*vertex[2] + matrix[1][3],
+		        matrix[2][0]*vertex[0] + matrix[2][1]*vertex[1]
+                    + matrix[2][2]*vertex[2] + matrix[2][3],
+            ];
+            // Find index
+            let mut jndex = 0;
+            self.indices.push('l: loop {
+                // 
+                if jndex == shader1.len() {
+                    let rtn = jndex / stride;
+                    for k in 0..dimensions {
+                        shader1.push(vertex[k])
+                    }
+                    for k in dimensions..stride {
+                        shader1.push(self.vertices[index + k]);
+                    }
+                    break 'l rtn as u16;
+                }
+                // 
+                let mut equal = true;
+                'b: for k in 0..stride {
+                    if self.vertices[index + k] != shader1[jndex + k] {
+                        equal = false;
+                        break 'b;
+                    }
+                }
+                if equal {
+                    'c: for k in 0..stride {
+                        if self.vertices[index + k] != shader1[jndex + k] {
+                            equal = false;
+                            break 'c;
+                        }
+                    }
+                }
+                if equal {
+                    break 'l (jndex / stride) as u16;
+                }
+                jndex += stride;
+            });
+
+            index += stride;
+        }
+        self
     }
 }
 
@@ -217,21 +300,28 @@ impl Window {
 
     /// Build a shader program.
     pub fn shader_new(&mut self, builder: ShaderBuilder) -> Shader {
-        Shader(self.draw.shader_new(builder))
-    }
-
-    /// Create a new vertex list.
-    pub fn vertex_list_new(&mut self, vertices: &[f32], dim: u8, gradient: u8, graphic_coords: u8) -> VertexList {
-        VertexList(self.draw.vertices_new(vertices, dim, gradient, graphic_coords))
+        Shader(self.draw.shader_new(builder), Either::Builder(vec![]))
     }
 
     /// Create a new shape.
-    pub fn shape_new(&mut self, indices: &[u16]) -> Shape {
-        Shape(self.draw.shape_new(indices))
+    pub fn shape_new(&mut self, builder: ShapeBuilder) -> Shape {
+        Shape(self.draw.shape_new(builder))
     }
 
-    /// 
-    pub fn test(&mut self) {
-        self.draw.test();
+    /// Draw a shape.
+    pub fn draw(&mut self, shader: &Shader, shape: &Shape) {
+        self.draw.draw(&*shader.0, &**match shader.1 {
+            Either::Builder(_) => panic!("Not built yet!"),
+            Either::VertList(ref a) => a,
+        }, &*shape.0);
+    }
+
+    /// Build a shader.
+    pub fn build(&mut self, shader: &mut Shader) {
+        if let Either::Builder(ref vertices) = shader.1 {
+            shader.1 = Either::VertList(self.draw.vertices_new(vertices))
+        } else {
+            panic!("Already built!");
+        }
     }
 }

@@ -16,6 +16,32 @@ const GL_ATTRIB_COL: u32 = 1;
 // Texture Coordinates Begin (May have multiple)
 const GL_ATTRIB_TEX: u32 = 2;
 
+#[cfg(debug_assertions)]
+extern "C" {
+    fn glGetError() -> u32;
+}
+
+#[cfg(debug_assertions)]
+macro_rules! gl_assert {
+    () => {
+        match unsafe { glGetError() } {
+            0 => {},
+            0x0500 => panic!("OpenGL: Invalid Enum"),
+            0x0501 => panic!("OpenGL: Invalid Value"),
+            0x0502 => panic!("OpenGL: Invalid Operation"),
+            0x0503 => panic!("OpenGL: Invalid Stack Overflow"),
+            0x0504 => panic!("OpenGL: Invalid Stack Underflow"),
+            0x0505 => panic!("OpenGL: Invalid Out of Memory"),
+            _ => panic!("OpenGL: Unknown Error"),
+        }
+    }
+}
+
+#[cfg(not(debug_assertions))]
+macro_rules! gl_assert {
+    () => {}
+}
+
 extern "C" {
     fn eglGetDisplay(
         native_display: self::platform::NativeDisplayType,
@@ -126,18 +152,17 @@ pub struct Shader {
 /// A list of vertices.
 pub struct Vertices {
     vbo: u32,
-    dim: u8,
-    gradient: u8,
-    graphic_coords: u8,
+//    dim: u8,
+//    gradient: u8,
+//    graphic_coords: u8,
 }
 
 impl Vertices {
     /// Create a new `VertexList`.  `dim`: 0 or 2~4 dimensions.  `gradient` is 3(RGB) or 4(RGBA).  `graphic_coords` is how many graphics need coordinates.
-    pub fn new(vertices: &[f32], dim: u8, gradient: u8, graphic_coords: u8) -> Vertices
-    {
+    pub fn new(vertices: &[f32]) -> Vertices {
         Vertices {
             vbo: create_vbo(vertices),
-            dim, gradient, graphic_coords,
+//            dim, gradient, graphic_coords,
         }
     }
 }
@@ -148,9 +173,9 @@ pub struct Shape {
 }
 
 impl Shape {
-    pub fn new(indices: &[u16]) -> Shape {
+    pub fn new(builder: crate::ShapeBuilder) -> Shape {
         Shape {
-            indices: indices.to_vec() // TODO: use vec??
+            indices: builder.indices.to_vec() // TODO: use vec??
         }
     }
 }
@@ -173,10 +198,28 @@ impl Nshader for Shader {
     fn blending(&self) -> bool {
         self.blending
     }
+
+    fn bind(&self) {
+        unsafe {
+            glUseProgram(self.program);
+            gl_assert!();
+        }
+    }
+
+    fn transform(&self, index: usize) -> Option<&i32> {
+        self.transforms.get(index)
+    }
 }
 
 impl Nshape for Shape {}
-impl Nvertices for Vertices {}
+impl Nvertices for Vertices {
+    fn bind(&self) {
+        unsafe {
+            glBindBuffer(0x8892 /*GL_ARRAY_BUFFER*/, self.vbo);
+            gl_assert!();
+        }
+    }
+}
 
 pub struct OpenGL {
     surface: *mut c_void,
@@ -236,6 +279,7 @@ impl Draw for OpenGL {
     fn background(&mut self, r: f32, g: f32, b: f32) {
         unsafe {
             glClearColor(r, g, b, 0.5); // TODO ?
+            gl_assert!();
         } 
     }
 
@@ -243,17 +287,18 @@ impl Draw for OpenGL {
         Box::new(Shader::new(builder))
     }
 
-    fn vertices_new(&mut self, vertices: &[f32], dim: u8, gradient: u8, graphic_coords: u8) -> Box<Nvertices> {
-        Box::new(Vertices::new(vertices, dim, gradient, graphic_coords))
+    fn vertices_new(&mut self, vertices: &[f32]) -> Box<Nvertices> {
+        Box::new(Vertices::new(vertices))
     }
 
-    fn shape_new(&mut self, indices: &[u16]) -> Box<Nshape> {
-        Box::new(Shape::new(indices))
+    fn shape_new(&mut self, builder: crate::ShapeBuilder) -> Box<Nshape> {
+        Box::new(Shape::new(builder))
     }
 
     fn begin_draw(&mut self) {
         unsafe {
             glClear(0x00004000 /*GL_COLOR_BUFFER_BIT*/);
+            gl_assert!();
         }
     }
 
@@ -263,23 +308,15 @@ impl Draw for OpenGL {
         }
     }
 
-    fn test(&mut self) {
-        // let timer = 0; // TODO with nanos
-        // let angle = (timer % 360) as f32 * std::f32::consts::PI / 180.0;
+    fn draw(&mut self, shader: &Nshader, vertlist: &Nvertices, shape: &Nshape) {
+        shader.bind();
+
+        // TEST
+
+        let timer = 0; // TODO with nanos
+        let angle = (timer % 360) as f32 * std::f32::consts::PI / 180.0;
 
         unsafe {
-            /*#[rustfmt::skip]
-            let verts = [
-                -0.5, -0.5,
-                0.5,  -0.5,
-                0.0,   0.5,
-            ];
-            #[rustfmt::skip]
-            let colors = [
-                1.0, 0.0, 0.0,
-                0.0, 1.0, 0.0,
-                0.0, 0.0, 0.0,
-            ];
             #[rustfmt::skip]
             let rotation = [
                 angle.cos(), 0.0, angle.sin(), 0.0,
@@ -288,36 +325,66 @@ impl Draw for OpenGL {
                 0.0, 0.0, 0.0, 1.0,
             ];
 
-            glUniformMatrix4fv(
-                self.gl_rotation_uniform,
-                1,
-                0, /*GL_FALSE*/
-                rotation.as_ptr(),
-            );
+            let mut index = 0;
+            while let Some(uniform_id) = shader.transform(index) {
+                glUniformMatrix4fv(
+                    *uniform_id,
+                    1,
+                    0, /*GL_FALSE*/
+                    rotation.as_ptr(),
+                );
+                gl_assert!();
+                index += 1;
+            }
 
-            glVertexAttribPointer(
-                GL_ATTRIB_POS,
-                2,
-                0x1406, /*GL_FLOAT*/
-                0x1406, /*GL_FLOAT*/
-                0,
-                verts.as_ptr(),
-            );
-            glVertexAttribPointer(
-                GL_ATTRIB_COL,
-                3,
-                0x1406, /*GL_FLOAT*/
-                0,      /*GL_FALSE*/
-                0,
-                colors.as_ptr(),
-            );
-            glEnableVertexAttribArray(GL_ATTRIB_POS);
-            glEnableVertexAttribArray(GL_ATTRIB_COL);
+            let stride = 2 + if shader.gradient() { 3 } else { 0 };
 
+            vertlist.bind();
+
+            // Always
+            {
+                glVertexAttribPointer(
+                    GL_ATTRIB_POS,
+                    2,
+                    0x1406, /*GL_FLOAT*/
+                    0,      /*GL_FALSE*/
+                    stride,
+                    std::ptr::null(),
+                );
+                gl_assert!();
+                glEnableVertexAttribArray(GL_ATTRIB_POS);
+                gl_assert!();
+            }
+
+            // Only if Gradient is enabled.
+            if shader.gradient() {
+                vertlist.bind(); // TODO: is needed?
+
+                let ptr: *const f32 = std::ptr::null();
+                glVertexAttribPointer(
+                    GL_ATTRIB_COL,
+                    3,
+                    0x1406, /*GL_FLOAT*/
+                    0,      /*GL_FALSE*/
+                    stride,
+                    ptr.offset(2),
+                );
+                gl_assert!();
+                glEnableVertexAttribArray(GL_ATTRIB_COL);
+                gl_assert!();
+            }
+
+            // Draw
             glDrawArrays(0x0004 /*GL_TRIANGLES*/, 0, 3);
+            gl_assert!();
 
+            // Disable
             glDisableVertexAttribArray(GL_ATTRIB_POS);
-            glDisableVertexAttribArray(GL_ATTRIB_COL);*/
+            gl_assert!();
+            if shader.gradient() {
+                glDisableVertexAttribArray(GL_ATTRIB_COL);
+                gl_assert!();
+            }
         }
     }
 }
@@ -327,7 +394,9 @@ fn create_vbo(vertices: &[f32]) -> u32 {
     unsafe {
         let mut buffers = [std::mem::uninitialized()];
         glGenBuffers(1 /*1 buffer*/, buffers.as_mut_ptr());
+        gl_assert!();
         glBindBuffer(0x8892 /*GL_ARRAY_BUFFER*/, buffers[0]);
+        gl_assert!();
         // TODO: maybe use glMapBuffer & glUnmapBuffer instead?
         glBufferData(
             0x8892 /*GL_ARRAY_BUFFER*/,
@@ -335,7 +404,9 @@ fn create_vbo(vertices: &[f32]) -> u32 {
             vertices.as_ptr() as *const _,
             0x88E4 /*GL_STATIC_DRAW - never changes */,
         );
+        gl_assert!();
 //        glVertexAttribPointer(position as u32, 2, 0x1406 /*GL_FLOAT*/, 0, 0, std::ptr::null());
+//        gl_assert!();
         buffers[0]
     }
 }
@@ -363,14 +434,19 @@ fn create_program(builder: crate::ShaderBuilder) -> Shader {
         0x8B31, /*GL_VERTEX_SHADER*/
     );
     let program = unsafe { glCreateProgram() };
+    gl_assert!();
     unsafe {
         glAttachShader(program, frag);
+        gl_assert!();
         glAttachShader(program, vert);
+        gl_assert!();
         glLinkProgram(program);
+        gl_assert!();
     }
     let mut status = unsafe { std::mem::uninitialized() };
     unsafe {
         glGetProgramiv(program, 0x8B82, /*GL_LINK_STATUS*/ &mut status);
+        gl_assert!();
     }
     if status == 0 {
         let mut log = [0u8; 1000];
@@ -382,6 +458,7 @@ fn create_program(builder: crate::ShaderBuilder) -> Shader {
                 &mut len,
                 log.as_mut_ptr() as *mut _ as *mut _,
             );
+            gl_assert!();
         }
         let log = String::from_utf8_lossy(&log);
         panic!("Error: linking:\n{}", log);
@@ -389,11 +466,13 @@ fn create_program(builder: crate::ShaderBuilder) -> Shader {
     // Bind the shader program.
     unsafe {
         glUseProgram(program);
+        gl_assert!();
     }
     // Vertex attributes
     unsafe {
         // All shader programs have position.
         glBindAttribLocation(program, GL_ATTRIB_POS, b"pos\0".as_ptr() as *const _ as *const _);
+        gl_assert!();
         // 
         if builder.gradient {
             glBindAttribLocation(
@@ -401,8 +480,10 @@ fn create_program(builder: crate::ShaderBuilder) -> Shader {
                 GL_ATTRIB_COL,
                 b"col\0".as_ptr() as *const _ as *const _,
             );
+            gl_assert!();
         }
-        glLinkProgram(program);
+//        glLinkProgram(program);
+//        gl_assert!();
     }
     // Uniforms
     let mut groups = Vec::with_capacity(builder.group as usize);
@@ -419,6 +500,7 @@ fn create_program(builder: crate::ShaderBuilder) -> Shader {
         let handle = unsafe {
             glGetUniformLocation(program, id.as_ptr() as *const _ as *const _)
         };
+        gl_assert!();
         assert!(handle > -1);
         transforms.push(handle);
     }
@@ -439,16 +521,20 @@ fn create_program(builder: crate::ShaderBuilder) -> Shader {
 
 fn create_shader(source: *const i8, shader_type: u32) -> u32 {
     let shader = unsafe { glCreateShader(shader_type) };
+    gl_assert!();
     debug_assert!(shader != 0);
 
     unsafe {
         glShaderSource(shader, 1, [source].as_ptr(), std::ptr::null());
+        gl_assert!();
         glCompileShader(shader);
+        gl_assert!();
     }
 
     let mut status = unsafe { std::mem::uninitialized() };
     unsafe {
         glGetShaderiv(shader, 0x8B81 /*GL_COMPILE_STATUS*/, &mut status);
+        gl_assert!();
     }
     if status == 0 {
         let mut log = [0u8; 1000];
@@ -460,6 +546,7 @@ fn create_shader(source: *const i8, shader_type: u32) -> u32 {
                 &mut len,
                 log.as_mut_ptr() as *mut _ as *mut _,
             );
+            gl_assert!();
         }
         let log = String::from_utf8_lossy(&log);
         panic!(
