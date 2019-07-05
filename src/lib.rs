@@ -293,14 +293,11 @@ pub struct Window {
 impl Window {
     /// Start the Wayland + OpenGL application.
     pub fn new(name: &str, run: fn(nanos: u64) -> ()) -> Box<Self> {
-        let mut window: Box<Window> = unsafe { std::mem::uninitialized() };
-
         /*********************/
         /* Declare Variables */
         /*********************/
-        unsafe {
-            std::ptr::write(&mut window, Box::new(std::mem::zeroed()));
-        }
+
+        let mut window = Box::new(unsafe { std::mem::zeroed() });
 
         /*********************/
         /* Create The Window */

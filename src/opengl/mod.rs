@@ -54,7 +54,7 @@ extern "C" {
         attrib_list: *const i32,
         configs: *mut *mut c_void,
         config_size: i32,
-        num_config: &mut i32,
+        num_config: *mut i32,
     ) -> u32;
     fn eglCreateContext(
         dpy: *mut c_void,
@@ -456,13 +456,14 @@ impl Draw for OpenGL {
 // Create an OpenGL vertex buffer object.
 fn create_vbo<T>(vertices: &[T], target: u32) -> u32 {
     unsafe {
-        let mut buffers = [std::mem::uninitialized()];
-        glGenBuffers(1 /*1 buffer*/, buffers.as_mut_ptr());
+        let mut buffer = std::mem::MaybeUninit::<u32>::uninit();
+        glGenBuffers(1 /*1 buffer*/, buffer.as_mut_ptr());
         gl_assert!();
+        let buffer = buffer.assume_init();
         if target == 0x8892 {
-            glBindBuffer(target, buffers[0]);
+            glBindBuffer(target, buffer);
         } else {
-            glBindBufferBase(target, 0, buffers[0]);
+            glBindBufferBase(target, 0, buffer);
         }
         gl_assert!();
         // TODO: maybe use glMapBuffer & glUnmapBuffer instead?
@@ -477,7 +478,7 @@ fn create_vbo<T>(vertices: &[T], target: u32) -> u32 {
             },
         );
         gl_assert!();
-        buffers[0]
+        buffer
     }
 }
 
@@ -513,19 +514,20 @@ fn create_program(builder: crate::ShaderBuilder) -> Shader {
         glLinkProgram(program);
         gl_assert!();
     }
-    let mut status = unsafe { std::mem::uninitialized() };
-    unsafe {
-        glGetProgramiv(program, 0x8B82, /*GL_LINK_STATUS*/ &mut status);
+    let mut status = std::mem::MaybeUninit::<i32>::uninit();
+    let status = unsafe {
+        glGetProgramiv(program, 0x8B82, /*GL_LINK_STATUS*/ status.as_mut_ptr());
         gl_assert!();
-    }
+        status.assume_init()
+    };
     if status == 0 {
         let mut log = [0u8; 1000];
-        let mut len = unsafe { std::mem::uninitialized() };
+        let mut len = std::mem::MaybeUninit::<i32>::uninit();
         unsafe {
             glGetProgramInfoLog(
                 program,
                 1000,
-                &mut len,
+                len.as_mut_ptr(),
                 log.as_mut_ptr() as *mut _ as *mut _,
             );
             gl_assert!();
@@ -609,19 +611,20 @@ fn create_shader(source: *const i8, shader_type: u32) -> u32 {
         gl_assert!();
     }
 
-    let mut status = unsafe { std::mem::uninitialized() };
-    unsafe {
-        glGetShaderiv(shader, 0x8B81 /*GL_COMPILE_STATUS*/, &mut status);
+    let mut status = std::mem::MaybeUninit::<i32>::uninit();
+    let status = unsafe {
+        glGetShaderiv(shader, 0x8B81 /*GL_COMPILE_STATUS*/, status.as_mut_ptr());
         gl_assert!();
-    }
+        status.assume_init()
+    };
     if status == 0 {
         let mut log = [0u8; 1000];
-        let mut len = unsafe { std::mem::uninitialized() };
+        let mut len = std::mem::MaybeUninit::<i32>::uninit();
         unsafe {
             glGetShaderInfoLog(
                 shader,
                 1000,
-                &mut len,
+                len.as_mut_ptr(),
                 log.as_mut_ptr() as *mut _ as *mut _,
             );
             gl_assert!();
@@ -629,9 +632,7 @@ fn create_shader(source: *const i8, shader_type: u32) -> u32 {
         let log = String::from_utf8_lossy(&log);
         panic!(
             "Error: compiling {}: {}\n",
-            if shader_type == 0x8B31
-            /*GL_VERTEX_SHADER*/
-            {
+            if shader_type == 0x8B31 /*GL_VERTEX_SHADER*/ {
                 "vertex"
             } else {
                 "fragment"
@@ -658,9 +659,9 @@ pub(super) fn new(window: &mut Window) -> Option<Box<Draw>> {
         debug_assert!(!display.is_null());
 
         // Initialize EGL Display.
-        let mut major = std::mem::uninitialized();
-        let mut minor = std::mem::uninitialized();
-        let ret = eglInitialize(display, &mut major, &mut minor);
+        let mut major = std::mem::MaybeUninit::uninit();
+        let mut minor = std::mem::MaybeUninit::uninit();
+        let ret = eglInitialize(display, major.as_mut_ptr(), minor.as_mut_ptr());
         debug_assert_eq!(ret, 1);
 
         // Connect EGL to either OpenGL or OpenGLES, whichever is available.
@@ -669,8 +670,8 @@ pub(super) fn new(window: &mut Window) -> Option<Box<Draw>> {
         debug_assert_eq!(ret, 1);
 
         //
-        let mut config: *mut c_void = std::mem::uninitialized();
-        let mut n: i32 = std::mem::uninitialized();
+        let mut config = std::mem::MaybeUninit::<*mut c_void>::uninit();
+        let mut n = std::mem::MaybeUninit::<i32>::uninit();
         let ret = eglChooseConfig(
             display,
             [
@@ -682,11 +683,13 @@ pub(super) fn new(window: &mut Window) -> Option<Box<Draw>> {
                 /*EGL_OPENGL_ES2_BIT:*/ 0x0004, /*EGL_NONE:*/ 0x3038,
             ]
             .as_ptr(),
-            &mut config,
+            config.as_mut_ptr(),
             1,
-            &mut n,
+            n.as_mut_ptr(),
         );
         debug_assert_eq!(ret, 1);
+
+        let config = config.assume_init();
 
         //
         let context = eglCreateContext(
