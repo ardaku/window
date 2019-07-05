@@ -13,6 +13,7 @@
 
 use std::ffi::c_void;
 
+/// A transformation matrix.
 #[repr(C)]
 #[derive(Copy, Clone)]
 pub struct Matrix {
@@ -20,6 +21,7 @@ pub struct Matrix {
 }
 
 impl Matrix {
+    /// Create a new identity matrix.
     pub fn new() -> Matrix {
         Matrix {
             mat: [[1.0, 0.0, 0.0, 0.0],
@@ -29,6 +31,7 @@ impl Matrix {
         }
     }
 
+    /// Scale transformation (make biggger or smaller).
     pub fn scale(mut self, x: f32, y: f32, z: f32) -> Self {
         self.mat[0][0] *= x;
         self.mat[1][1] *= y;
@@ -36,6 +39,7 @@ impl Matrix {
         self
     }
 
+    /// Translate (move) transformation.
     pub fn translate(mut self, x: f32, y: f32, z: f32) -> Self {
         self.mat[3][0] += x;
         self.mat[3][1] += y;
@@ -64,6 +68,7 @@ enum NwinHandle {
     Wayland(*mut c_void),
 }
 
+#[allow(unused)]
 /// Drawing Context Handle.
 enum DrawHandle {
     /// EGL or WGL handle.
@@ -116,6 +121,7 @@ trait Nshader {
     fn bind(&self);
     fn transform(&self, index: usize) -> Option<&i32>;
     fn id(&self) -> i32;
+    fn num_instances(&self) -> u16;
 }
 
 trait Nshape {
@@ -146,15 +152,19 @@ pub struct ShapeBuilder<'a> {
     shader: &'a mut Shader,
     indices: Vec<u16>,
     vertices: Vec<f32>,
+    num_instances: u16,
 }
 
 impl<'a> ShapeBuilder<'a> {
     /// Create a new `ShapeBuilder` for a specific `Shader`.
     pub fn new(shader: &'a mut Shader) -> ShapeBuilder<'a> {
+        let num_instances = shader.0.num_instances();
+
         ShapeBuilder {
             shader,
             indices: Vec::new(),
             vertices: Vec::new(),
+            num_instances,
         }
     }
 
@@ -176,7 +186,7 @@ impl<'a> ShapeBuilder<'a> {
             };
         assert!(self.vertices.len() % stride == 0);
         let mut index = 0;
-        let mut shader1 = match self.shader.1 {
+        let shader1 = match self.shader.1 {
             Either::Builder(ref mut list) => list,
             Either::VertList(_) => panic!("Already built!"),
         };
@@ -253,14 +263,23 @@ impl<'a> ShapeBuilder<'a> {
 
 /// A builder for portable shaders.
 pub struct ShaderBuilder {
+    /// Number of transform matrices for this shader.
     pub transform: u8,
+    /// Number of group matrices for this shader.
     pub group: u8,
+    /// Whether or not shapes for this shader have a tint
     pub tint: bool,
+    /// Whether or not vertices have attached colors for this shader.
     pub gradient: bool,
+    /// Whether or not depth test & perspective are enabled for this shader.
     pub depth: bool,
+    /// Whether or not blending is enabled for this shader.
     pub blend: bool,
+    /// OpenGL/OpenGLES GLSL Fragment Shader
     pub opengl_frag: &'static str,
+    /// OpenGL/OpenGLES GLSL Vertex Shader
     pub opengl_vert: &'static str,
+    /// Number of instances allowed in shader.
     pub instance_count: u16,
 }
 

@@ -22,6 +22,7 @@ extern "C" {
     static wl_shm_interface: WlInterface;
     static wl_pointer_interface: WlInterface;
     static wl_keyboard_interface: WlInterface;
+    #[allow(unused)] // TODO
     static wl_touch_interface: WlInterface;
     static wl_callback_interface: WlInterface;
     static wl_surface_interface: WlInterface;
@@ -390,7 +391,7 @@ unsafe extern "C" fn pointer_handle_button(
     window: *mut crate::Window,
     _pointer: *mut c_void,
     serial: u32,
-    time: u32,
+    _time: u32,
     button: u32,
     state: u32,
 ) {
@@ -431,11 +432,11 @@ unsafe extern "C" fn pointer_handle_button(
 }
 
 unsafe extern "C" fn pointer_handle_axis(
-    window: *mut crate::Window,
-    pointer: *mut c_void,
-    time: u32,
-    axis: u32,
-    value: i32,
+    _window: *mut crate::Window,
+    _pointer: *mut c_void,
+    _time: u32,
+    _axis: u32,
+    _value: i32,
 ) {
 }
 
@@ -503,7 +504,7 @@ unsafe extern "C" fn configure_callback(
 }
 
 unsafe extern "C" fn handle_xdg_shell_ping(
-    data: *mut c_void,
+    _data: *mut c_void,
     shell: *mut c_void,
     serial: u32,
 ) {
@@ -966,7 +967,7 @@ impl Nwin for WaylandWindow {
 
     fn connect(&mut self, draw: &mut Box<crate::Draw>) {
         match draw.handle() {
-            crate::DrawHandle::Gl(c) => {
+            crate::DrawHandle::Gl(_c) => {
                 self.egl_window = unsafe {
                     wl_egl_window_create(
                         self.surface,

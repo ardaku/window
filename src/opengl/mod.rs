@@ -14,12 +14,12 @@ const GL_ATTRIB_POS: u32 = 0;
 // Color
 const GL_ATTRIB_COL: u32 = 1;
 // Texture Coordinates Begin (May have multiple)
-const GL_ATTRIB_TEX: u32 = 2;
+// const GL_ATTRIB_TEX: u32 = 2;
 
-#[cfg(debug_assertions)]
+/*#[cfg(debug_assertions)]
 extern "C" {
     fn glGetError() -> u32;
-}
+}*/
 
 #[cfg(debug_assertions)]
 macro_rules! gl_assert {
@@ -128,7 +128,7 @@ extern "C" {
     fn glEnableVertexAttribArray(index: u32) -> ();
 //    fn glDrawArrays(mode: u32, first: i32, count: i32);
     fn glDrawElements(mode: u32, count: i32, draw_type: u32, indices: *const c_void) -> ();
-    fn glDrawElementsInstanced(mode: u32, count: i32, draw_type: u32, indices: *const c_void, instance_count: i32) -> ();
+    // fn glDrawElementsInstanced(mode: u32, count: i32, draw_type: u32, indices: *const c_void, instance_count: i32) -> ();
     fn glDisableVertexAttribArray(index: u32) -> ();
     fn glGenBuffers(n: i32, buffers: *mut u32) -> ();
     fn glBindBuffer(target: u32, buffer: u32) -> ();
@@ -140,7 +140,7 @@ extern "C" {
         usage: u32,
     ) -> ();
     fn glDeleteBuffers(n: i32, buffers: *const u32) -> ();
-    fn glGetString(name: u32) -> *const u8;
+    // fn glGetString(name: u32) -> *const u8;
 }
 
 /// A shader.  Shaders are a program that runs on the GPU to render a `Shape`.
@@ -150,7 +150,7 @@ pub struct Shader {
     // True if OpenGL color vertex attribute exists.
     gradient: bool,
     // TODO
-    groups: Vec<u32>,
+//    groups: Vec<u32>,
     // TODO
     transforms: Vec<i32>,
     // True if 3D.
@@ -177,6 +177,14 @@ impl Vertices {
     }
 }
 
+impl Drop for Vertices {
+    fn drop(&mut self) {
+        unsafe {
+            glDeleteBuffers(1, &mut self.vbo);
+        }
+    }
+}
+
 /// A shape.  Shapes are a list of indices into `Vertices`.
 pub struct Shape {
     indices: Vec<u16>,
@@ -187,7 +195,7 @@ impl Shape {
     pub fn new(builder: crate::ShapeBuilder) -> Shape {
         Shape {
             indices: builder.indices.to_vec(), // TODO: use vec??
-            instances: vec![],
+            instances: Vec::with_capacity(builder.num_instances.into()),
         }
     }
 }
@@ -225,6 +233,10 @@ impl Nshader for Shader {
 
     fn id(&self) -> i32 {
         self.id
+    }
+
+    fn num_instances(&self) -> u16 {
+        self.instance_count
     }
 }
 
@@ -361,19 +373,7 @@ impl Draw for OpenGL {
     fn draw(&mut self, shader: &Nshader, vertlist: &Nvertices, shape: &Nshape) {
         shader.bind();
 
-        // TEST
-        let timer = 0; // TODO with nanos
-        let angle = (timer % 360) as f32 * std::f32::consts::PI / 180.0;
-
         unsafe {
-            #[rustfmt::skip]
-            let rotation = [
-                angle.cos(), 0.0, angle.sin(), 0.0,
-                0.0, 1.0, 0.0, 0.0,
-                -angle.sin(), 0.0, angle.cos(), 0.0,
-                0.0, 0.0, 0.0, 1.0,
-            ];
-
             let mut index = 0;
             while let Some(uniform_id) = shader.transform(index) {
                 glUniformMatrix4fv(
@@ -560,7 +560,7 @@ fn create_program(builder: crate::ShaderBuilder) -> Shader {
         gl_assert!();
     }
     // Uniforms
-    let mut groups = Vec::with_capacity(builder.group as usize);
+//    let mut groups = Vec::with_capacity(builder.group as usize);
     let mut transforms = Vec::with_capacity(builder.transform as usize);
     /*//
     for group in builder.groups.iter() {
@@ -588,7 +588,7 @@ fn create_program(builder: crate::ShaderBuilder) -> Shader {
     Shader {
         program,
         gradient: builder.gradient,
-        groups,
+//        groups,
         transforms,
         depth: builder.depth,
         blending: builder.blend,
