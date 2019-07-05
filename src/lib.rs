@@ -3,7 +3,7 @@
 //!
 //! Other Rust window creation libraries require you to build for a specific backend, so I made this crate to fix the issue.  You can now make a program that runs Wayland on a machine that has Wayland installed, and will fall back to XCB if it's not installed.  And, will run OpenGLES (eventually try Vulkan first, too) if it's installed, and fall back to OpenGL if it's not installed.
 //!
-//! Since this crate is minimal, it doesn't even handle window decoration.  If you want window decoration and GUI widgets, check out [barg](https://crates.io/crates/barg) which depends on this crate.
+//! Since this crate is minimal, it doesn't even handle window decoration.  If you want window decoration and GUI widgets, check out [barg](https://crates.io/crates/barg) which depends on this crate.  And if you want more than just rendering, check out [cala](https://crates.io/crates/cala).  And, eventually, specifically for video games [plop](https://crates.io/crates/plop).
 
 #![warn(missing_docs)]
 #![doc(
@@ -12,6 +12,37 @@
 )]
 
 use std::ffi::c_void;
+
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub struct Matrix {
+    mat: [[f32;4];4],
+}
+
+impl Matrix {
+    pub fn new() -> Matrix {
+        Matrix {
+            mat: [[1.0, 0.0, 0.0, 0.0],
+            [0.0, 1.0, 0.0, 0.0],
+            [0.0, 0.0, 1.0, 0.0],
+            [0.0, 0.0, 0.0, 1.0]],
+        }
+    }
+
+    pub fn scale(mut self, x: f32, y: f32, z: f32) -> Self {
+        self.mat[0][0] *= x;
+        self.mat[1][1] *= y;
+        self.mat[2][2] *= z;
+        self
+    }
+
+    pub fn translate(mut self, x: f32, y: f32, z: f32) -> Self {
+        self.mat[3][0] += x;
+        self.mat[3][1] += y;
+        self.mat[3][2] += z;
+        self
+    }
+}
 
 #[cfg(unix)]
 mod wayland;
@@ -74,6 +105,8 @@ trait Draw {
     fn shape_new(&mut self, builder: ShapeBuilder) -> Box<Nshape>;
     // Draw a shape.
     fn draw(&mut self, shader: &Nshader, vertlist: &Nvertices, shape: &Nshape);
+    // Set instances for a shape.
+    fn instances(&mut self, shape: &mut Nshape, matrices: &[Matrix]);
 }
 
 trait Nshader {
@@ -82,11 +115,15 @@ trait Nshader {
     fn blending(&self) -> bool;
     fn bind(&self);
     fn transform(&self, index: usize) -> Option<&i32>;
+    fn id(&self) -> i32;
 }
 
 trait Nshape {
     fn len(&self) -> i32;
     fn ptr(&self) -> *const c_void;
+    fn instances(&mut self, matrices: &[Matrix]);
+    fn instances_ptr(&self) -> *const c_void;
+    fn instances_num(&self) -> i32;
 }
 
 trait Nvertices {
@@ -160,17 +197,17 @@ impl<'a> ShapeBuilder<'a> {
             // Transform vertex position.
             let vertex = [
                 matrix[0][0] * vertex[0]
-                    + matrix[0][1] * vertex[1]
-                    + matrix[0][2] * vertex[2]
-                    + matrix[0][3],
-                matrix[1][0] * vertex[0]
+                    + matrix[1][0] * vertex[1]
+                    + matrix[2][0] * vertex[2]
+                    + matrix[3][0],
+                matrix[0][1] * vertex[0]
                     + matrix[1][1] * vertex[1]
-                    + matrix[1][2] * vertex[2]
-                    + matrix[1][3],
-                matrix[2][0] * vertex[0]
-                    + matrix[2][1] * vertex[1]
+                    + matrix[2][1] * vertex[2]
+                    + matrix[3][1],
+                matrix[0][2] * vertex[0]
+                    + matrix[1][2] * vertex[1]
                     + matrix[2][2] * vertex[2]
-                    + matrix[2][3],
+                    + matrix[3][2],
             ];
             // Find index
             let mut jndex = 0;
@@ -224,6 +261,7 @@ pub struct ShaderBuilder {
     pub blend: bool,
     pub opengl_frag: &'static str,
     pub opengl_vert: &'static str,
+    pub instance_count: u16,
 }
 
 /// A window on the monitor.
@@ -319,6 +357,11 @@ impl Window {
     /// Create a new shape.
     pub fn shape_new(&mut self, builder: ShapeBuilder) -> Shape {
         Shape(self.draw.shape_new(builder))
+    }
+
+    /// Set the instances for a shape.
+    pub fn instances(&mut self, shape: &mut Shape, transforms: &[Matrix]) {
+        self.draw.instances(&mut *shape.0, transforms);
     }
 
     /// Draw a shape.

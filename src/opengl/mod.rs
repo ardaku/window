@@ -112,8 +112,9 @@ extern "C" {
         location: i32,
         count: i32,
         transpose: u8,
-        value: *const f32,
+        value: *const c_void,
     ) -> ();
+    fn glUniform1i(location: i32, v0: i32) -> ();
     fn glClearColor(red: f32, green: f32, blue: f32, alpha: f32) -> ();
     fn glClear(mask: u32) -> ();
     fn glVertexAttribPointer(
@@ -127,15 +128,19 @@ extern "C" {
     fn glEnableVertexAttribArray(index: u32) -> ();
 //    fn glDrawArrays(mode: u32, first: i32, count: i32);
     fn glDrawElements(mode: u32, count: i32, draw_type: u32, indices: *const c_void) -> ();
+    fn glDrawElementsInstanced(mode: u32, count: i32, draw_type: u32, indices: *const c_void, instance_count: i32) -> ();
     fn glDisableVertexAttribArray(index: u32) -> ();
     fn glGenBuffers(n: i32, buffers: *mut u32) -> ();
     fn glBindBuffer(target: u32, buffer: u32) -> ();
+    fn glBindBufferBase(target: u32, index: u32, buffer: u32) -> ();
     fn glBufferData(
         target: u32,
         size: isize,
         data: *const c_void,
         usage: u32,
     ) -> ();
+    fn glDeleteBuffers(n: i32, buffers: *const u32) -> ();
+    fn glGetString(name: u32) -> *const u8;
 }
 
 /// A shader.  Shaders are a program that runs on the GPU to render a `Shape`.
@@ -152,6 +157,10 @@ pub struct Shader {
     depth: bool,
     // True if transparency is allowed.
     blending: bool,
+    // Maximum number of instances.
+    instance_count: u16,
+    //
+    id: i32,
 }
 
 /// A list of vertices.
@@ -163,7 +172,7 @@ impl Vertices {
     /// Create a new `VertexList`.  `dim`: 0 or 2~4 dimensions.  `gradient` is 3(RGB) or 4(RGBA).  `graphic_coords` is how many graphics need coordinates.
     pub fn new(vertices: &[f32]) -> Vertices {
         Vertices {
-            vbo: create_vbo(vertices),
+            vbo: create_vbo(vertices, 0x8892 /*GL_ARRAY_BUFFER*/),
         }
     }
 }
@@ -171,12 +180,14 @@ impl Vertices {
 /// A shape.  Shapes are a list of indices into `Vertices`.
 pub struct Shape {
     indices: Vec<u16>,
+    instances: Vec<crate::Matrix>,
 }
 
 impl Shape {
     pub fn new(builder: crate::ShapeBuilder) -> Shape {
         Shape {
             indices: builder.indices.to_vec(), // TODO: use vec??
+            instances: vec![],
         }
     }
 }
@@ -211,6 +222,10 @@ impl Nshader for Shader {
     fn transform(&self, index: usize) -> Option<&i32> {
         self.transforms.get(index)
     }
+
+    fn id(&self) -> i32 {
+        self.id
+    }
 }
 
 impl Nshape for Shape {
@@ -220,6 +235,23 @@ impl Nshape for Shape {
 
     fn ptr(&self) -> *const c_void {
         self.indices.as_ptr() as *const _ as *const _
+    }
+
+    fn instances(&mut self, matrices: &[crate::Matrix]) {
+        self.instances = matrices.to_vec();
+    }
+
+    fn instances_ptr(&self) -> *const c_void {
+        self.instances.as_ptr() as *const _ as *const _
+/*        debug_assert_ne!(self.instances_vbo, 0);
+        unsafe {
+            glBindBufferBase(0x8A11 /*GL_UNIFORM_BUFFER*/, 0, self.instances_vbo);
+            gl_assert!();
+        }*/
+    }
+
+    fn instances_num(&self) -> i32 {
+        self.instances.len() as i32
     }
 }
 
@@ -284,6 +316,12 @@ impl Draw for OpenGL {
         // Configuration (TODO)
         // glEnable(GL_CULL_FACES);
 
+/*        unsafe {
+            let string = glGetString(0x1F03 /*gl extensions*/);
+            let slice = std::ffi::CStr::from_ptr(string as *const _ as *const _);
+            println!("ext: {}", slice.to_str().unwrap().contains("GL_EXT_base_instance"));
+        }*/
+
         // Set default background for OpenGL.
         self.background(0.0, 0.0, 1.0);
     }
@@ -340,9 +378,9 @@ impl Draw for OpenGL {
             while let Some(uniform_id) = shader.transform(index) {
                 glUniformMatrix4fv(
                     *uniform_id,
-                    1,
+                    shape.instances_num(),
                     0, /*GL_FALSE*/
-                    rotation.as_ptr(),
+                    shape.instances_ptr(),
                 );
                 gl_assert!();
                 index += 1;
@@ -387,7 +425,15 @@ impl Draw for OpenGL {
             }
 
             // Draw
-            glDrawElements(0x0004 /*GL_TRIANGLES*/, shape.len(), 0x1403 /*GL_UNSIGNED_SHORT*/, shape.ptr());
+            // TODO use glDrawElementsInstanced only if available (when not
+            // GLES2).
+//            glDrawElementsInstanced(0x0004 /*GL_TRIANGLES*/, shape.len(), 0x1403 /*GL_UNSIGNED_SHORT*/, shape.ptr(), shape.instances_num());
+            {
+                for i in 0..shape.instances_num() {
+                    glUniform1i(shader.id(), i);
+                    glDrawElements(0x0004 /*GL_TRIANGLES*/, shape.len(), 0x1403 /*GL_UNSIGNED_SHORT*/, shape.ptr());
+                }
+            }
             gl_assert!();
 
             // Disable
@@ -399,22 +445,36 @@ impl Draw for OpenGL {
             }
         }
     }
+
+    fn instances(&mut self, shape: &mut Nshape, matrices: &[crate::Matrix]) {
+        shape.instances(matrices);
+
+//        matrices
+    }
 }
 
 // Create an OpenGL vertex buffer object.
-fn create_vbo<T>(vertices: &[T]) -> u32 {
+fn create_vbo<T>(vertices: &[T], target: u32) -> u32 {
     unsafe {
         let mut buffers = [std::mem::uninitialized()];
         glGenBuffers(1 /*1 buffer*/, buffers.as_mut_ptr());
         gl_assert!();
-        glBindBuffer(0x8892 /*GL_ARRAY_BUFFER*/, buffers[0]);
+        if target == 0x8892 {
+            glBindBuffer(target, buffers[0]);
+        } else {
+            glBindBufferBase(target, 0, buffers[0]);
+        }
         gl_assert!();
         // TODO: maybe use glMapBuffer & glUnmapBuffer instead?
         glBufferData(
-            0x8892, /*GL_ARRAY_BUFFER*/
+            target,
             (vertices.len() * std::mem::size_of::<T>()) as isize,
             vertices.as_ptr() as *const _,
-            0x88E4, /*GL_STATIC_DRAW - never changes (0x88E8 - dynamic) */
+            if target == 0x8892 {
+                0x88E4 /*GL_STATIC_DRAW - never changes*/
+            } else {
+                0x88E8 /*GL_DYNAMIC_DRAW*/
+            },
         );
         gl_assert!();
         buffers[0]
@@ -519,6 +579,12 @@ fn create_program(builder: crate::ShaderBuilder) -> Shader {
         transforms.push(handle);
     }
 
+    let id = unsafe {
+        glGetUniformLocation(program, "cala_InstanceID\0".as_ptr() as *const _ as *const _)
+    };
+    gl_assert!();
+    assert!(id > -1);
+
     Shader {
         program,
         gradient: builder.gradient,
@@ -526,6 +592,8 @@ fn create_program(builder: crate::ShaderBuilder) -> Shader {
         transforms,
         depth: builder.depth,
         blending: builder.blend,
+        instance_count: builder.instance_count,
+        id,
     }
 }
 
