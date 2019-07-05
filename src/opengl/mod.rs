@@ -180,7 +180,7 @@ impl Vertices {
 impl Drop for Vertices {
     fn drop(&mut self) {
         unsafe {
-            glDeleteBuffers(1, &mut self.vbo);
+            glDeleteBuffers(1, &self.vbo);
         }
     }
 }
@@ -359,7 +359,7 @@ impl Draw for OpenGL {
 
     fn begin_draw(&mut self) {
         unsafe {
-            glClear(0x00004000 /*GL_COLOR_BUFFER_BIT*/);
+            glClear(0x0000_4000 /*GL_COLOR_BUFFER_BIT*/);
             gl_assert!();
         }
     }
@@ -641,7 +641,7 @@ fn create_shader(source: *const i8, shader_type: u32) -> u32 {
         );
     }
 
-    return shader;
+    shader
 }
 
 #[cfg(unix)]

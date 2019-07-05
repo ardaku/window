@@ -20,6 +20,12 @@ pub struct Matrix {
     mat: [[f32;4];4],
 }
 
+impl Default for Matrix {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Matrix {
     /// Create a new identity matrix.
     pub fn new() -> Matrix {
@@ -86,7 +92,7 @@ trait Nwin {
     /// Get a pointer that refers to this window for interfacing.
     fn handle(&self) -> NwinHandle;
     /// Connect window to the drawing context.
-    fn connect(&mut self, draw: &mut Box<Draw>);
+    fn connect(&mut self, draw: &mut dyn Draw);
     /// Get the next frame.  Return false on quit.
     fn run(&mut self) -> bool;
 }
@@ -144,6 +150,25 @@ enum Either {
     VertList(Box<Nvertices>),
 }
 
+fn nearly_equal(a: f32, b: f32) -> bool {
+	let abs_a = a.abs();
+	let abs_b = b.abs();
+	let diff = (a - b).abs();
+    let both = abs_a + abs_b;
+
+	if a.to_bits() == b.to_bits() { // shortcut, handles infinities
+		true
+    } else if a.to_bits() == 0 || b.to_bits() == 0 || (abs_a + abs_b < std::f32::MIN_POSITIVE) {
+		// a or b is zero or both are extremely close to it
+		// relative error is less meaningful here
+		diff < (std::f32::EPSILON * std::f32::MIN_POSITIVE)
+	} else if both < std::f32::MAX { // use relative error
+		diff / both < std::f32::EPSILON
+	} else {
+        diff / std::f32::MAX < std::f32::EPSILON
+    }
+}
+
 /// A shader.
 pub struct Shader(Box<Nshader>, Either);
 
@@ -196,10 +221,10 @@ impl<'a> ShapeBuilder<'a> {
             }
             // Read vertex position.
             let vertex = if dimensions == 2 {
-                [self.vertices[index + 0], self.vertices[index + 1], 0.0]
+                [self.vertices[index], self.vertices[index + 1], 0.0]
             } else {
                 [
-                    self.vertices[index + 0],
+                    self.vertices[index],
                     self.vertices[index + 1],
                     self.vertices[index + 2],
                 ]
@@ -225,8 +250,8 @@ impl<'a> ShapeBuilder<'a> {
                 //
                 if jndex == shader1.len() {
                     let rtn = jndex / stride;
-                    for k in 0..dimensions {
-                        shader1.push(vertex[k])
+                    for k in vertex.iter().take(dimensions) {
+                        shader1.push(*k)
                     }
                     for k in dimensions..stride {
                         shader1.push(self.vertices[index + k]);
@@ -236,14 +261,14 @@ impl<'a> ShapeBuilder<'a> {
                 //
                 let mut equal = true;
                 'b: for k in 0..stride {
-                    if self.vertices[index + k] != shader1[jndex + k] {
+                    if !nearly_equal(self.vertices[index + k], shader1[jndex + k]) {
                         equal = false;
                         break 'b;
                     }
                 }
                 if equal {
                     'c: for k in 0..stride {
-                        if self.vertices[index + k] != shader1[jndex + k] {
+                        if !nearly_equal(self.vertices[index + k], shader1[jndex + k]) {
                             equal = false;
                             break 'c;
                         }
@@ -342,7 +367,7 @@ impl Window {
         /* Connect Window & Drawing */
         /****************************/
 
-        window.nwin.connect(&mut window.draw);
+        window.nwin.connect(&mut *window.draw);
 
         /*******************/
         /* Set Redraw Loop */

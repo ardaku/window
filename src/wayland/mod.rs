@@ -83,8 +83,9 @@ extern "C" {
     fn glViewport(x: i32, y: i32, width: i32, height: i32) -> ();
 }
 
-fn get(value: &mut Box<dyn Nwin>) -> *mut Box<WaylandWindow> {
-    value as *mut _ as *mut _
+fn get(value: *mut dyn Nwin) -> *mut WaylandWindow {
+    let value: [*mut c_void; 2] = unsafe { std::mem::transmute(value) };
+    value[0] as *mut _ as *mut _
 }
 
 static mut ZXDG_SURFACE_V6_INTERFACE: WlInterface = WlInterface {
@@ -283,7 +284,7 @@ unsafe extern "C" fn pointer_handle_enter(
     _sx: i32,
     _sy: i32,
 ) {
-    let c = get(&mut (*window).nwin);
+    let c = get(&mut *(*window).nwin);
 
     let cursor = (*c).default_cursor;
     let image = *(*cursor).images;
@@ -380,7 +381,7 @@ unsafe extern "C" fn pointer_handle_motion(
     x: i32,
     y: i32,
 ) {
-    let c = get(&mut (*window).nwin);
+    let c = get(&mut *(*window).nwin);
     let x = x as f32 / 256.0;
     let y = y as f32 / 256.0;
 
@@ -395,7 +396,7 @@ unsafe extern "C" fn pointer_handle_button(
     button: u32,
     state: u32,
 ) {
-    let c = get(&mut (*window).nwin);
+    let c = get(&mut *(*window).nwin);
 
     extern "C" {
         fn wl_proxy_marshal(
@@ -445,7 +446,7 @@ unsafe extern "C" fn redraw_wl(
     callback: *mut c_void,
     millis: u32,
 ) {
-    let wayland = get(&mut (*c).nwin);
+    let wayland = get(&mut *(*c).nwin);
 
     let diff_millis = if !callback.is_null() {
         wl_proxy_destroy(callback);
@@ -461,7 +462,7 @@ unsafe extern "C" fn redraw_wl(
     };
     assert!((*wayland).callback == callback);
     (*wayland).callback = std::ptr::null_mut();
-    let diff_nanos = diff_millis as u64 * 1000000;
+    let diff_nanos = u64::from(diff_millis) * 1_000_000;
     (*wayland).last_millis = millis;
 
     // Redraw on the screen.
@@ -492,7 +493,7 @@ unsafe extern "C" fn configure_callback(
     callback: *mut c_void,
     time: u32,
 ) {
-    let c = get(&mut (*window).nwin);
+    let c = get(&mut *(*window).nwin);
 
     wl_proxy_destroy(callback);
 
@@ -569,7 +570,7 @@ unsafe extern "C" fn keyboard_handle_key(
     key: u32,
     state: u32,
 ) {
-    let c = get(&mut (*window).nwin);
+    let c = get(&mut *(*window).nwin);
 
     if key == KEY_ESC && state != 0 {
         (*c).running = 0;
@@ -651,7 +652,7 @@ unsafe extern "C" fn seat_handle_capabilities(
     seat: *mut c_void,
     caps: WlSeatCapability,
 ) {
-    let c = get(&mut (*window).nwin);
+    let c = get(&mut *(*window).nwin);
 
     // Allow Pointer Events
     let has_pointer = (caps as u32 & WlSeatCapability::Pointer as u32) != 0;
@@ -714,7 +715,7 @@ unsafe extern "C" fn registry_handle_global(
     _version: u32,
 ) {
     //    let c = (*window).nwin_c as *mut WaylandWindow;
-    let c = get(&mut (*window).nwin);
+    let c = get(&mut *(*window).nwin);
 
     if strcmp(interface, b"wl_compositor\0" as *const _ as *const _) == 0 {
         let compositor = wl_proxy_marshal_constructor_versioned(
@@ -816,7 +817,7 @@ unsafe extern "C" fn toplevel_configure(
     height: i32,
     _states: *mut c_void,
 ) {
-    let c = get(&mut (*window).nwin);
+    let c = get(&mut *(*window).nwin);
 
     if !(*c).egl_window.is_null() && (*c).configured != 0 {
         wl_egl_window_resize((*c).egl_window, width, height, 0, 0);
@@ -858,7 +859,7 @@ unsafe extern "C" fn toplevel_close(
     window: *mut crate::Window,
     _zxdg_toplevel_v6: *mut c_void,
 ) {
-    let c = get(&mut (*window).nwin);
+    let c = get(&mut *(*window).nwin);
 
     (*c).running = 0;
 }
@@ -965,7 +966,7 @@ impl Nwin for WaylandWindow {
         crate::NwinHandle::Wayland(self.wldisplay)
     }
 
-    fn connect(&mut self, draw: &mut Box<crate::Draw>) {
+    fn connect(&mut self, draw: &mut dyn crate::Draw) {
         match draw.handle() {
             crate::DrawHandle::Gl(_c) => {
                 self.egl_window = unsafe {
@@ -1045,7 +1046,7 @@ pub(super) fn new(name: &str, window: &mut crate::Window) -> Option<()> {
         )
     };
 
-    let nwin = get(&mut window.nwin);
+    let nwin = get(&mut *window.nwin);
 
     unsafe {
         wl_proxy_add_listener(
