@@ -188,7 +188,7 @@ impl Drop for Vertices {
 /// A shape.  Shapes are a list of indices into `Vertices`.
 pub struct Shape {
     indices: Vec<u16>,
-    instances: Vec<crate::Matrix>,
+    instances: Vec<crate::Transform>,
 }
 
 impl Shape {
@@ -249,12 +249,12 @@ impl Nshape for Shape {
         self.indices.as_ptr() as *const _ as *const _
     }
 
-    fn instances(&mut self, matrices: &[crate::Matrix]) {
-        self.instances = matrices.to_vec();
+    fn instances(&mut self, transforms: &[crate::Transform]) {
+        self.instances = transforms.to_vec();
     }
 
-    fn transform(&mut self, index: u16, matrix: crate::Matrix) {
-        self.instances[index as usize] = matrix;
+    fn transform(&mut self, index: u16, transform: crate::Transform) {
+        self.instances[index as usize] = transform;
     }
 
     fn instances_ptr(&self) -> *const c_void {
@@ -450,11 +450,11 @@ impl Draw for OpenGL {
         }
     }
 
-    fn instances(&mut self, shape: &mut Nshape, matrices: &[crate::Matrix]) {
-        shape.instances(matrices);
+    fn instances(&mut self, shape: &mut Nshape, transforms: &[crate::Transform]) {
+        shape.instances(transforms);
     }
 
-    fn transform(&mut self, shape: &mut Nshape, instance: u16, transform: crate::Matrix) {
+    fn transform(&mut self, shape: &mut Nshape, instance: u16, transform: crate::Transform) {
         shape.transform(instance, transform);
     }
 }

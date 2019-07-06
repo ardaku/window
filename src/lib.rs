@@ -16,20 +16,20 @@ use std::ffi::c_void;
 /// A transformation matrix.
 #[repr(C)]
 #[derive(Copy, Clone)]
-pub struct Matrix {
+pub struct Transform {
     mat: [[f32;4];4],
 }
 
-impl Default for Matrix {
+impl Default for Transform {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl Matrix {
-    /// Create a new identity matrix.
-    pub fn new() -> Matrix {
-        Matrix {
+impl Transform {
+    /// Create a new identity matrix (transform that does nothing).
+    pub fn new() -> Self {
+        Self {
             mat: [[1.0, 0.0, 0.0, 0.0],
             [0.0, 1.0, 0.0, 0.0],
             [0.0, 0.0, 1.0, 0.0],
@@ -117,9 +117,9 @@ trait Draw {
     /// Draw a shape.
     fn draw(&mut self, shader: &Nshader, vertlist: &Nvertices, shape: &Nshape);
     /// Set instances for a shape.
-    fn instances(&mut self, shape: &mut Nshape, matrices: &[Matrix]);
+    fn instances(&mut self, shape: &mut Nshape, matrices: &[Transform]);
     /// Transform 1 instance.
-    fn transform(&mut self, shape: &mut Nshape, instance: u16, matrix: Matrix);
+    fn transform(&mut self, shape: &mut Nshape, instance: u16, transform: Transform);
 }
 
 trait Nshader {
@@ -135,8 +135,8 @@ trait Nshader {
 trait Nshape {
     fn len(&self) -> i32;
     fn ptr(&self) -> *const c_void;
-    fn instances(&mut self, matrices: &[Matrix]);
-    fn transform(&mut self, index: u16, matrix: Matrix);
+    fn instances(&mut self, matrices: &[Transform]);
+    fn transform(&mut self, index: u16, transform: Transform);
     fn instances_ptr(&self) -> *const c_void;
     fn instances_num(&self) -> i32;
 }
@@ -203,7 +203,7 @@ impl<'a> ShapeBuilder<'a> {
     }
 
     /// Add a face to the shape.
-    pub fn face(mut self, matrix: [[f32; 4]; 4]) -> Self {
+    pub fn face(mut self, transform: [[f32; 4]; 4]) -> Self {
         let dimensions = if self.shader.0.depth() { 3 } else { 2 };
         let components = if self.shader.0.blending() { 4 } else { 3 };
         let stride = dimensions
@@ -234,18 +234,18 @@ impl<'a> ShapeBuilder<'a> {
             };
             // Transform vertex position.
             let vertex = [
-                matrix[0][0] * vertex[0]
-                    + matrix[1][0] * vertex[1]
-                    + matrix[2][0] * vertex[2]
-                    + matrix[3][0],
-                matrix[0][1] * vertex[0]
-                    + matrix[1][1] * vertex[1]
-                    + matrix[2][1] * vertex[2]
-                    + matrix[3][1],
-                matrix[0][2] * vertex[0]
-                    + matrix[1][2] * vertex[1]
-                    + matrix[2][2] * vertex[2]
-                    + matrix[3][2],
+                transform[0][0] * vertex[0]
+                    + transform[1][0] * vertex[1]
+                    + transform[2][0] * vertex[2]
+                    + transform[3][0],
+                transform[0][1] * vertex[0]
+                    + transform[1][1] * vertex[1]
+                    + transform[2][1] * vertex[2]
+                    + transform[3][1],
+                transform[0][2] * vertex[0]
+                    + transform[1][2] * vertex[1]
+                    + transform[2][2] * vertex[2]
+                    + transform[3][2],
             ];
             // Find index
             let mut jndex = 0;
@@ -404,12 +404,12 @@ impl Window {
     }
 
     /// Set the instances for a shape.
-    pub fn instances(&mut self, shape: &mut Shape, transforms: &[Matrix]) {
+    pub fn instances(&mut self, shape: &mut Shape, transforms: &[Transform]) {
         self.draw.instances(&mut *shape.0, transforms);
     }
 
     /// Update transformation matrix for an instance of a shape.
-    pub fn transform(&mut self, shape: &mut Shape, instance: u16, transform: Matrix) {
+    pub fn transform(&mut self, shape: &mut Shape, instance: u16, transform: Transform) {
         self.draw.transform(&mut *shape.0, instance, transform);
     }
 
