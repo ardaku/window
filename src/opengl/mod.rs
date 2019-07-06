@@ -253,6 +253,10 @@ impl Nshape for Shape {
         self.instances = matrices.to_vec();
     }
 
+    fn transform(&mut self, index: u16, matrix: crate::Matrix) {
+        self.instances[index as usize] = matrix;
+    }
+
     fn instances_ptr(&self) -> *const c_void {
         self.instances.as_ptr() as *const _ as *const _
 /*        debug_assert_ne!(self.instances_vbo, 0);
@@ -448,8 +452,10 @@ impl Draw for OpenGL {
 
     fn instances(&mut self, shape: &mut Nshape, matrices: &[crate::Matrix]) {
         shape.instances(matrices);
+    }
 
-//        matrices
+    fn transform(&mut self, shape: &mut Nshape, instance: u16, transform: crate::Matrix) {
+        shape.transform(instance, transform);
     }
 }
 

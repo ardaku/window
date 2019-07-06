@@ -114,10 +114,12 @@ trait Draw {
     fn vertices_new(&mut self, vertices: &[f32]) -> Box<Nvertices>;
     /// Create a shape.
     fn shape_new(&mut self, builder: ShapeBuilder) -> Box<Nshape>;
-    // Draw a shape.
+    /// Draw a shape.
     fn draw(&mut self, shader: &Nshader, vertlist: &Nvertices, shape: &Nshape);
-    // Set instances for a shape.
+    /// Set instances for a shape.
     fn instances(&mut self, shape: &mut Nshape, matrices: &[Matrix]);
+    /// Transform 1 instance.
+    fn transform(&mut self, shape: &mut Nshape, instance: u16, matrix: Matrix);
 }
 
 trait Nshader {
@@ -134,6 +136,7 @@ trait Nshape {
     fn len(&self) -> i32;
     fn ptr(&self) -> *const c_void;
     fn instances(&mut self, matrices: &[Matrix]);
+    fn transform(&mut self, index: u16, matrix: Matrix);
     fn instances_ptr(&self) -> *const c_void;
     fn instances_num(&self) -> i32;
 }
@@ -403,6 +406,11 @@ impl Window {
     /// Set the instances for a shape.
     pub fn instances(&mut self, shape: &mut Shape, transforms: &[Matrix]) {
         self.draw.instances(&mut *shape.0, transforms);
+    }
+
+    /// Update transformation matrix for an instance of a shape.
+    pub fn transform(&mut self, shape: &mut Shape, instance: u16, transform: Matrix) {
+        self.draw.transform(&mut *shape.0, instance, transform);
     }
 
     /// Draw a shape.
