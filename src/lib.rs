@@ -120,11 +120,14 @@ trait Draw {
     fn instances(&mut self, shape: &mut Nshape, matrices: &[Transform]);
     /// Transform 1 instance.
     fn transform(&mut self, shape: &mut Nshape, instance: u16, transform: Transform);
+    /// Upload graphic.
+    fn graphic(&mut self, pixels: &[u8], width: usize) -> Box<Ngraphic>;
 }
 
 trait Nshader {
     fn depth(&self) -> bool;
     fn gradient(&self) -> bool;
+    fn graphic(&self) -> bool;
     fn blending(&self) -> bool;
     fn bind(&self);
     fn transform(&self, index: usize) -> Option<&i32>;
@@ -147,6 +150,12 @@ trait Nvertices {
 
 /// A shape.
 pub struct Shape(Box<Nshape>);
+
+trait Ngraphic {
+}
+
+/// A graphic on the GPU.
+pub struct Graphic(Box<Ngraphic>);
 
 enum Either {
     Builder(Vec<f32>),
@@ -211,7 +220,9 @@ impl<'a> ShapeBuilder<'a> {
                 components
             } else {
                 0
-            };
+            } + if self.shader.0.graphic() {
+                2
+            } else { 0 };
         assert!(self.vertices.len() % stride == 0);
         let mut index = 0;
         let shader1 = match self.shader.1 {
@@ -299,6 +310,8 @@ pub struct ShaderBuilder {
     pub tint: bool,
     /// Whether or not vertices have attached colors for this shader.
     pub gradient: bool,
+    /// Whether or not a graphic is attached to this shader.
+    pub graphic: bool,
     /// Whether or not depth test & perspective are enabled for this shader.
     pub depth: bool,
     /// Whether or not blending is enabled for this shader.
@@ -411,6 +424,11 @@ impl Window {
     /// Update transformation matrix for an instance of a shape.
     pub fn transform(&mut self, shape: &mut Shape, instance: u16, transform: Transform) {
         self.draw.transform(&mut *shape.0, instance, transform);
+    }
+
+    /// Load an RGBA graphic to the GPU.
+    pub fn graphic(&mut self, pixels: &[u8], width: usize) -> Graphic {
+        Graphic(self.draw.graphic(pixels, width))
     }
 
     /// Draw a shape.

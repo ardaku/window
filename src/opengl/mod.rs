@@ -6,6 +6,7 @@ use super::Window;
 use crate::Nshader;
 use crate::Nshape;
 use crate::Nvertices;
+use crate::Ngraphic;
 
 mod platform;
 
@@ -14,26 +15,30 @@ const GL_ATTRIB_POS: u32 = 0;
 // Color
 const GL_ATTRIB_COL: u32 = 1;
 // Texture Coordinates Begin (May have multiple)
-// const GL_ATTRIB_TEX: u32 = 2;
+const GL_ATTRIB_TEX: u32 = 2;
 
-/*#[cfg(debug_assertions)]
 extern "C" {
     fn glGetError() -> u32;
-}*/
+}
+
+#[allow(unused)]
+fn get_error() {
+    match unsafe { glGetError() } {
+        0 => print!(""),
+        0x0500 => panic!("OpenGL: Invalid Enum"),
+        0x0501 => panic!("OpenGL: Invalid Value"),
+        0x0502 => panic!("OpenGL: Invalid Operation"),
+        0x0503 => panic!("OpenGL: Invalid Stack Overflow"),
+        0x0504 => panic!("OpenGL: Invalid Stack Underflow"),
+        0x0505 => panic!("OpenGL: Invalid Out of Memory"),
+        _ => panic!("OpenGL: Unknown Error"),
+    }
+}
 
 #[cfg(debug_assertions)]
 macro_rules! gl_assert {
     () => {
-        /*        match unsafe { glGetError() } {
-            0 => {},
-            0x0500 => panic!("OpenGL: Invalid Enum"),
-            0x0501 => panic!("OpenGL: Invalid Value"),
-            0x0502 => panic!("OpenGL: Invalid Operation"),
-            0x0503 => panic!("OpenGL: Invalid Stack Overflow"),
-            0x0504 => panic!("OpenGL: Invalid Stack Underflow"),
-            0x0505 => panic!("OpenGL: Invalid Out of Memory"),
-            _ => panic!("OpenGL: Unknown Error"),
-        }*/
+        get_error();
     };
 }
 
@@ -141,6 +146,12 @@ extern "C" {
     ) -> ();
     fn glDeleteBuffers(n: i32, buffers: *const u32) -> ();
     // fn glGetString(name: u32) -> *const u8;
+    fn glGenTextures(n: u32, textures: *mut u32) -> ();
+    fn glBindTexture(target: u32, texture: u32) -> ();
+    fn glTexParameteri(target: u32, pname: u32, param: i32) -> ();
+    fn glTexImage2D(target: u32, level: i32, internalFormat: i32, width: i32,
+        height: i32, border: i32, format: u32, stype: u32, pixels: *const u8) -> ();
+    fn glGenerateMipmap(target: u32);
 }
 
 /// A shader.  Shaders are a program that runs on the GPU to render a `Shape`.
@@ -149,6 +160,8 @@ pub struct Shader {
     program: u32,
     // True if OpenGL color vertex attribute exists.
     gradient: bool,
+    // True if OpenGL texture uniform exists.
+    graphic: bool,
     // TODO
 //    groups: Vec<u32>,
     // TODO
@@ -161,6 +174,67 @@ pub struct Shader {
     instance_count: u16,
     //
     id: i32,
+}
+
+/// 
+pub struct Graphic {
+    id: u32,
+}
+
+impl Graphic {
+    pub fn new(pixels: &[u8], width: usize) -> Self {
+        let new_texture = unsafe {
+            let mut new_texture = std::mem::MaybeUninit::uninit();
+            glGenTextures(1, new_texture.as_mut_ptr());
+            get_error();
+            new_texture.assume_init()
+        };
+
+        unsafe {
+            const GL_TEXTURE_2D: u32 = 0x0DE1;
+            const GL_TEXTURE_MAG_FILTER: u32 = 0x2800;
+            const GL_TEXTURE_MIN_FILTER: u32 = 0x2801;
+            const GL_NEAREST: i32 = 0x2600;
+            const GL_LINEAR: i32 = 0x2601;
+            const GL_LINEAR_MIPMAP_LINEAR: i32 = 0x2703;
+            const GL_NEAREST_MIPMAP_NEAREST: i32 = 0x2700;
+            const GL_NEAREST_MIPMAP_LINEAR: i32 = 0x2702;
+            const GL_TEXTURE_WRAP_S: u32 = 0x2802;
+            const GL_TEXTURE_WRAP_T: u32 = 0x2803;
+            const GL_CLAMP_TO_EDGE: i32 = 0x812F;
+            const GL_RGBA: u32 = 0x1908;
+
+            glBindTexture(GL_TEXTURE_2D, new_texture);
+            get_error();
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+            get_error();
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+            get_error();
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST_MIPMAP_NEAREST); //GL_NEAREST_MIPMAP_LINEAR);
+            get_error();
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR); // GL_NEAREST_MIPMAP_LINEAR);
+            get_error();
+            glTexImage2D(
+                GL_TEXTURE_2D,
+                0,
+                GL_RGBA as i32,
+                width as i32, // w
+                ((pixels.len() >> 2) as i32) / (width as i32), // h
+                0,
+                GL_RGBA,
+                0x1401 /*GL_UNSIGNED_BYTE*/,
+                pixels.as_ptr() as *const _,
+            );
+            get_error();
+
+            glGenerateMipmap(GL_TEXTURE_2D);
+            get_error();
+        }
+
+        Graphic {
+            id: new_texture
+        }
+    }
 }
 
 /// A list of vertices.
@@ -213,6 +287,10 @@ impl Nshader for Shader {
 
     fn gradient(&self) -> bool {
         self.gradient
+    }
+
+    fn graphic(&self) -> bool {
+        self.graphic
     }
 
     fn blending(&self) -> bool {
@@ -279,6 +357,9 @@ impl Nvertices for Vertices {
             gl_assert!();
         }
     }
+}
+
+impl Ngraphic for Graphic {
 }
 
 pub struct OpenGL {
@@ -390,7 +471,7 @@ impl Draw for OpenGL {
                 index += 1;
             }
 
-            let stride = 2 + if shader.gradient() { 3 } else { 0 };
+            let stride = if shader.depth() { 3 } else { 2 } + if shader.gradient() { 3 } else { 0 } + if shader.graphic() { 2 } else { 0 };
             let stride = (stride * std::mem::size_of::<f32>()) as i32;
 
             vertlist.bind();
@@ -399,7 +480,7 @@ impl Draw for OpenGL {
             {
                 glVertexAttribPointer(
                     GL_ATTRIB_POS,
-                    2,
+                    if shader.depth() { 3 } else { 2 },
                     0x1406, /*GL_FLOAT*/
                     0,      /*GL_FALSE*/
                     stride,
@@ -421,10 +502,28 @@ impl Draw for OpenGL {
                     0x1406, /*GL_FLOAT*/
                     0,      /*GL_FALSE*/
                     stride,
-                    ptr.offset(2),
+                    ptr.offset(if shader.depth() { 3 } else { 2 }),
                 );
                 gl_assert!();
                 glEnableVertexAttribArray(GL_ATTRIB_COL);
+                gl_assert!();
+            }
+
+            // Only if Gradient is enabled.
+            if shader.graphic() {
+                vertlist.bind(); // TODO: is needed?
+
+                let ptr: *const f32 = std::ptr::null();
+                glVertexAttribPointer(
+                    GL_ATTRIB_TEX,
+                    2,
+                    0x1406, /*GL_FLOAT*/
+                    0,      /*GL_FALSE*/
+                    stride,
+                    ptr.offset(if shader.depth() { 3 } else { 2 } + if shader.gradient() { 3 } else { 0 }),
+                );
+                gl_assert!();
+                glEnableVertexAttribArray(GL_ATTRIB_TEX);
                 gl_assert!();
             }
 
@@ -447,6 +546,10 @@ impl Draw for OpenGL {
                 glDisableVertexAttribArray(GL_ATTRIB_COL);
                 gl_assert!();
             }
+            if shader.graphic() {
+                glDisableVertexAttribArray(GL_ATTRIB_TEX);
+                gl_assert!();
+            }
         }
     }
 
@@ -456,6 +559,10 @@ impl Draw for OpenGL {
 
     fn transform(&mut self, shape: &mut Nshape, instance: u16, transform: crate::Transform) {
         shape.transform(instance, transform);
+    }
+
+    fn graphic(&mut self, pixels: &[u8], width: usize) -> Box<Ngraphic> {
+        Box::new(Graphic::new(pixels, width))
     }
 }
 
@@ -564,6 +671,16 @@ fn create_program(builder: crate::ShaderBuilder) -> Shader {
             );
             gl_assert!();
         }
+        //
+        if builder.graphic {
+            glBindAttribLocation(
+                program,
+                GL_ATTRIB_TEX,
+                b"texpos\0".as_ptr() as *const _ as *const _,
+            );
+            gl_assert!();
+        }
+        // 
         glLinkProgram(program);
         gl_assert!();
     }
@@ -596,6 +713,7 @@ fn create_program(builder: crate::ShaderBuilder) -> Shader {
     Shader {
         program,
         gradient: builder.gradient,
+        graphic: builder.graphic,
 //        groups,
         transforms,
         depth: builder.depth,
