@@ -8,14 +8,13 @@ Since this crate is minimal, it doesn't even handle window decoration.  If you w
 ## Backends
 ### Linux Window Managers
 - Wayland
-- XCB
 
 ### Graphics APIs
 - OpenGLES
-- OpenGL
 
 ## TODO
 ### Other Window Managers
+- XCB
 - Windows WinAPI
 - Android
 - MacOS Cocoa
@@ -26,5 +25,18 @@ Since this crate is minimal, it doesn't even handle window decoration.  If you w
 - Wasm Canvas
 
 ### Graphics APIs
+- OpenGL
 - WebGL
 - Vulkan
+
+## Cala
+This crate is part of the [cala](https://crates.io/crates/cala) project.
+
+## Links
+- [Website](https://aldarobot.github.io/window/)
+- [Cargo](https://crates.io/crates/window)
+- [Documentation](https://docs.rs/window)
+- [Change Log](https://aldarobot.github.io/window/CHANGELOG)
+- [Contributors](https://aldarobot.github.io/window/CONTRIBUTORS)
+- [Code of Conduct](https://aldarobot.github.io/window/CODEOFCONDUCT)
+- [Join Zulip Chat](https://plopgrizzly.zulipchat.com/join/pp13s6clnexk03tvlnrtjvi1/)
