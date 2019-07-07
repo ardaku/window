@@ -122,6 +122,8 @@ trait Draw {
     fn transform(&mut self, shape: &mut Nshape, instance: u16, transform: Transform);
     /// Upload graphic.
     fn graphic(&mut self, pixels: &[u8], width: usize) -> Box<Ngraphic>;
+    /// Use a graphic.
+    fn bind_graphic(&mut self, graphic: &Ngraphic);
 }
 
 trait Nshader {
@@ -152,6 +154,7 @@ trait Nvertices {
 pub struct Shape(Box<Nshape>);
 
 trait Ngraphic {
+    fn id(&self) -> u32;
 }
 
 /// A graphic on the GPU.
@@ -429,6 +432,12 @@ impl Window {
     /// Load an RGBA graphic to the GPU.
     pub fn graphic(&mut self, pixels: &[u8], width: usize) -> Graphic {
         Graphic(self.draw.graphic(pixels, width))
+    }
+
+    /// Use a graphic for drawing.
+    pub fn draw_graphic(&mut self, shader: &Shader, shape: &Shape, graphic: &Graphic) {
+        self.draw.bind_graphic(&*graphic.0);
+        self.draw(shader, shape);
     }
 
     /// Draw a shape.

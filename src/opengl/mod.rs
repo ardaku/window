@@ -191,6 +191,8 @@ impl Graphic {
         };
 
         unsafe {
+            #![allow(unused)]
+
             const GL_TEXTURE_2D: u32 = 0x0DE1;
             const GL_TEXTURE_MAG_FILTER: u32 = 0x2800;
             const GL_TEXTURE_MIN_FILTER: u32 = 0x2801;
@@ -210,9 +212,9 @@ impl Graphic {
             get_error();
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
             get_error();
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST_MIPMAP_NEAREST); //GL_NEAREST_MIPMAP_LINEAR);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST_MIPMAP_LINEAR);
             get_error();
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR); // GL_NEAREST_MIPMAP_LINEAR);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
             get_error();
             glTexImage2D(
                 GL_TEXTURE_2D,
@@ -360,6 +362,9 @@ impl Nvertices for Vertices {
 }
 
 impl Ngraphic for Graphic {
+    fn id(&self) -> u32 {
+        self.id
+    }
 }
 
 pub struct OpenGL {
@@ -367,6 +372,7 @@ pub struct OpenGL {
     display: *mut c_void,
     context: *mut c_void,
     config: *mut c_void,
+    graphic: u32,
 }
 
 impl Drop for OpenGL {
@@ -563,6 +569,18 @@ impl Draw for OpenGL {
 
     fn graphic(&mut self, pixels: &[u8], width: usize) -> Box<Ngraphic> {
         Box::new(Graphic::new(pixels, width))
+    }
+
+    fn bind_graphic(&mut self, graphic: &Ngraphic) {
+        // Only bind, if it's not already bound.
+        if self.graphic != graphic.id() {
+            unsafe {
+                glBindTexture(0x0DE1 /*GL_TEXTURE_2D*/, graphic.id());
+            }
+            get_error();
+            // Update which graphic is bound.
+            self.graphic = graphic.id();
+        }
     }
 }
 
@@ -836,6 +854,7 @@ pub(super) fn new(window: &mut Window) -> Option<Box<Draw>> {
         config,
         context,
         surface: std::ptr::null_mut(),
+        graphic: 0,
     };
 
     Some(Box::new(draw))
