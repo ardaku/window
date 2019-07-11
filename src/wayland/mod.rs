@@ -361,9 +361,6 @@ unsafe extern "C" fn pointer_handle_enter(
 
         wl_proxy_marshal((*c).cursor_surface, 6 /*WL_SURFACE_COMMIT*/);
     }
-
-    // Hide cursor
-    //	wl_pointer_set_cursor(pointer, serial, (*c).cursor_surface, 0, 0);
 }
 
 unsafe extern "C" fn pointer_handle_leave(

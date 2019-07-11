@@ -17,6 +17,9 @@ const GL_ATTRIB_COL: u32 = 1;
 // Texture Coordinates Begin (May have multiple)
 const GL_ATTRIB_TEX: u32 = 2;
 
+const GL_RGBA: u32 = 0x1908;
+const GL_TEXTURE_2D: u32 = 0x0DE1;
+
 extern "C" {
     fn glGetError() -> u32;
 }
@@ -180,10 +183,14 @@ pub struct Shader {
 /// 
 pub struct Graphic {
     id: u32,
+    pixels: Vec<u8>,
+    width: i32,
 }
 
 impl Graphic {
     pub fn new(pixels: &[u8], width: usize) -> Self {
+        let width = width as i32;
+
         let new_texture = unsafe {
             let mut new_texture = std::mem::MaybeUninit::uninit();
             glGenTextures(1, new_texture.as_mut_ptr());
@@ -194,7 +201,6 @@ impl Graphic {
         unsafe {
             #![allow(unused)]
 
-            const GL_TEXTURE_2D: u32 = 0x0DE1;
             const GL_TEXTURE_MAG_FILTER: u32 = 0x2800;
             const GL_TEXTURE_MIN_FILTER: u32 = 0x2801;
             const GL_NEAREST: i32 = 0x2600;
@@ -205,7 +211,6 @@ impl Graphic {
             const GL_TEXTURE_WRAP_S: u32 = 0x2802;
             const GL_TEXTURE_WRAP_T: u32 = 0x2803;
             const GL_CLAMP_TO_EDGE: i32 = 0x812F;
-            const GL_RGBA: u32 = 0x1908;
 
             glBindTexture(GL_TEXTURE_2D, new_texture);
             get_error();
@@ -221,8 +226,8 @@ impl Graphic {
                 GL_TEXTURE_2D,
                 0,
                 GL_RGBA as i32,
-                width as i32, // w
-                ((pixels.len() >> 2) as i32) / (width as i32), // h
+                width, // w
+                ((pixels.len() >> 2) as i32) / width, // h
                 0,
                 GL_RGBA,
                 0x1401 /*GL_UNSIGNED_BYTE*/,
@@ -235,7 +240,9 @@ impl Graphic {
         }
 
         Graphic {
-            id: new_texture
+            id: new_texture,
+            pixels: pixels.to_vec(),
+            width,
         }
     }
 }
@@ -365,6 +372,28 @@ impl Nvertices for Vertices {
 impl Ngraphic for Graphic {
     fn id(&self) -> u32 {
         self.id
+    }
+
+    fn update(&mut self, updater: &mut FnMut(&mut [u8], u16)) {
+        updater(self.pixels.as_mut_slice(), self.width as u16);
+
+        unsafe {
+            glBindTexture(GL_TEXTURE_2D, self.id);
+            get_error();
+
+            glTexImage2D(
+                GL_TEXTURE_2D,
+                0,
+                GL_RGBA as i32,
+                self.width, // w
+                ((self.pixels.len() >> 2) as i32) / self.width, // h
+                0,
+                GL_RGBA,
+                0x1401 /*GL_UNSIGNED_BYTE*/,
+                self.pixels.as_ptr() as *const _,
+            );
+            get_error();
+        }
     }
 }
 

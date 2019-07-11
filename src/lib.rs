@@ -166,6 +166,7 @@ pub struct Shape(Box<Nshape>);
 
 trait Ngraphic {
     fn id(&self) -> u32;
+    fn update(&mut self, updater: &mut FnMut(&mut [u8], u16));
 }
 
 /// A graphic on the GPU.
@@ -343,7 +344,8 @@ pub struct Window {
     toolbar_graphic: Graphic,
     toolbar_shader: Shader,
     toolbar_shape: Shape,
-    toolbar_height: u16,
+    // Height of the toolbar.
+    pub toolbar_height: u16,
     draw: Box<Draw>,
     nwin: Box<Nwin>,
     redraw: fn(nanos: u64) -> (),
@@ -466,6 +468,11 @@ impl Window {
         Graphic(self.draw.graphic(pixels, width))
     }
 
+    /// Update RGBA graphic on the GPU.
+    pub fn update_graphic(&mut self, graphic: &mut Graphic, closure: &mut FnMut(&mut [u8], u16)) {
+        graphic.0.update(closure);
+    }
+
     /// Use a graphic for drawing.
     pub fn draw_graphic(&mut self, shader: &Shader, shape: &Shape, graphic: &Graphic) {
         self.draw.bind_graphic(&*graphic.0);
@@ -498,6 +505,11 @@ impl Window {
             },
             &*shape.0,
         );
+    }
+
+    /// Update toolbar graphic.
+    pub fn toolbar(&mut self, closure: &mut FnMut(&mut [u8], u16)) {
+        self.toolbar_graphic.0.update(closure);
     }
 
     /// Build a shader.
