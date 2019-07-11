@@ -80,7 +80,7 @@ extern "C" {
         dy: i32,
     ) -> ();
     fn wl_egl_window_destroy(egl_window: *mut c_void) -> ();
-    fn glViewport(x: i32, y: i32, width: i32, height: i32) -> ();
+//    fn glViewport(x: i32, y: i32, width: i32, height: i32) -> ();
 }
 
 fn get(value: *mut dyn Nwin) -> *mut WaylandWindow {
@@ -411,7 +411,7 @@ unsafe extern "C" fn pointer_handle_button(
         0x110 /*BTN_LEFT*/ => {
             // pressed.
             if state != 0 {
-                if (*c).pointer_xy.1 < 40.0 {
+                if (*c).pointer_xy.1 < (*window).toolbar_height as f32 {
                     wl_proxy_marshal(
                         (*c).toplevel,
                         5, /*ZXDG_TOPLEVEL_V6_MOVE*/
@@ -467,6 +467,7 @@ unsafe extern "C" fn redraw_wl(
 
     // Redraw on the screen.
     (*c).draw.begin_draw();
+    (*c).draw_toolbar(&(*c).toolbar_shader, &(*c).toolbar_shape, &(*c).toolbar_graphic);
 
     ((*c).redraw)(diff_nanos);
 
@@ -497,7 +498,7 @@ unsafe extern "C" fn configure_callback(
 
     wl_proxy_destroy(callback);
 
-    glViewport(0, 0, (*c).window_width, (*c).window_height);
+//    glViewport(0, 0, (*c).window_width, (*c).window_height);
 
     if (*c).callback.is_null() {
         redraw_wl(window, std::ptr::null_mut(), time);
@@ -851,7 +852,7 @@ unsafe extern "C" fn toplevel_configure(
                 );
             }
         }
-        glViewport(0, 0, (*c).window_width, (*c).window_height);
+//        glViewport(0, 0, (*c).window_width, (*c).window_height);
     }
 }
 
@@ -986,6 +987,10 @@ impl Nwin for WaylandWindow {
         let ret = unsafe { wl_display_dispatch(self.wldisplay) };
 
         ret != -1 && self.running != 0 // TODO: running should be bool.
+    }
+
+    fn dimensions(&mut self) -> (u16, u16) {
+        (self.window_width as u16, self.window_height as u16)
     }
 }
 

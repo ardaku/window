@@ -152,6 +152,7 @@ extern "C" {
     fn glTexImage2D(target: u32, level: i32, internalFormat: i32, width: i32,
         height: i32, border: i32, format: u32, stype: u32, pixels: *const u8) -> ();
     fn glGenerateMipmap(target: u32);
+    fn glViewport(x: i32, y: i32, width: i32, height: i32) -> ();
 }
 
 /// A shader.  Shaders are a program that runs on the GPU to render a `Shape`.
@@ -446,6 +447,17 @@ impl Draw for OpenGL {
 
     fn shape_new(&mut self, builder: crate::ShapeBuilder) -> Box<Nshape> {
         Box::new(Shape::new(builder))
+    }
+
+    fn toolbar(&mut self, w: u16, h: u16, toolbar_height: u16, shader: &Nshader, vertlist: &Nvertices, shape: &Nshape) -> () {
+        let w = w as i32;
+        let h = h as i32;
+        let toolbar_height = toolbar_height as i32;
+        unsafe {
+            glViewport(0, h - toolbar_height, w, toolbar_height);
+            self.draw(shader, vertlist, shape);
+            glViewport(0, 0, w, h - toolbar_height);
+        }
     }
 
     fn begin_draw(&mut self) {

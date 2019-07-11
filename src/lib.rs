@@ -13,6 +13,13 @@
 
 use std::ffi::c_void;
 
+/// **video** Load a generated shader from `res`.
+#[macro_export(self)] macro_rules! shader {
+    ($shadername: literal) => {
+        include!(concat!(env!("OUT_DIR"), "/res/", $shadername, ".rs"));
+    }
+}
+
 /// A transformation matrix.
 #[repr(C)]
 #[derive(Copy, Clone)]
@@ -95,6 +102,8 @@ trait Nwin {
     fn connect(&mut self, draw: &mut dyn Draw);
     /// Get the next frame.  Return false on quit.
     fn run(&mut self) -> bool;
+    /// Get the window width & height.
+    fn dimensions(&mut self) -> (u16, u16);
 }
 
 trait Draw {
@@ -124,6 +133,8 @@ trait Draw {
     fn graphic(&mut self, pixels: &[u8], width: usize) -> Box<Ngraphic>;
     /// Use a graphic.
     fn bind_graphic(&mut self, graphic: &Ngraphic);
+    /// Render toolbar with width & height.
+    fn toolbar(&mut self, w: u16, height: u16, toolbar_height: u16, shader: &Nshader, vertlist: &Nvertices, shape: &Nshape);
 }
 
 trait Nshader {
@@ -329,6 +340,10 @@ pub struct ShaderBuilder {
 
 /// A window on the monitor.
 pub struct Window {
+    toolbar_graphic: Graphic,
+    toolbar_shader: Shader,
+    toolbar_shape: Shape,
+    toolbar_height: u16,
     draw: Box<Draw>,
     nwin: Box<Nwin>,
     redraw: fn(nanos: u64) -> (),
@@ -336,7 +351,7 @@ pub struct Window {
 
 impl Window {
     /// Start the Wayland + OpenGL application.
-    pub fn new(name: &str, run: fn(nanos: u64) -> ()) -> Box<Self> {
+    pub fn new(name: &str, run: fn(nanos: u64) -> (), toolbar: fn(&mut Self) -> (Shader, Shape)) -> Box<Self> {
         /*********************/
         /* Declare Variables */
         /*********************/
@@ -396,6 +411,23 @@ impl Window {
             std::ptr::write(&mut window.redraw, run);
         }
 
+        /**********************/
+        /* Initialize Toolbar */
+        /**********************/
+
+        window.toolbar_height = 48;
+
+        let (toolbar_shader, toolbar_shape) = (toolbar)(&mut window);
+        let width = window.nwin.dimensions().0;
+        let pixels = vec![255; width as usize * 48 * 4];
+        let toolbar_graphic = window.graphic(pixels.as_slice(), width as usize);
+
+        unsafe {
+            std::ptr::write(&mut window.toolbar_shader, toolbar_shader);
+            std::ptr::write(&mut window.toolbar_shape, toolbar_shape);
+            std::ptr::write(&mut window.toolbar_graphic, toolbar_graphic);
+        }
+
         window
     }
 
@@ -443,6 +475,22 @@ impl Window {
     /// Draw a shape.
     pub fn draw(&mut self, shader: &Shader, shape: &Shape) {
         self.draw.draw(
+            &*shader.0,
+            &**match shader.1 {
+                Either::Builder(_) => panic!("Not built yet!"),
+                Either::VertList(ref a) => a,
+            },
+            &*shape.0,
+        );
+    }
+
+    /// Draw the toolbar.
+    fn draw_toolbar(&mut self, shader: &Shader, shape: &Shape, graphic: &Graphic) {
+        self.draw.bind_graphic(&*graphic.0);
+        self.draw.toolbar(
+            self.nwin.dimensions().0,
+            self.nwin.dimensions().1,
+            self.toolbar_height,
             &*shader.0,
             &**match shader.1 {
                 Either::Builder(_) => panic!("Not built yet!"),
