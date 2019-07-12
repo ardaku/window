@@ -417,11 +417,11 @@ impl Window {
         /* Initialize Toolbar */
         /**********************/
 
-        window.toolbar_height = 48;
+        window.toolbar_height = 44;
 
         let (toolbar_shader, toolbar_shape) = (toolbar)(&mut window);
         let width = window.nwin.dimensions().0;
-        let pixels = vec![255; width as usize * 48 * 4];
+        let pixels = vec![255; (width * window.toolbar_height) as usize * 4];
         let toolbar_graphic = window.graphic(pixels.as_slice(), width as usize);
 
         unsafe {
