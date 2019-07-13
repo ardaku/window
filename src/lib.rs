@@ -166,6 +166,9 @@ pub struct Shape(Box<Nshape>);
 
 trait Ngraphic {
     fn id(&self) -> u32;
+    fn width(&self) -> u16;
+    fn height(&self) -> u16;
+    fn resize(&mut self, pixels: &[u8], width: usize);
     fn update(&mut self, updater: &mut FnMut(&mut [u8], u16));
 }
 
@@ -344,6 +347,7 @@ pub struct Window {
     toolbar_graphic: Graphic,
     toolbar_shader: Shader,
     toolbar_shape: Shape,
+    toolbar_callback: fn(&mut [u8], u16),
     // Height of the toolbar.
     pub toolbar_height: u16,
     draw: Box<Draw>,
@@ -417,17 +421,19 @@ impl Window {
         /* Initialize Toolbar */
         /**********************/
 
-        window.toolbar_height = 44;
+        window.toolbar_height = 48;
 
         let (toolbar_shader, toolbar_shape) = (toolbar)(&mut window);
         let width = window.nwin.dimensions().0;
         let pixels = vec![255; (width * window.toolbar_height) as usize * 4];
         let toolbar_graphic = window.graphic(pixels.as_slice(), width as usize);
+        fn toolbar_callback(a: &mut [u8], b: u16) {}
 
         unsafe {
             std::ptr::write(&mut window.toolbar_shader, toolbar_shader);
             std::ptr::write(&mut window.toolbar_shape, toolbar_shape);
             std::ptr::write(&mut window.toolbar_graphic, toolbar_graphic);
+            std::ptr::write(&mut window.toolbar_callback, toolbar_callback);
         }
 
         window
@@ -508,8 +514,9 @@ impl Window {
     }
 
     /// Update toolbar graphic.
-    pub fn toolbar(&mut self, closure: &mut FnMut(&mut [u8], u16)) {
-        self.toolbar_graphic.0.update(closure);
+    pub fn toolbar(&mut self, callback: fn(&mut [u8], u16)) {
+        self.toolbar_graphic.0.update(&mut |a, b| callback(a, b));
+        self.toolbar_callback = callback;
     }
 
     /// Build a shader.

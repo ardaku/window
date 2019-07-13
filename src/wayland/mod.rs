@@ -80,7 +80,6 @@ extern "C" {
         dy: i32,
     ) -> ();
     fn wl_egl_window_destroy(egl_window: *mut c_void) -> ();
-//    fn glViewport(x: i32, y: i32, width: i32, height: i32) -> ();
 }
 
 fn get(value: *mut dyn Nwin) -> *mut WaylandWindow {
@@ -495,7 +494,11 @@ unsafe extern "C" fn configure_callback(
 
     wl_proxy_destroy(callback);
 
-//    glViewport(0, 0, (*c).window_width, (*c).window_height);
+    let width = (*c).window_width;
+    let height = (*window).toolbar_height;
+    let pixels = vec![255; height as usize * width as usize * 4];
+    (*window).toolbar_graphic.0.resize(pixels.as_slice(), width as usize);
+    (*window).toolbar_graphic.0.update(&mut |a, b| ((*window).toolbar_callback)(a, b));
 
     if (*c).callback.is_null() {
         redraw_wl(window, std::ptr::null_mut(), time);
@@ -849,7 +852,12 @@ unsafe extern "C" fn toplevel_configure(
                 );
             }
         }
-//        glViewport(0, 0, (*c).window_width, (*c).window_height);
+
+        let width = (*c).window_width;
+        let height = (*window).toolbar_height;
+        let pixels = vec![255; height as usize * width as usize * 4];
+        (*window).toolbar_graphic.0.resize(pixels.as_slice(), width as usize);
+        (*window).toolbar_graphic.0.update(&mut |a, b| ((*window).toolbar_callback)(a, b));
     }
 }
 

@@ -374,6 +374,39 @@ impl Ngraphic for Graphic {
         self.id
     }
 
+    fn width(&self) -> u16 {
+        self.width as u16
+    }
+
+    fn height(&self) -> u16 {
+        (((self.pixels.len() >> 2) as u32) / self.width as u32) as u16
+    }
+
+    fn resize(&mut self, pixels: &[u8], width: usize) {
+        let width = width as i32;
+
+        self.width = width;
+        self.pixels = pixels.to_vec();
+
+        unsafe {
+            glTexImage2D(
+                GL_TEXTURE_2D,
+                0,
+                GL_RGBA as i32,
+                width, // w
+                ((pixels.len() >> 2) as i32) / width, // h
+                0,
+                GL_RGBA,
+                0x1401 /*GL_UNSIGNED_BYTE*/,
+                pixels.as_ptr() as *const _,
+            );
+            get_error();
+
+            glGenerateMipmap(GL_TEXTURE_2D);
+            get_error();
+        }
+    }
+
     fn update(&mut self, updater: &mut FnMut(&mut [u8], u16)) {
         updater(self.pixels.as_mut_slice(), self.width as u16);
 
