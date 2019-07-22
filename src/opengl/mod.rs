@@ -389,6 +389,9 @@ impl Ngraphic for Graphic {
         self.pixels = pixels.to_vec();
 
         unsafe {
+            glBindTexture(GL_TEXTURE_2D, self.id);
+            get_error();
+
             glTexImage2D(
                 GL_TEXTURE_2D,
                 0,
