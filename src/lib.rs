@@ -135,12 +135,14 @@ trait Draw {
     fn bind_graphic(&mut self, graphic: &Ngraphic);
     /// Render toolbar with width & height.
     fn toolbar(&mut self, w: u16, height: u16, toolbar_height: u16, shader: &Nshader, vertlist: &Nvertices, shape: &Nshape);
+    /// Set texture coordinates
+    fn texture_coords(&mut self, shader: &Nshader, coords: ([f32; 2], [f32; 2]));
 }
 
 trait Nshader {
     fn depth(&self) -> bool;
     fn gradient(&self) -> bool;
-    fn graphic(&self) -> bool;
+    fn graphic(&self) -> Option<(i32, i32)>;
     fn blending(&self) -> bool;
     fn bind(&self);
     fn transform(&self, index: usize) -> Option<&i32>;
@@ -238,7 +240,7 @@ impl<'a> ShapeBuilder<'a> {
                 components
             } else {
                 0
-            } + if self.shader.0.graphic() {
+            } + if self.shader.0.graphic().is_some() {
                 2
             } else { 0 };
         assert!(self.vertices.len() % stride == 0);
@@ -477,6 +479,11 @@ impl Window {
     /// Update RGBA graphic on the GPU.
     pub fn update_graphic(&mut self, graphic: &mut Graphic, closure: &mut FnMut(&mut [u8], u16)) {
         graphic.0.update(closure);
+    }
+
+    /// Set texture coordinates for a shader.
+    pub fn texture_coords(&mut self, shader: &Shader, coords: ([f32; 2], [f32; 2])) {
+        self.draw.texture_coords(&*shader.0, coords)
     }
 
     /// Use a graphic for drawing.

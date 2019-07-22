@@ -123,6 +123,7 @@ extern "C" {
         value: *const c_void,
     ) -> ();
     fn glUniform1i(location: i32, v0: i32) -> ();
+    fn glUniform2f(location: i32, v0: f32, v1: f32) -> ();
     fn glClearColor(red: f32, green: f32, blue: f32, alpha: f32) -> ();
     fn glClear(mask: u32) -> ();
     fn glVertexAttribPointer(
@@ -164,10 +165,8 @@ pub struct Shader {
     program: u32,
     // True if OpenGL color vertex attribute exists.
     gradient: bool,
-    // True if OpenGL texture uniform exists.
-    graphic: bool,
-    // TODO
-//    groups: Vec<u32>,
+    // Some if OpenGL texture uniform exists.
+    graphic: Option<(i32, i32)>,
     // TODO
     transforms: Vec<i32>,
     // True if 3D.
@@ -299,7 +298,7 @@ impl Nshader for Shader {
         self.gradient
     }
 
-    fn graphic(&self) -> bool {
+    fn graphic(&self) -> Option<(i32, i32)> {
         self.graphic
     }
 
@@ -554,7 +553,7 @@ impl Draw for OpenGL {
                 index += 1;
             }
 
-            let stride = if shader.depth() { 3 } else { 2 } + if shader.gradient() { 3 } else { 0 } + if shader.graphic() { 2 } else { 0 };
+            let stride = if shader.depth() { 3 } else { 2 } + if shader.gradient() { 3 } else { 0 } + if shader.graphic().is_some() { 2 } else { 0 };
             let stride = (stride * std::mem::size_of::<f32>()) as i32;
 
             vertlist.bind();
@@ -593,7 +592,7 @@ impl Draw for OpenGL {
             }
 
             // Only if Gradient is enabled.
-            if shader.graphic() {
+            if shader.graphic().is_some() {
                 vertlist.bind(); // TODO: is needed?
 
                 let ptr: *const f32 = std::ptr::null();
@@ -629,7 +628,7 @@ impl Draw for OpenGL {
                 glDisableVertexAttribArray(GL_ATTRIB_COL);
                 gl_assert!();
             }
-            if shader.graphic() {
+            if shader.graphic().is_some() {
                 glDisableVertexAttribArray(GL_ATTRIB_TEX);
                 gl_assert!();
             }
@@ -657,6 +656,16 @@ impl Draw for OpenGL {
             get_error();
             // Update which graphic is bound.
             self.graphic = graphic.id();
+        }
+    }
+
+    fn texture_coords(&mut self, shader: &Nshader, coords: ([f32; 2], [f32; 2])) {
+        if let Some((a, b)) = shader.graphic() {
+            shader.bind();
+            unsafe {
+                glUniform2f(a, coords.0[0], coords.0[1]);
+                glUniform2f(b, coords.1[0], coords.1[1]);
+            }
         }
     }
 }
@@ -805,10 +814,28 @@ fn create_program(builder: crate::ShaderBuilder) -> Shader {
     gl_assert!();
     assert!(id > -1);
 
+    let graphic = if builder.graphic {
+        let tsc_translate = unsafe {
+            glGetUniformLocation(program, "tsc_translate\0".as_ptr() as *const _ as *const _)
+        };
+        gl_assert!();
+        assert!(id > -1);
+
+        let tsc_scale = unsafe {
+            glGetUniformLocation(program, "tsc_scale\0".as_ptr() as *const _ as *const _)
+        };
+        gl_assert!();
+        assert!(id > -1);
+
+        Some((tsc_translate, tsc_scale))
+    } else {
+        None
+    };
+
     Shader {
         program,
         gradient: builder.gradient,
-        graphic: builder.graphic,
+        graphic,
 //        groups,
         transforms,
         depth: builder.depth,
