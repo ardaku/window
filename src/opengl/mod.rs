@@ -134,11 +134,11 @@ extern "C" {
         stride: i32,
         ptr: *const f32,
     ) -> ();
+    fn glEnable(cap: u32) -> ();
     fn glEnableVertexAttribArray(index: u32) -> ();
 //    fn glDrawArrays(mode: u32, first: i32, count: i32);
     fn glDrawElements(mode: u32, count: i32, draw_type: u32, indices: *const c_void) -> ();
     // fn glDrawElementsInstanced(mode: u32, count: i32, draw_type: u32, indices: *const c_void, instance_count: i32) -> ();
-    fn glDisableVertexAttribArray(index: u32) -> ();
     fn glGenBuffers(n: i32, buffers: *mut u32) -> ();
     fn glBindBuffer(target: u32, buffer: u32) -> ();
     fn glBindBufferBase(target: u32, index: u32, buffer: u32) -> ();
@@ -482,7 +482,19 @@ impl Draw for OpenGL {
         debug_assert_ne!(ret, 0);
 
         // Configuration (TODO)
-        // glEnable(GL_CULL_FACES);
+
+        unsafe {
+            glEnableVertexAttribArray(GL_ATTRIB_POS);
+            gl_assert!();
+            glEnableVertexAttribArray(GL_ATTRIB_COL);
+            gl_assert!();
+            glEnableVertexAttribArray(GL_ATTRIB_TEX);
+            gl_assert!();
+            glEnable(0x0B44 /*GL_CULL_FACES*/);
+            gl_assert!();
+        }
+
+        
 
 /*        unsafe {
             let string = glGetString(0x1F03 /*gl extensions*/);
@@ -569,8 +581,6 @@ impl Draw for OpenGL {
                     std::ptr::null(),
                 );
                 gl_assert!();
-                glEnableVertexAttribArray(GL_ATTRIB_POS);
-                gl_assert!();
             }
 
             // Only if Gradient is enabled.
@@ -586,8 +596,6 @@ impl Draw for OpenGL {
                     stride,
                     ptr.offset(if shader.depth() { 3 } else { 2 }),
                 );
-                gl_assert!();
-                glEnableVertexAttribArray(GL_ATTRIB_COL);
                 gl_assert!();
             }
 
@@ -605,8 +613,6 @@ impl Draw for OpenGL {
                     ptr.offset(if shader.depth() { 3 } else { 2 } + if shader.gradient() { 3 } else { 0 }),
                 );
                 gl_assert!();
-                glEnableVertexAttribArray(GL_ATTRIB_TEX);
-                gl_assert!();
             }
 
             // Draw
@@ -621,7 +627,7 @@ impl Draw for OpenGL {
             }
             gl_assert!();
 
-            // Disable
+/*            // Disable
             glDisableVertexAttribArray(GL_ATTRIB_POS);
             gl_assert!();
             if shader.gradient() {
@@ -631,7 +637,7 @@ impl Draw for OpenGL {
             if shader.graphic().is_some() {
                 glDisableVertexAttribArray(GL_ATTRIB_TEX);
                 gl_assert!();
-            }
+            }*/
         }
     }
 
