@@ -507,6 +507,7 @@ impl Window {
     /// Draw the toolbar.
     fn draw_toolbar(&mut self, shader: &Shader, shape: &Shape, graphic: &Graphic) {
         self.draw.bind_graphic(&*graphic.0);
+        self.draw.texture_coords(&*shader.0, ([0f32, 0f32], [1f32, 1f32]));
         self.draw.toolbar(
             self.nwin.dimensions().0,
             self.nwin.dimensions().1,
