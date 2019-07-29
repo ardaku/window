@@ -134,6 +134,7 @@ extern "C" {
         stride: i32,
         ptr: *const f32,
     ) -> ();
+    fn glDisable(cap: u32) -> ();
     fn glEnable(cap: u32) -> ();
     fn glEnableVertexAttribArray(index: u32) -> ();
 //    fn glDrawArrays(mode: u32, first: i32, count: i32);
@@ -170,7 +171,7 @@ pub struct Shader {
     // TODO
     transforms: Vec<i32>,
     // True if 3D.
-    depth: bool,
+    depth: Option<i32>,
     // True if transparency is allowed.
     blending: bool,
     // Maximum number of instances.
@@ -290,7 +291,7 @@ impl Shader {
 }
 
 impl Nshader for Shader {
-    fn depth(&self) -> bool {
+    fn depth(&self) -> Option<i32> {
         self.depth
     }
 
@@ -438,6 +439,7 @@ pub struct OpenGL {
     context: *mut c_void,
     config: *mut c_void,
     graphic: u32,
+    depth: bool,
 }
 
 impl Drop for OpenGL {
@@ -484,17 +486,18 @@ impl Draw for OpenGL {
         // Configuration (TODO)
 
         unsafe {
+            glEnable(0x0B44 /*GL_CULL_FACES*/);
+            gl_assert!();
+        }
+
+        unsafe {
             glEnableVertexAttribArray(GL_ATTRIB_POS);
             gl_assert!();
             glEnableVertexAttribArray(GL_ATTRIB_COL);
             gl_assert!();
             glEnableVertexAttribArray(GL_ATTRIB_TEX);
             gl_assert!();
-            glEnable(0x0B44 /*GL_CULL_FACES*/);
-            gl_assert!();
         }
-
-        
 
 /*        unsafe {
             let string = glGetString(0x1F03 /*gl extensions*/);
@@ -538,7 +541,7 @@ impl Draw for OpenGL {
 
     fn begin_draw(&mut self) {
         unsafe {
-            glClear(0x0000_4000 /*GL_COLOR_BUFFER_BIT*/);
+            glClear(0x0000_4000 /*GL_COLOR_BUFFER_BIT*/ | 0x0000_0100 /*GL_DEPTH_BUFFER_BIT*/);
             gl_assert!();
         }
     }
@@ -551,6 +554,20 @@ impl Draw for OpenGL {
 
     fn draw(&mut self, shader: &Nshader, vertlist: &Nvertices, shape: &Nshape) {
         shader.bind();
+
+        if shader.depth().is_some() && !self.depth {
+            unsafe {
+                glEnable(0x0B71 /*DEPTH_TEST*/);
+                gl_assert!();
+            }
+            self.depth = true;
+        } else if shader.depth().is_none() && self.depth {
+            unsafe {
+                glDisable(0x0B71 /*DEPTH_TEST*/);
+                gl_assert!();
+            }
+            self.depth = false;
+        }
 
         unsafe {
             let mut index = 0;
@@ -565,7 +582,7 @@ impl Draw for OpenGL {
                 index += 1;
             }
 
-            let stride = if shader.depth() { 3 } else { 2 } + if shader.gradient() { 3 } else { 0 } + if shader.graphic().is_some() { 2 } else { 0 };
+            let stride = if shader.depth().is_some() { 3 } else { 2 } + if shader.gradient() { 3 } else { 0 } + if shader.graphic().is_some() { 2 } else { 0 };
             let stride = (stride * std::mem::size_of::<f32>()) as i32;
 
             vertlist.bind();
@@ -574,7 +591,7 @@ impl Draw for OpenGL {
             {
                 glVertexAttribPointer(
                     GL_ATTRIB_POS,
-                    if shader.depth() { 3 } else { 2 },
+                    if shader.depth().is_some() { 3 } else { 2 },
                     0x1406, /*GL_FLOAT*/
                     0,      /*GL_FALSE*/
                     stride,
@@ -594,7 +611,7 @@ impl Draw for OpenGL {
                     0x1406, /*GL_FLOAT*/
                     0,      /*GL_FALSE*/
                     stride,
-                    ptr.offset(if shader.depth() { 3 } else { 2 }),
+                    ptr.offset(if shader.depth().is_some() { 3 } else { 2 }),
                 );
                 gl_assert!();
             }
@@ -610,7 +627,7 @@ impl Draw for OpenGL {
                     0x1406, /*GL_FLOAT*/
                     0,      /*GL_FALSE*/
                     stride,
-                    ptr.offset(if shader.depth() { 3 } else { 2 } + if shader.gradient() { 3 } else { 0 }),
+                    ptr.offset(if shader.depth().is_some() { 3 } else { 2 } + if shader.gradient() { 3 } else { 0 }),
                 );
                 gl_assert!();
             }
@@ -671,6 +688,20 @@ impl Draw for OpenGL {
             unsafe {
                 glUniform2f(a, coords.0[0], coords.0[1]);
                 glUniform2f(b, coords.1[0], coords.1[1]);
+            }
+        }
+    }
+
+    fn camera(&mut self, shader: &Nshader, cam: crate::Transform) {
+        if let Some(a) = shader.depth() {
+            shader.bind();
+            unsafe {
+                glUniformMatrix4fv(
+                    a,
+                    1,
+                    0, /*GL_FALSE*/
+                    cam.mat.as_ptr() as *const c_void,
+                );
             }
         }
     }
@@ -825,15 +856,27 @@ fn create_program(builder: crate::ShaderBuilder) -> Shader {
             glGetUniformLocation(program, "tsc_translate\0".as_ptr() as *const _ as *const _)
         };
         gl_assert!();
-        assert!(id > -1);
+        assert!(tsc_translate > -1);
 
         let tsc_scale = unsafe {
             glGetUniformLocation(program, "tsc_scale\0".as_ptr() as *const _ as *const _)
         };
         gl_assert!();
-        assert!(id > -1);
+        assert!(tsc_scale > -1);
 
         Some((tsc_translate, tsc_scale))
+    } else {
+        None
+    };
+
+    let depth = if builder.depth {
+        let camera = unsafe {
+            glGetUniformLocation(program, "cam\0".as_ptr() as *const _ as *const _)
+        };
+        gl_assert!();
+        assert!(camera > -1);
+
+        Some(camera)
     } else {
         None
     };
@@ -842,9 +885,8 @@ fn create_program(builder: crate::ShaderBuilder) -> Shader {
         program,
         gradient: builder.gradient,
         graphic,
-//        groups,
         transforms,
-        depth: builder.depth,
+        depth,
         blending: builder.blend,
         instance_count: builder.instance_count,
         id,
@@ -928,11 +970,14 @@ pub(super) fn new(window: &mut Window) -> Option<Box<Draw>> {
             display,
             [
                 /*EGL_SURFACE_TYPE:*/ 0x3033,
-                /*EGL_WINDOW_BIT:*/ 0x04, /*EGL_RED_SIZE:*/ 0x3024,
-                8, /*EGL_GREEN_SIZE:*/ 0x3023, 8,
+                /*EGL_WINDOW_BIT:*/ 0x04,
+                /*EGL_RED_SIZE:*/ 0x3024, 8,
+                /*EGL_GREEN_SIZE:*/ 0x3023, 8,
                 /*EGL_BLUE_SIZE:*/ 0x3022, 8,
+                /*EGL_DEPTH_SIZE*/ 0x3025, 24,
                 /*EGL_RENDERABLE_TYPE:*/ 0x3040,
-                /*EGL_OPENGL_ES2_BIT:*/ 0x0004, /*EGL_NONE:*/ 0x3038,
+                /*EGL_OPENGL_ES2_BIT:*/ 0x0004,
+                /*EGL_NONE:*/ 0x3038,
             ]
             .as_ptr(),
             config.as_mut_ptr(),
@@ -965,6 +1010,7 @@ pub(super) fn new(window: &mut Window) -> Option<Box<Draw>> {
         context,
         surface: std::ptr::null_mut(),
         graphic: 0,
+        depth: false,
     };
 
     Some(Box::new(draw))

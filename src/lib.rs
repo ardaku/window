@@ -59,6 +59,152 @@ impl Transform {
         self.mat[3][2] += z;
         self
     }
+
+    /// Rotate transformation.
+    pub /*const*/ fn rotate(self, x: f32, y: f32, z: f32, c: f32) -> Self {
+        // scalar (in radians)
+        let s = c * (2.0 * std::f32::consts::PI);
+
+		let x2 = x + x;
+		let y2 = y + y;
+		let z2 = z + z;
+
+		let xx2 = x2 * x;
+		let xy2 = x2 * y;
+		let xz2 = x2 * z;
+
+		let yy2 = y2 * y;
+		let yz2 = y2 * z;
+		let zz2 = z2 * z;
+
+		let sy2 = y2 * s;
+		let sz2 = z2 * s;
+		let sx2 = x2 * s;
+
+		Transform {
+            mat: [
+			    [1.0 - yy2 - zz2, xy2 + sz2, xz2 - sy2, 0.0],
+			    [xy2 - sz2, 1.0 - xx2 - zz2, yz2 + sx2, 0.0],
+			    [xz2 + sy2, yz2 - sx2, 1.0 - xx2 - yy2, 0.0],
+			    [0.0, 0.0, 0.0, 1.0]
+            ]
+		} * self
+    }
+
+    /// Create a perspective matrix.
+    pub fn perspective(_fov: f32, near: f32, far: f32) -> Self {
+        /*let zcoord_domain = far - near;
+
+//        let scalar = 1.0 / (fov * std::f32::consts::PI).tan();
+        let zscale = -far / zcoord_domain;
+        let zwithw = -far * near / zcoord_domain;
+
+        Self {
+            mat: [
+                [1.0, 0.0, 0.0,     0.0],
+                [0.0, 1.0, 0.0,     0.0],
+                [0.0, 0.0, zscale,  zwithw],
+                [0.0, 0.0, -1.0,    0.0],
+            ]
+        }*/
+
+        let fovy = std::f32::consts::PI / 2.0;
+        let f = 1.0 / (fovy / 2.0).tan();
+        let aspect = 1.0; // TODO
+        let s = (f / aspect, f);
+
+        let zcoord_domain = near - far;
+        let zscale = (far + near) / zcoord_domain; // far / zcoord_domain;
+        let zwithw = (2.0 * far * near) / zcoord_domain; //far * near / zcoord_domain;
+
+        #[cfg_attr(rustfmt, rustfmt_skip)]
+        Self {
+            mat: [
+                [s.0, 0.0, 0.0, 0.0],
+                [0.0, s.1, 0.0, 0.0],
+                [0.0, 0.0, zscale, -1.0],
+                [0.0, 0.0, zwithw, 0.0],
+            ]
+        }
+    }
+}
+
+impl std::ops::Mul<Transform> for Transform {
+	type Output = Transform;
+
+	fn mul(self, rhs: Transform) -> Self::Output {
+        Transform {
+            mat: [
+			    [(self.mat[0][0] * rhs.mat[0][0])
+                + (self.mat[0][1] * rhs.mat[1][0])
+                + (self.mat[0][2] * rhs.mat[2][0])
+                + (self.mat[0][3] * rhs.mat[3][0]),
+			    (self.mat[0][0] * rhs.mat[0][1])
+                + (self.mat[0][1] * rhs.mat[1][1])
+                + (self.mat[0][2] * rhs.mat[2][1])
+                + (self.mat[0][3] * rhs.mat[3][1]),
+			    (self.mat[0][0] * rhs.mat[0][2])
+                + (self.mat[0][1] * rhs.mat[1][2])
+                + (self.mat[0][2] * rhs.mat[2][2])
+                + (self.mat[0][3] * rhs.mat[3][2]),
+			    (self.mat[0][0] * rhs.mat[0][3])
+                + (self.mat[0][1] * rhs.mat[1][3])
+                + (self.mat[0][2] * rhs.mat[2][3])
+                + (self.mat[0][3] * rhs.mat[3][3])],
+
+			    [(self.mat[1][0] * rhs.mat[0][0])
+                + (self.mat[1][1] * rhs.mat[1][0])
+                + (self.mat[1][2] * rhs.mat[2][0])
+                + (self.mat[1][3] * rhs.mat[3][0]),
+			    (self.mat[1][0] * rhs.mat[0][1])
+                + (self.mat[1][1] * rhs.mat[1][1])
+                + (self.mat[1][2] * rhs.mat[2][1])
+                + (self.mat[1][3] * rhs.mat[3][1]),
+			    (self.mat[1][0] * rhs.mat[0][2])
+                + (self.mat[1][1] * rhs.mat[1][2])
+                + (self.mat[1][2] * rhs.mat[2][2])
+                + (self.mat[1][3] * rhs.mat[3][2]),
+			    (self.mat[1][0] * rhs.mat[0][3])
+                + (self.mat[1][1] * rhs.mat[1][3])
+                + (self.mat[1][2] * rhs.mat[2][3])
+                + (self.mat[1][3] * rhs.mat[3][3])],
+
+			    [(self.mat[2][0] * rhs.mat[0][0])
+                + (self.mat[2][1] * rhs.mat[1][0])
+                + (self.mat[2][2] * rhs.mat[2][0])
+                + (self.mat[2][3] * rhs.mat[3][0]),
+			    (self.mat[2][0] * rhs.mat[0][1])
+                + (self.mat[2][1] * rhs.mat[1][1])
+                + (self.mat[2][2] * rhs.mat[2][1])
+                + (self.mat[2][3] * rhs.mat[3][1]),
+			    (self.mat[2][0] * rhs.mat[0][2])
+                + (self.mat[2][1] * rhs.mat[1][2])
+                + (self.mat[2][2] * rhs.mat[2][2])
+                + (self.mat[2][3] * rhs.mat[3][2]),
+			    (self.mat[2][0] * rhs.mat[0][3])
+                + (self.mat[2][1] * rhs.mat[1][3])
+                + (self.mat[2][2] * rhs.mat[2][3])
+                + (self.mat[2][3] * rhs.mat[3][3])],
+
+			    [(self.mat[3][0] * rhs.mat[0][0])
+                + (self.mat[3][1] * rhs.mat[1][0])
+                + (self.mat[3][2] * rhs.mat[2][0])
+                + (self.mat[3][3] * rhs.mat[3][0]),
+			    (self.mat[3][0] * rhs.mat[0][1])
+                + (self.mat[3][1] * rhs.mat[1][1])
+                + (self.mat[3][2] * rhs.mat[2][1])
+                + (self.mat[3][3] * rhs.mat[3][1]),
+			    (self.mat[3][0] * rhs.mat[0][2])
+                + (self.mat[3][1] * rhs.mat[1][2])
+                + (self.mat[3][2] * rhs.mat[2][2])
+                + (self.mat[3][3] * rhs.mat[3][2]),
+			    (self.mat[3][0] * rhs.mat[0][3])
+                + (self.mat[3][1] * rhs.mat[1][3])
+                + (self.mat[3][2] * rhs.mat[2][3])
+                + (self.mat[3][3] * rhs.mat[3][3])],
+            ],
+        }
+	}
 }
 
 #[cfg(unix)]
@@ -137,10 +283,12 @@ trait Draw {
     fn toolbar(&mut self, w: u16, height: u16, toolbar_height: u16, shader: &Nshader, vertlist: &Nvertices, shape: &Nshape);
     /// Set texture coordinates
     fn texture_coords(&mut self, shader: &Nshader, coords: ([f32; 2], [f32; 2]));
+    /// Set camera
+    fn camera(&mut self, shader: &Nshader, cam: Transform);
 }
 
 trait Nshader {
-    fn depth(&self) -> bool;
+    fn depth(&self) -> Option<i32>;
     fn gradient(&self) -> bool;
     fn graphic(&self) -> Option<(i32, i32)>;
     fn blending(&self) -> bool;
@@ -232,8 +380,8 @@ impl<'a> ShapeBuilder<'a> {
     }
 
     /// Add a face to the shape.
-    pub fn face(mut self, transform: [[f32; 4]; 4]) -> Self {
-        let dimensions = if self.shader.0.depth() { 3 } else { 2 };
+    pub fn face(mut self, transform: Transform) -> Self {
+        let dimensions = if self.shader.0.depth().is_some() { 3 } else { 2 };
         let components = if self.shader.0.blending() { 4 } else { 3 };
         let stride = dimensions
             + if self.shader.0.gradient() {
@@ -265,18 +413,18 @@ impl<'a> ShapeBuilder<'a> {
             };
             // Transform vertex position.
             let vertex = [
-                transform[0][0] * vertex[0]
-                    + transform[1][0] * vertex[1]
-                    + transform[2][0] * vertex[2]
-                    + transform[3][0],
-                transform[0][1] * vertex[0]
-                    + transform[1][1] * vertex[1]
-                    + transform[2][1] * vertex[2]
-                    + transform[3][1],
-                transform[0][2] * vertex[0]
-                    + transform[1][2] * vertex[1]
-                    + transform[2][2] * vertex[2]
-                    + transform[3][2],
+                transform.mat[0][0] * vertex[0]
+                    + transform.mat[1][0] * vertex[1]
+                    + transform.mat[2][0] * vertex[2]
+                    + transform.mat[3][0],
+                transform.mat[0][1] * vertex[0]
+                    + transform.mat[1][1] * vertex[1]
+                    + transform.mat[2][1] * vertex[2]
+                    + transform.mat[3][1],
+                transform.mat[0][2] * vertex[0]
+                    + transform.mat[1][2] * vertex[1]
+                    + transform.mat[2][2] * vertex[2]
+                    + transform.mat[3][2],
             ];
             // Find index
             let mut jndex = 0;
@@ -324,8 +472,6 @@ impl<'a> ShapeBuilder<'a> {
 pub struct ShaderBuilder {
     /// Number of transform matrices for this shader.
     pub transform: u8,
-    /// Number of group matrices for this shader.
-    pub group: u8,
     /// Whether or not shapes for this shader have a tint
     pub tint: bool,
     /// Whether or not vertices have attached colors for this shader.
@@ -479,6 +625,11 @@ impl Window {
     /// Update RGBA graphic on the GPU.
     pub fn update_graphic(&mut self, graphic: &mut Graphic, closure: &mut FnMut(&mut [u8], u16)) {
         graphic.0.update(closure);
+    }
+
+    /// Set texture coordinates for a shader.
+    pub fn camera(&mut self, shader: &Shader, cam: Transform) {
+        self.draw.camera(&*shader.0, cam)
     }
 
     /// Set texture coordinates for a shader.
