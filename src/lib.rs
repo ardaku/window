@@ -406,7 +406,6 @@ impl<'a> ShapeBuilder<'a> {
             Either::Builder(ref mut list) => list,
             Either::VertList(_) => panic!("Already built!"),
         };
-        println!("BGMKN");
         // Loop through vertices.
         'v: loop {
             // Break out of loop.
@@ -469,14 +468,6 @@ impl<'a> ShapeBuilder<'a> {
                         break 'c;
                     }
                 }
-/*                if equal {
-                    'c: for k in 0..stride {
-                        if !nearly_equal(self.vertices[index + k], shader1[jndex + k]) {
-                            equal = false;
-                            break 'c;
-                        }
-                    }
-                }*/
                 if equal {
                     break 'l (jndex / stride) as u16;
                 }
@@ -485,8 +476,6 @@ impl<'a> ShapeBuilder<'a> {
 
             index += stride;
         }
-
-        println!("{:?}", &self.indices);
 
         self
     }
