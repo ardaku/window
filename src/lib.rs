@@ -406,9 +406,12 @@ impl<'a> ShapeBuilder<'a> {
             Either::Builder(ref mut list) => list,
             Either::VertList(_) => panic!("Already built!"),
         };
-        loop {
+        println!("BGMKN");
+        // Loop through vertices.
+        'v: loop {
+            // Break out of loop.
             if index == self.vertices.len() {
-                break;
+                break 'v;
             }
             // Read vertex position.
             let vertex = if dimensions == 2 {
@@ -435,36 +438,45 @@ impl<'a> ShapeBuilder<'a> {
                     + transform.mat[2][2] * vertex[2]
                     + transform.mat[3][2],
             ];
-            // Find index
+            // Find index to push to index buffer.
             let mut jndex = 0;
             self.indices.push('l: loop {
-                //
+                // Haven't found the vertex, add to shader's vertex list.
                 if jndex == shader1.len() {
                     let rtn = jndex / stride;
+                    // Push transformed coordinates
                     for k in vertex.iter().take(dimensions) {
                         shader1.push(*k)
                     }
+                    // Don't transform the data.
                     for k in dimensions..stride {
                         shader1.push(self.vertices[index + k]);
                     }
                     break 'l rtn as u16;
                 }
-                //
+
+                // Test to see if vertex already exists.
                 let mut equal = true;
-                'b: for k in 0..stride {
-                    if !nearly_equal(self.vertices[index + k], shader1[jndex + k]) {
+                'b: for k in 0..dimensions {
+                    if !nearly_equal(vertex[k], shader1[jndex + k]) {
                         equal = false;
                         break 'b;
                     }
                 }
-                if equal {
+                'c: for k in dimensions..stride {
+                    if !nearly_equal(self.vertices[index + k], shader1[jndex + k]) {
+                        equal = false;
+                        break 'c;
+                    }
+                }
+/*                if equal {
                     'c: for k in 0..stride {
                         if !nearly_equal(self.vertices[index + k], shader1[jndex + k]) {
                             equal = false;
                             break 'c;
                         }
                     }
-                }
+                }*/
                 if equal {
                     break 'l (jndex / stride) as u16;
                 }
@@ -473,6 +485,9 @@ impl<'a> ShapeBuilder<'a> {
 
             index += stride;
         }
+
+        println!("{:?}", &self.indices);
+
         self
     }
 }
