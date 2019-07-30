@@ -1,9 +1,7 @@
 use std::ffi::c_void;
 
-mod keycodes;
 mod wl;
 
-use self::keycodes::*;
 pub(super) use self::wl::*;
 use super::Nwin;
 
@@ -573,9 +571,9 @@ unsafe extern "C" fn keyboard_handle_key(
 ) {
     let c = get(&mut *(*window).nwin);
 
-    if key == KEY_ESC && state != 0 {
+    if key == 1 /*KEY_ESC*/ && state != 0 {
         (*c).running = 0;
-    } else if key == KEY_F11 && state != 0 {
+    } else if key == 87 /*KEY_F11*/ && state != 0 {
         (*c).configured = 1;
 
         if (*c).fullscreen {
@@ -625,6 +623,140 @@ unsafe extern "C" fn keyboard_handle_key(
             CONFIGURE_CALLBACK_LISTENER.as_ptr(),
             window as *mut _ as *mut _,
         );
+    } else {
+        use crate::Key::*;
+
+        let offset = match key {
+            1 => Back,
+            2 => Num1,
+            3 => Num2,
+            4 => Num3,
+            5 => Num4,
+            6 => Num5,
+            7 => Num6,
+            8 => Num7,
+            9 => Num8,
+            10 => Num9,
+            11 => Num0,
+            12 => Minus,
+            13 => Equals,
+            14 => Backspace,
+            15 => Tab,
+            16 => Q,
+            17 => W,
+            18 => E,
+            19 => R,
+            20 => T,
+            21 => Y,
+            22 => U,
+            23 => I,
+            24 => O,
+            25 => P,
+            26 => SquareBracketOpen,
+            27 => SquareBracketClose,
+            28 => Enter,
+            29 => LeftCtrl,
+            30 => A,
+            31 => S,
+            32 => D,
+            33 => F,
+            34 => G,
+            35 => H,
+            36 => J,
+            37 => K,
+            38 => L,
+            39 => Semicolon,
+            40 => Quote,
+            41 => Backtick,
+            42 => LeftShift,
+            43 => Backslash,
+            44 => Z,
+            45 => X,
+            46 => C,
+            47 => V,
+            48 => B,
+            49 => N,
+            50 => M,
+            51 => Comma,
+            52 => Period,
+            53 => Slash,
+            54 => RightShift,
+            55 => NumpadMultiply,
+            56 => LeftAlt,
+            57 => Space,
+            58 => CapsLock,
+            59 => F1,
+            60 => F2,
+            61 => F3,
+            62 => F4,
+            63 => F5,
+            64 => F6,
+            65 => F7,
+            66 => F8,
+            67 => F9,
+            68 => F10,
+            69 => NumpadLock,
+            70 => ScrollLock,
+            71 => Numpad7,
+            72 => Numpad8,
+            73 => Numpad9,
+            74 => NumpadSubtract,
+            75 => Numpad4,
+            76 => Numpad5,
+            77 => Numpad6,
+            78 => NumpadAdd,
+            79 => Numpad1,
+            80 => Numpad2,
+            81 => Numpad3,
+            82 => Numpad0,
+            83 => NumpadDot,
+            87 => F11,
+            88 => F12,
+            96 => NumpadEnter,
+            97 => RightCtrl,
+            98 => NumpadDivide,
+            99 => PrintScreen,
+            100 => RightAlt,
+            102 => Home,
+            103 => Up,
+            104 => PageUp,
+            105 => Left,
+            106 => Right,
+            107 => End,
+            108 => Down,
+            109 => PageDown,
+            110 => Insert,
+            111 => Delete,
+            113 => Mute,
+            114 => VolumeDown,
+            115 => VolumeUp,
+            119 => Break,
+            125 => System,
+            127 => Menu,
+            143 => /*Function Key should be ignored*/ ExtraClick,
+            163 => FastForward,
+            164 => PausePlay,
+            165 => Rewind,
+            166 => Stop,
+            190 => MicrophoneToggle,
+            192 => TrackpadOn,
+            193 => TrackpadOff,
+            212 => CameraToggle,
+            224 => BrightnessDown,
+            225 => BrightnessUp,
+            247 => AirplaneMode,
+            e => { eprintln!("Error: Unknown key combination: {}", e); ExtraClick },
+        } as i8;
+
+        if !offset.is_negative() {
+            let bit = 1 << offset;
+
+            if state == 0 {
+                (*c).keys_states &= !bit;
+            } else {
+                (*c).keys_states |= bit;
+            }
+        }
     }
 }
 
@@ -928,6 +1060,8 @@ pub struct WaylandWindow {
     pub(super) default_cursor: *mut WlCursor, // wl_cursor*
     pub(super) cursor_surface: *mut c_void, // wl_surface*
     pub(super) toplevel: *mut c_void,  // void*
+
+    keys_states: u128,
 }
 
 impl Drop for WaylandWindow {
@@ -997,6 +1131,10 @@ impl Nwin for WaylandWindow {
     fn dimensions(&mut self) -> (u16, u16) {
         (self.window_width as u16, self.window_height as u16)
     }
+
+    fn key_held(&self, key: crate::Key) -> bool {
+        self.keys_states & (1 << key as i8) != 0
+    }
 }
 
 pub(super) fn new(name: &str, window: &mut crate::Window) -> Option<()> {
@@ -1052,6 +1190,8 @@ pub(super) fn new(name: &str, window: &mut crate::Window) -> Option<()> {
                 default_cursor: std::ptr::null_mut(), // wl_cursor*
                 cursor_surface: std::ptr::null_mut(), // wl_surface*
                 toplevel: std::ptr::null_mut(),       // void*
+
+                keys_states: 0,
             }),
         )
     };

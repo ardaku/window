@@ -60,58 +60,61 @@ impl Transform {
         self
     }
 
-    /// Rotate transformation.
+    /// Rotate transformation.  Parameters are quaternion in axis-angle form.
+    /// - `x`: axis-vector x.
+    /// - `y`: axis-vector y.
+    /// - `z`: axis-vector z.
+    /// - `c`: angle in cycles.
     pub /*const*/ fn rotate(self, x: f32, y: f32, z: f32, c: f32) -> Self {
-        // scalar (in radians)
-        let s = c * (2.0 * std::f32::consts::PI);
+        // Step 1. Normalize xyz rotation vector.
+        let length = ((x * x) + (y * y) + (z * z)).sqrt();
+        let (x, y, z) = (x / length, y / length, z / length);
 
-		let x2 = x + x;
-		let y2 = y + y;
-		let z2 = z + z;
+        // Step 2. Get quaternion vector.
+        let angle = c * std::f32::consts::PI;
+        let scalar = angle.sin();
+        let (x, y, z) = (x * scalar, y * scalar, z * scalar);
 
-		let xx2 = x2 * x;
-		let xy2 = x2 * y;
-		let xz2 = x2 * z;
+        // Step 3. Get quaternion scalar.
+        let scalar = angle.cos();
 
-		let yy2 = y2 * y;
-		let yz2 = y2 * z;
-		let zz2 = z2 * z;
+        // Step 4. Convert quaternion into matrix.
+        let x2 = x + x;
+        let y2 = y + y;
+        let z2 = z + z;
 
-		let sy2 = y2 * s;
-		let sz2 = z2 * s;
-		let sx2 = x2 * s;
+        let xx2 = x2 * x;
+        let xy2 = x2 * y;
+        let xz2 = x2 * z;
 
-		Transform {
+        let yy2 = y2 * y;
+        let yz2 = y2 * z;
+        let zz2 = z2 * z;
+
+        let sy2 = y2 * scalar;
+        let sz2 = z2 * scalar;
+        let sx2 = x2 * scalar;
+
+        #[cfg_attr(rustfmt, rustfmt_skip)]
+        Self {
             mat: [
-			    [1.0 - yy2 - zz2, xy2 + sz2, xz2 - sy2, 0.0],
-			    [xy2 - sz2, 1.0 - xx2 - zz2, yz2 + sx2, 0.0],
-			    [xz2 + sy2, yz2 - sx2, 1.0 - xx2 - yy2, 0.0],
-			    [0.0, 0.0, 0.0, 1.0]
+                [1.0 - yy2 - zz2, xy2 + sz2, xz2 - sy2, 0.0],
+                [xy2 - sz2, 1.0 - xx2 - zz2, yz2 + sx2, 0.0],
+                [xz2 + sy2, yz2 - sx2, 1.0 - xx2 - yy2, 0.0],
+                [0.0, 0.0, 0.0, 1.0],
             ]
-		} * self
+        }
     }
 
     /// Create a perspective matrix.
-    pub fn perspective(_fov: f32, near: f32, far: f32) -> Self {
-        /*let zcoord_domain = far - near;
-
-//        let scalar = 1.0 / (fov * std::f32::consts::PI).tan();
-        let zscale = -far / zcoord_domain;
-        let zwithw = -far * near / zcoord_domain;
-
-        Self {
-            mat: [
-                [1.0, 0.0, 0.0,     0.0],
-                [0.0, 1.0, 0.0,     0.0],
-                [0.0, 0.0, zscale,  zwithw],
-                [0.0, 0.0, -1.0,    0.0],
-            ]
-        }*/
-
-        let fovy = std::f32::consts::PI / 2.0;
-        let f = 1.0 / (fovy / 2.0).tan();
-        let aspect = 1.0; // TODO
-        let s = (f / aspect, f);
+    /// - `fovy` - Y dimension field of view (in cycles), 0.25 is standard
+    ///   domain: 0 < fovy < 0.5
+    /// - `aspect` - `screen.width / screen.height`
+    /// - `near` - Near clipping pane, domain: 0 < near
+    /// - `far` - Far clipping pane, domain: near < far
+    pub fn perspective(fovy: f32, aspect: f32, near: f32, far: f32) -> Self {
+        let f = 1.0 / (fovy * std::f32::consts::PI).tan();
+        let s = (f * aspect, f);
 
         let zcoord_domain = near - far;
         let zscale = (far + near) / zcoord_domain; // far / zcoord_domain;
@@ -207,11 +210,15 @@ impl std::ops::Mul<Transform> for Transform {
 	}
 }
 
+mod keycodes;
+
 #[cfg(unix)]
 mod wayland;
 
 #[cfg(not(any(target_os = "macos", target_os = "ios")))]
 mod opengl;
+
+pub use self::keycodes::*;
 
 /// Native Window Handle.
 enum NwinHandle {
@@ -250,6 +257,8 @@ trait Nwin {
     fn run(&mut self) -> bool;
     /// Get the window width & height.
     fn dimensions(&mut self) -> (u16, u16);
+    /// Get if a key is held down.
+    fn key_held(&self, key: crate::Key) -> bool;
 }
 
 trait Draw {
@@ -685,5 +694,10 @@ impl Window {
         } else {
             panic!("Already built!");
         }
+    }
+
+    /// If a key is being held down.
+    pub fn key(&self, key: Key) -> bool {
+        self.nwin.key_held(key)
     }
 }

@@ -485,10 +485,10 @@ impl Draw for OpenGL {
 
         // Configuration (TODO)
 
-        unsafe {
+/*        unsafe {
             glEnable(0x0B44 /*GL_CULL_FACES*/);
             gl_assert!();
-        }
+        }*/
 
         unsafe {
             glEnableVertexAttribArray(GL_ATTRIB_POS);
