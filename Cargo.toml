@@ -21,4 +21,12 @@ readme = "README.md"
 keywords = ["wm", "platform-agnostic", "cross-platform", "manager", "graphics"]
 categories = ["graphics", "gui", "multimedia", "rendering", "rendering::engine"]
 
+[badges]
+# travis-ci = { repository = "Aldarobot/window" }
+codecov = { repository = "Aldarobot/window", branch = "master", service = "github" }
+coveralls = { repository = "Aldarobot/window", branch = "master", service = "github" }
+is-it-maintained-issue-resolution = { repository = "Aldarobot/window" }
+is-it-maintained-open-issues = { repository = "Aldarobot/window" }
+maintenance = { status = "actively-developed" }
+
 [dependencies]
