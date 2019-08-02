@@ -189,7 +189,9 @@ pub struct Graphic {
 
 impl Graphic {
     pub fn new(pixels: &[u8], width: usize) -> Self {
-        let width = width as i32;
+        let mut width = width as i32;
+        let mut height = ((pixels.len() >> 2) as i32) / width;
+        let orig_width = width as i32;
 
         let new_texture = unsafe {
             let mut new_texture = std::mem::MaybeUninit::uninit();
@@ -210,30 +212,107 @@ impl Graphic {
             const GL_NEAREST_MIPMAP_LINEAR: i32 = 0x2702;
             const GL_TEXTURE_WRAP_S: u32 = 0x2802;
             const GL_TEXTURE_WRAP_T: u32 = 0x2803;
-            const GL_CLAMP_TO_EDGE: i32 = 0x812F;
+            const GL_LINEAR_MIPMAP_NEAREST: i32 = 0x2701;
+/*            const GL_CLAMP_TO_EDGE: i32 = 0x812F;
+            const GL_REPEAT: i32 = 0x2901; // Not solution
+            const GL_MIRROR_REPEAT: i32 = 0x8370; // Not solution*/
+            const GL_CLAMP: i32 = 0x812D;
 
             glBindTexture(GL_TEXTURE_2D, new_texture);
             get_error();
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
             get_error();
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
             get_error();
+
+            // Rendered bigger than texture
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST_MIPMAP_LINEAR);
             get_error();
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+            // Rendered smaller than texture.
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
             get_error();
+            // Width has 16-32 textures max (256-128 pixels each, 4096 total)
+            // 0:4096 1:2048 2:1024 3:512 4:256 5:128 6:64 7:32
+            glTexParameteri(GL_TEXTURE_2D, 0x813D /*GL_TEXTURE_MAX_LEVEL*/, 7); // pick mipmap level 7 or lower
+
             glTexImage2D(
                 GL_TEXTURE_2D,
                 0,
                 GL_RGBA as i32,
-                width, // w
-                ((pixels.len() >> 2) as i32) / width, // h
+                width,
+                height,
                 0,
                 GL_RGBA,
                 0x1401 /*GL_UNSIGNED_BYTE*/,
                 pixels.as_ptr() as *const _,
             );
             get_error();
+
+/*        fn sample(pixels: &[u8], width: i32, x: i32, y: i32) -> [u8;4] {
+            [
+                pixels[(x + (y * width)) as usize * 4],
+                pixels[(x + (y * width)) as usize * 4 + 1],
+                pixels[(x + (y * width)) as usize * 4 + 2],
+                pixels[(x + (y * width)) as usize * 4 + 3],
+            ]
+        }
+
+            // Generate Mipmaps.
+            let mut old_pixels = pixels.to_vec();
+            let mut old_width = orig_width;
+            let mut mipmap_pixels = Vec::with_capacity(pixels.len() / 4);
+            let mut mipmap_level = 0;
+            let mut skip = 1;
+            while width > 32 && height > 32 { // 2 ^ 5
+                // Divide width & height.
+                width >>= 1;
+                height >>= 1;
+                // Increase mipmap level.
+                mipmap_level += 1;
+                skip <<= 1;
+                // Generate pixels.
+                mipmap_pixels.clear();
+                for j in 0..height {
+                    for i in 0..width {
+                        let [r00, g00, b00, a00] = sample(old_pixels.as_slice(), old_width, i * 2, j * 2);
+                        let [r01, g01, b01, a01] = sample(old_pixels.as_slice(), old_width, i * 2, j * 2 + 1);
+                        let [r10, g10, b10, a10] = sample(old_pixels.as_slice(), old_width, i * 2 + 1, j * 2);
+                        let [r11, g11, b11, a11] = sample(old_pixels.as_slice(), old_width, i * 2 + 1, j * 2 + 1);
+
+                        let r = r00 as u16 + r01 as u16 + r10 as u16 + r11 as u16;
+                        let g = g00 as u16 + g01 as u16 + g10 as u16 + g11 as u16;
+                        let b = b00 as u16 + b01 as u16 + b10 as u16 + b11 as u16;
+                        let a = a00 as u16 + a01 as u16 + a10 as u16 + a11 as u16;
+
+                        mipmap_pixels.push((r >> 2) as u8);
+                        mipmap_pixels.push((g >> 2) as u8);
+                        mipmap_pixels.push((b >> 2) as u8);
+                        mipmap_pixels.push((a >> 2) as u8);
+                    }
+                }
+
+                println!("LOD {} {} {}", mipmap_level, width, height);
+
+                glBindTexture(GL_TEXTURE_2D, new_texture);
+                get_error();
+                glTexImage2D(
+                    GL_TEXTURE_2D,
+                    mipmap_level,
+                    GL_RGBA as i32,
+                    width,
+                    height,
+                    0,
+                    GL_RGBA,
+                    0x1401 /*GL_UNSIGNED_BYTE*/,
+                    mipmap_pixels.as_ptr() as *const _,
+                );
+                get_error();
+
+                println!("LOD!!!!");
+
+                old_pixels = mipmap_pixels.clone();
+                old_width = old_width / 2;
+            }*/
 
             glGenerateMipmap(GL_TEXTURE_2D);
             get_error();
@@ -674,7 +753,7 @@ impl Draw for OpenGL {
         // Only bind, if it's not already bound.
         if self.graphic != graphic.id() {
             unsafe {
-                glBindTexture(0x0DE1 /*GL_TEXTURE_2D*/, graphic.id());
+                glBindTexture(GL_TEXTURE_2D, graphic.id());
             }
             get_error();
             // Update which graphic is bound.
