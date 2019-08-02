@@ -285,7 +285,7 @@ trait Draw {
     /// Transform 1 instance.
     fn transform(&mut self, shape: &mut Nshape, instance: u16, transform: Transform);
     /// Upload graphic.
-    fn graphic(&mut self, pixels: &[u8], width: usize) -> Box<Ngraphic>;
+    fn graphic(&mut self, pixels: &[u8], width: usize, height: usize) -> Box<Ngraphic>;
     /// Use a graphic.
     fn bind_graphic(&mut self, graphic: &Ngraphic);
     /// Render toolbar with width & height.
@@ -586,8 +586,9 @@ impl Window {
 
         let (toolbar_shader, toolbar_shape) = (toolbar)(&mut window);
         let width = window.nwin.dimensions().0;
+        let height = window.toolbar_height;
         let pixels = vec![255; (width * window.toolbar_height) as usize * 4];
-        let toolbar_graphic = window.graphic(pixels.as_slice(), width as usize);
+        let toolbar_graphic = window.graphic(pixels.as_slice(), width as usize, height as usize);
         fn toolbar_callback(a: &mut [u8], b: u16) {}
 
         unsafe {
@@ -631,8 +632,8 @@ impl Window {
     }
 
     /// Load an RGBA graphic to the GPU.
-    pub fn graphic(&mut self, pixels: &[u8], width: usize) -> Graphic {
-        Graphic(self.draw.graphic(pixels, width))
+    pub fn graphic(&mut self, pixels: &[u8], width: usize, height: usize) -> Graphic {
+        Graphic(self.draw.graphic(pixels, width, height))
     }
 
     /// Update RGBA graphic on the GPU.
