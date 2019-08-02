@@ -189,12 +189,10 @@ pub struct Graphic {
 
 impl Graphic {
     pub fn new(pixels: &[u8], width: usize, height: usize) -> Self {
-        assert!(pixels.len() >= width * height * 4);
+        debug_assert!(pixels.len() >= width * height * 4);
 
         let mut width = width as i32;
         let mut height = height as i32;
-//        let mut height = ((pixels.len() >> 2) as i32) / width;
-        let orig_width = width as i32;
 
         let new_texture = unsafe {
             let mut new_texture = std::mem::MaybeUninit::uninit();
@@ -204,22 +202,10 @@ impl Graphic {
         };
 
         unsafe {
-            #![allow(unused)]
-
             const GL_TEXTURE_MAG_FILTER: u32 = 0x2800;
             const GL_TEXTURE_MIN_FILTER: u32 = 0x2801;
             const GL_NEAREST: i32 = 0x2600;
-            const GL_LINEAR: i32 = 0x2601;
-            const GL_LINEAR_MIPMAP_LINEAR: i32 = 0x2703;
-            const GL_NEAREST_MIPMAP_NEAREST: i32 = 0x2700;
             const GL_NEAREST_MIPMAP_LINEAR: i32 = 0x2702;
-            const GL_TEXTURE_WRAP_S: u32 = 0x2802;
-            const GL_TEXTURE_WRAP_T: u32 = 0x2803;
-            const GL_LINEAR_MIPMAP_NEAREST: i32 = 0x2701;
-/*            const GL_CLAMP_TO_EDGE: i32 = 0x812F;
-            const GL_REPEAT: i32 = 0x2901; // Not solution
-            const GL_MIRROR_REPEAT: i32 = 0x8370; // Not solution*/
-            const GL_CLAMP: i32 = 0x812D;
 
             glBindTexture(GL_TEXTURE_2D, new_texture);
             get_error();
@@ -244,17 +230,7 @@ impl Graphic {
             );
             get_error();
 
-        fn sample(pixels: &[u8], width: i32, x: i32, y: i32) -> [u8;4] {
-            [
-                pixels[(x + (y * width)) as usize * 4],
-                pixels[(x + (y * width)) as usize * 4 + 1],
-                pixels[(x + (y * width)) as usize * 4 + 2],
-                pixels[(x + (y * width)) as usize * 4 + 3],
-            ]
-        }
-
             // Generate Mipmaps.
-            let mut old_pixels = pixels.to_vec();
             let mut mipmap_level = 0;
             let mut offset = width as usize * height as usize * 4;
 //            let mut skip = 1;

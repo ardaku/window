@@ -509,7 +509,7 @@ pub struct Window {
     toolbar_shader: Shader,
     toolbar_shape: Shape,
     toolbar_callback: fn(&mut [u8], u16),
-    // Height of the toolbar.
+    /// Height of the toolbar.
     pub toolbar_height: u16,
     draw: Box<Draw>,
     nwin: Box<Nwin>,
@@ -589,7 +589,7 @@ impl Window {
         let height = window.toolbar_height;
         let pixels = vec![255; (width * window.toolbar_height) as usize * 4];
         let toolbar_graphic = window.graphic(pixels.as_slice(), width as usize, height as usize);
-        fn toolbar_callback(a: &mut [u8], b: u16) {}
+        fn toolbar_callback(_: &mut [u8], _: u16) {}
 
         unsafe {
             std::ptr::write(&mut window.toolbar_shader, toolbar_shader);
