@@ -15,18 +15,16 @@ edition = "2018"
 license = "MIT / BSL-1.0"
 description = "Minimal Rust code for creating a window, automatically choosing a backend window manager and graphics API."
 documentation = "https://docs.rs/window"
-homepage = "https://aldarobot.plopgrizzly.com/window/"
-repository = "https://github.com/Aldarobot/window"
+homepage = "https://libcala.github.io/window/"
+repository = "https://github.com/libcala/window"
 readme = "README.md"
 keywords = ["wm", "platform-agnostic", "cross-platform", "manager", "graphics"]
 categories = ["graphics", "gui", "multimedia", "rendering", "rendering::engine"]
 
 [badges]
-# travis-ci = { repository = "Aldarobot/window" }
-codecov = { repository = "Aldarobot/window", branch = "master", service = "github" }
-coveralls = { repository = "Aldarobot/window", branch = "master", service = "github" }
-is-it-maintained-issue-resolution = { repository = "Aldarobot/window" }
-is-it-maintained-open-issues = { repository = "Aldarobot/window" }
+travis-ci = { repository = "libcala/window" }
+is-it-maintained-issue-resolution = { repository = "libcala/window" }
+is-it-maintained-open-issues = { repository = "libcala/window" }
 maintenance = { status = "actively-developed" }
 
 [dependencies]
