@@ -294,10 +294,13 @@ trait Draw {
     fn texture_coords(&mut self, shader: &Nshader, coords: ([f32; 2], [f32; 2]));
     /// Set camera
     fn camera(&mut self, shader: &Nshader, cam: Transform);
+    /// Set tint
+    fn tint(&mut self, shader: &Nshader, tint: [f32; 4]);
 }
 
 trait Nshader {
     fn depth(&self) -> Option<i32>;
+    fn tint(&self) -> Option<i32>;
     fn gradient(&self) -> bool;
     fn graphic(&self) -> Option<(i32, i32)>;
     fn blending(&self) -> bool;
@@ -641,9 +644,14 @@ impl Window {
         graphic.0.update(closure);
     }
 
-    /// Set texture coordinates for a shader.
+    /// Set camera coordiantes for a shader.
     pub fn camera(&mut self, shader: &Shader, cam: Transform) {
         self.draw.camera(&*shader.0, cam)
+    }
+
+    /// Set RGBA tint for a shader.
+    pub fn tint(&mut self, shader: &Shader, color: [f32; 4]) {
+        self.draw.tint(&*shader.0, color)
     }
 
     /// Set texture coordinates for a shader.

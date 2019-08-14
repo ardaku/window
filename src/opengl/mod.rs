@@ -124,6 +124,7 @@ extern "C" {
     ) -> ();
     fn glUniform1i(location: i32, v0: i32) -> ();
     fn glUniform2f(location: i32, v0: f32, v1: f32) -> ();
+    fn glUniform4f(location: i32, v0: f32, v1: f32, v2: f32, v3: f32) -> ();
     fn glClearColor(red: f32, green: f32, blue: f32, alpha: f32) -> ();
     fn glClear(mask: u32) -> ();
     fn glVertexAttribPointer(
@@ -158,6 +159,7 @@ extern "C" {
         height: i32, border: i32, format: u32, stype: u32, pixels: *const u8) -> ();
     fn glGenerateMipmap(target: u32);
     fn glViewport(x: i32, y: i32, width: i32, height: i32) -> ();
+    fn glBlendFuncSeparate(a: u32, b: u32, c: u32, d: u32) -> ();
 }
 
 /// A shader.  Shaders are a program that runs on the GPU to render a `Shape`.
@@ -170,8 +172,10 @@ pub struct Shader {
     graphic: Option<(i32, i32)>,
     // TODO
     transforms: Vec<i32>,
-    // True if 3D.
+    // Some if 3D.
     depth: Option<i32>,
+    // Some if tint.
+    tint: Option<i32>,
     // True if transparency is allowed.
     blending: bool,
     // Maximum number of instances.
@@ -315,6 +319,10 @@ impl Shader {
 }
 
 impl Nshader for Shader {
+    fn tint(&self) -> Option<i32> {
+        self.tint
+    }
+
     fn depth(&self) -> Option<i32> {
         self.depth
     }
@@ -464,6 +472,7 @@ pub struct OpenGL {
     config: *mut c_void,
     graphic: u32,
     depth: bool,
+    blending: bool,
 }
 
 impl Drop for OpenGL {
@@ -535,7 +544,7 @@ impl Draw for OpenGL {
 
     fn background(&mut self, r: f32, g: f32, b: f32) {
         unsafe {
-            glClearColor(r, g, b, 0.5); // TODO ?
+            glClearColor(r, g, b, 1.0);
             gl_assert!();
         }
     }
@@ -578,6 +587,28 @@ impl Draw for OpenGL {
 
     fn draw(&mut self, shader: &Nshader, vertlist: &Nvertices, shape: &Nshape) {
         shader.bind();
+
+        if shader.blending() && !self.blending {
+            unsafe {
+                glEnable(0x0BE2 /*BLEND*/);
+                gl_assert!();
+                // Alpha Blending.
+                glBlendFuncSeparate(
+                     /* GL_SRC_ALPHA */ 0x0302u32,
+                     /* GL_ONE_MINUS_SRC_ALPHA*/ 0x0303u32,
+                     /* GL_SRC_ALPHA */ 0x0302u32,
+                     /* GL_DST_ALPHA */ 0x0304u32,
+                );
+                gl_assert!();
+            }
+            self.blending = true;
+        } else if !shader.blending() && self.blending {
+            unsafe {
+                glDisable(0x0BE2 /*BLEND*/);
+                gl_assert!();
+            }
+            self.blending = false;
+        }
 
         if shader.depth().is_some() && !self.depth {
             unsafe {
@@ -725,6 +756,17 @@ impl Draw for OpenGL {
                     1,
                     0, /*GL_FALSE*/
                     cam.mat.as_ptr() as *const c_void,
+                );
+            }
+        }
+    }
+
+    fn tint(&mut self, shader: &Nshader, tint: [f32; 4]) {
+        if let Some(a) = shader.tint() {
+            shader.bind();
+            unsafe {
+                glUniform4f(
+                    a, tint[0], tint[1], tint[2], tint[3],
                 );
             }
         }
@@ -905,12 +947,25 @@ fn create_program(builder: crate::ShaderBuilder) -> Shader {
         None
     };
 
+    let tint = if builder.tint {
+        let tint = unsafe {
+            glGetUniformLocation(program, "tint\0".as_ptr() as *const _ as *const _)
+        };
+        gl_assert!();
+        assert!(tint > -1);
+
+        Some(tint)
+    } else {
+        None
+    };
+
     Shader {
         program,
         gradient: builder.gradient,
         graphic,
         transforms,
         depth,
+        tint,
         blending: builder.blend,
         instance_count: builder.instance_count,
         id,
@@ -998,6 +1053,7 @@ pub(super) fn new(window: &mut Window) -> Option<Box<Draw>> {
                 /*EGL_RED_SIZE:*/ 0x3024, 8,
                 /*EGL_GREEN_SIZE:*/ 0x3023, 8,
                 /*EGL_BLUE_SIZE:*/ 0x3022, 8,
+                /*EGL_ALPHA_SIZE:*/ 0x3021, 8,
                 /*EGL_DEPTH_SIZE*/ 0x3025, 24,
                 /*EGL_RENDERABLE_TYPE:*/ 0x3040,
                 /*EGL_OPENGL_ES2_BIT:*/ 0x0004,
@@ -1035,6 +1091,7 @@ pub(super) fn new(window: &mut Window) -> Option<Box<Draw>> {
         surface: std::ptr::null_mut(),
         graphic: 0,
         depth: false,
+        blending: false,
     };
 
     Some(Box::new(draw))
