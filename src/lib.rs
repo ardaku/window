@@ -320,7 +320,7 @@ trait Draw {
     fn texture_coords(
         &mut self,
         shader: &dyn Nshader,
-        coords: ([f32; 2], [f32; 2]),
+        coords: (u32, [f32; 2], [f32; 2]),
     );
     /// Set camera
     fn camera(&mut self, shader: &dyn Nshader, cam: Transform);
@@ -343,11 +343,12 @@ trait Nshader {
 
 trait Nshape {
     fn len(&self) -> i32;
-    fn ptr(&self) -> *const c_void;
+    fn buf(&self) -> u32;
     fn instances(&mut self, matrices: &[Transform]);
     fn transform(&mut self, index: u16, transform: Transform);
     fn instances_ptr(&self) -> *const c_void;
     fn instances_num(&self) -> i32;
+    fn bind(&self);
 }
 
 trait Nvertices {
@@ -723,7 +724,7 @@ impl Window {
     pub fn texture_coords(
         &mut self,
         shader: &Shader,
-        coords: ([f32; 2], [f32; 2]),
+        coords: (u32, [f32; 2], [f32; 2]),
     ) {
         self.draw.texture_coords(&*shader.0, coords)
     }
@@ -760,7 +761,7 @@ impl Window {
     ) {
         self.draw.bind_graphic(&*graphic.0);
         self.draw
-            .texture_coords(&*shader.0, ([0f32, 0f32], [1f32, 1f32]));
+            .texture_coords(&*shader.0, (std::u32::MAX, [0f32, 0f32], [1f32, 1f32]));
         self.draw.toolbar(
             self.nwin.dimensions().0,
             self.nwin.dimensions().1,

@@ -323,14 +323,18 @@ impl Drop for Vertices {
 
 /// A shape.  Shapes are a list of indices into `Vertices`.
 pub struct Shape {
-    indices: Vec<u16>,
+    index_buf: u32,
+    index_len: usize,
     instances: Vec<crate::Transform>,
 }
 
 impl Shape {
     pub fn new(builder: crate::ShapeBuilder) -> Shape {
+        const GL_ELEMENT_ARRAY_BUFFER: u32 = 0x8893;
+
         Shape {
-            indices: builder.indices.to_vec(), // TODO: use vec??
+            index_buf: create_vbo(&builder.indices, GL_ELEMENT_ARRAY_BUFFER),
+            index_len: builder.indices.len(),
             instances: Vec::with_capacity(builder.num_instances.into()),
         }
     }
@@ -390,11 +394,11 @@ impl Nshader for Shader {
 
 impl Nshape for Shape {
     fn len(&self) -> i32 {
-        self.indices.len() as i32
+        self.index_len as i32
     }
 
-    fn ptr(&self) -> *const c_void {
-        self.indices.as_ptr() as *const _ as *const _
+    fn buf(&self) -> u32 {
+        self.index_buf
     }
 
     fn instances(&mut self, transforms: &[crate::Transform]) {
@@ -416,6 +420,14 @@ impl Nshape for Shape {
 
     fn instances_num(&self) -> i32 {
         self.instances.len() as i32
+    }
+
+    fn bind(&self) {
+        debug_assert_ne!(self.index_buf, 0);
+        unsafe {
+            glBindBuffer(0x8893 /*GL_ELEMENT_ARRAY_BUFFER*/, self.index_buf);
+            gl_assert!("glBindBuffer#Element");
+        }
     }
 }
 
@@ -502,6 +514,7 @@ pub struct OpenGL {
     depth: bool,
     blending: bool,
     shader: u32,
+    tex_coords_id: (u32, [f32; 2], [f32; 2]),
 }
 
 impl Drop for OpenGL {
@@ -687,6 +700,7 @@ impl Draw for OpenGL {
             let stride = (stride * std::mem::size_of::<f32>()) as i32;
 
             vertlist.bind();
+            shape.bind();
 
             // Always
             {
@@ -736,6 +750,7 @@ impl Draw for OpenGL {
             // TODO use glDrawElementsInstanced only if available (when not
             // GLES2).
             //            glDrawElementsInstanced(0x0004 /*GL_TRIANGLES*/, shape.len(), 0x1403 /*GL_UNSIGNED_SHORT*/, shape.ptr(), shape.instances_num());
+
             {
                 for i in 0..shape.instances_num() {
                     glUniform1i(shader.id(), i);
@@ -744,7 +759,7 @@ impl Draw for OpenGL {
                         0x0004, /*GL_TRIANGLES*/
                         shape.len(),
                         0x1403, /*GL_UNSIGNED_SHORT*/
-                        shape.ptr(),
+                        std::ptr::null(),
                     );
                     gl_assert!("glDrawElements");
                 }
@@ -793,13 +808,16 @@ impl Draw for OpenGL {
     fn texture_coords(
         &mut self,
         shader: &dyn Nshader,
-        coords: ([f32; 2], [f32; 2]),
+        coords: (u32, [f32; 2], [f32; 2]),
     ) {
         if let Some((a, b)) = shader.graphic() {
-            self.bind_shader(shader);
-            unsafe {
-                glUniform2f(a, coords.0[0], coords.0[1]);
-                glUniform2f(b, coords.1[0], coords.1[1]);
+            if coords.0 != self.tex_coords_id.0 {
+                self.bind_shader(shader);
+                unsafe {
+                    glUniform2f(a, coords.1[0], coords.1[1]);
+                    glUniform2f(b, coords.2[0], coords.2[1]);
+                }
+                self.tex_coords_id = coords;
             }
         }
     }
@@ -845,18 +863,19 @@ fn create_vbo<T>(vertices: &[T], target: u32) -> u32 {
         glGenBuffers(1 /*1 buffer*/, buffer.as_mut_ptr());
         gl_assert!("glGenBuffers");
         let buffer = buffer.assume_init();
-        if target == 0x8892 {
+        if target == 0x8892 || target == 0x8893 {
             glBindBuffer(target, buffer);
+            gl_assert!(&format!("glBindBuffer#{:X}", target));
         } else {
             glBindBufferBase(target, 0, buffer);
+            gl_assert!(&format!("glBindBufferBase#{:X}", target));
         }
-        gl_assert!("BIND_BUFFER");
         // TODO: maybe use glMapBuffer & glUnmapBuffer instead?
         glBufferData(
             target,
             (vertices.len() * std::mem::size_of::<T>()) as isize,
             vertices.as_ptr() as *const _,
-            if target == 0x8892 {
+            if target == 0x8892 || target == 0x8893 {
                 0x88E4 /*GL_STATIC_DRAW - never changes*/
             } else {
                 0x88E8 /*GL_DYNAMIC_DRAW*/
@@ -1182,6 +1201,7 @@ pub(super) fn new(window: &mut Window) -> Option<Box<dyn Draw>> {
         depth: false,
         blending: false,
         shader: 0,
+        tex_coords_id: (std::u32::MAX, [0.0, 0.0], [1.0, 1.0]),
     };
 
     Some(Box::new(draw))
