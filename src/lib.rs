@@ -281,19 +281,19 @@ trait Draw {
     /// Change the background color.
     fn background(&mut self, r: f32, g: f32, b: f32);
     /// Create a shader.
-    fn shader_new(&mut self, builder: ShaderBuilder) -> Box<Nshader>;
+    fn shader_new(&mut self, builder: ShaderBuilder) -> Box<dyn Nshader>;
     /// Create a collection of vertices.
-    fn vertices_new(&mut self, vertices: &[f32]) -> Box<Nvertices>;
+    fn vertices_new(&mut self, vertices: &[f32]) -> Box<dyn Nvertices>;
     /// Create a shape.
-    fn shape_new(&mut self, builder: ShapeBuilder) -> Box<Nshape>;
+    fn shape_new(&mut self, builder: ShapeBuilder) -> Box<dyn Nshape>;
     /// Draw a shape.
-    fn draw(&mut self, shader: &Nshader, vertlist: &Nvertices, shape: &Nshape);
+    fn draw(&mut self, shader: &dyn Nshader, vertlist: &dyn Nvertices, shape: &dyn Nshape);
     /// Set instances for a shape.
-    fn instances(&mut self, shape: &mut Nshape, matrices: &[Transform]);
+    fn instances(&mut self, shape: &mut dyn Nshape, matrices: &[Transform]);
     /// Transform 1 instance.
     fn transform(
         &mut self,
-        shape: &mut Nshape,
+        shape: &mut dyn Nshape,
         instance: u16,
         transform: Transform,
     );
@@ -303,29 +303,29 @@ trait Draw {
         pixels: &[u8],
         width: usize,
         height: usize,
-    ) -> Box<Ngraphic>;
+    ) -> Box<dyn Ngraphic>;
     /// Use a graphic.
-    fn bind_graphic(&mut self, graphic: &Ngraphic);
+    fn bind_graphic(&mut self, graphic: &dyn Ngraphic);
     /// Render toolbar with width & height.
     fn toolbar(
         &mut self,
         w: u16,
         height: u16,
         toolbar_height: u16,
-        shader: &Nshader,
-        vertlist: &Nvertices,
-        shape: &Nshape,
+        shader: &dyn Nshader,
+        vertlist: &dyn Nvertices,
+        shape: &dyn Nshape,
     );
     /// Set texture coordinates
     fn texture_coords(
         &mut self,
-        shader: &Nshader,
+        shader: &dyn Nshader,
         coords: ([f32; 2], [f32; 2]),
     );
     /// Set camera
-    fn camera(&mut self, shader: &Nshader, cam: Transform);
+    fn camera(&mut self, shader: &dyn Nshader, cam: Transform);
     /// Set tint
-    fn tint(&mut self, shader: &Nshader, tint: [f32; 4]);
+    fn tint(&mut self, shader: &dyn Nshader, tint: [f32; 4]);
 }
 
 trait Nshader {
@@ -355,22 +355,22 @@ trait Nvertices {
 }
 
 /// A shape.
-pub struct Shape(Box<Nshape>);
+pub struct Shape(Box<dyn Nshape>);
 
 trait Ngraphic {
     fn id(&self) -> u32;
     fn width(&self) -> u16;
     fn height(&self) -> u16;
     fn resize(&mut self, pixels: &[u8], width: usize);
-    fn update(&mut self, updater: &mut FnMut(&mut [u8], u16));
+    fn update(&mut self, updater: &mut dyn FnMut(&mut [u8], u16));
 }
 
 /// A graphic on the GPU.
-pub struct Graphic(Box<Ngraphic>);
+pub struct Graphic(Box<dyn Ngraphic>);
 
 enum Either {
     Builder(Vec<f32>),
-    VertList(Box<Nvertices>),
+    VertList(Box<dyn Nvertices>),
 }
 
 fn nearly_equal(a: f32, b: f32) -> bool {
@@ -398,7 +398,7 @@ fn nearly_equal(a: f32, b: f32) -> bool {
 }
 
 /// A shader.
-pub struct Shader(Box<Nshader>, Either);
+pub struct Shader(Box<dyn Nshader>, Either);
 
 /// A shape builder.
 pub struct ShapeBuilder<'a> {
@@ -560,8 +560,8 @@ pub struct Window {
     toolbar_callback: fn(&mut [u8], u16),
     /// Height of the toolbar.
     pub toolbar_height: u16,
-    draw: Box<Draw>,
-    nwin: Box<Nwin>,
+    draw: Box<dyn Draw>,
+    nwin: Box<dyn Nwin>,
     redraw: fn(nanos: u64) -> (),
 }
 
@@ -704,7 +704,7 @@ impl Window {
     pub fn update_graphic(
         &mut self,
         graphic: &mut Graphic,
-        closure: &mut FnMut(&mut [u8], u16),
+        closure: &mut dyn FnMut(&mut [u8], u16),
     ) {
         graphic.0.update(closure);
     }

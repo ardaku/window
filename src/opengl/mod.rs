@@ -470,7 +470,7 @@ impl Ngraphic for Graphic {
         }
     }
 
-    fn update(&mut self, updater: &mut FnMut(&mut [u8], u16)) {
+    fn update(&mut self, updater: &mut dyn FnMut(&mut [u8], u16)) {
         updater(self.pixels.as_mut_slice(), self.width as u16);
 
         unsafe {
@@ -591,15 +591,15 @@ impl Draw for OpenGL {
         }
     }
 
-    fn shader_new(&mut self, builder: crate::ShaderBuilder) -> Box<Nshader> {
+    fn shader_new(&mut self, builder: crate::ShaderBuilder) -> Box<dyn Nshader> {
         Box::new(Shader::new(builder))
     }
 
-    fn vertices_new(&mut self, vertices: &[f32]) -> Box<Nvertices> {
+    fn vertices_new(&mut self, vertices: &[f32]) -> Box<dyn Nvertices> {
         Box::new(Vertices::new(vertices))
     }
 
-    fn shape_new(&mut self, builder: crate::ShapeBuilder) -> Box<Nshape> {
+    fn shape_new(&mut self, builder: crate::ShapeBuilder) -> Box<dyn Nshape> {
         Box::new(Shape::new(builder))
     }
 
@@ -608,9 +608,9 @@ impl Draw for OpenGL {
         w: u16,
         h: u16,
         toolbar_height: u16,
-        shader: &Nshader,
-        vertlist: &Nvertices,
-        shape: &Nshape,
+        shader: &dyn Nshader,
+        vertlist: &dyn Nvertices,
+        shape: &dyn Nshape,
     ) -> () {
         let w = w as i32;
         let h = h as i32;
@@ -637,7 +637,7 @@ impl Draw for OpenGL {
         }
     }
 
-    fn draw(&mut self, shader: &Nshader, vertlist: &Nvertices, shape: &Nshape) {
+    fn draw(&mut self, shader: &dyn Nshader, vertlist: &dyn Nvertices, shape: &dyn Nshape) {
         self.bind_shader(shader);
 
         if shader.blending() && !self.blending {
@@ -754,7 +754,7 @@ impl Draw for OpenGL {
 
     fn instances(
         &mut self,
-        shape: &mut Nshape,
+        shape: &mut dyn Nshape,
         transforms: &[crate::Transform],
     ) {
         shape.instances(transforms);
@@ -762,7 +762,7 @@ impl Draw for OpenGL {
 
     fn transform(
         &mut self,
-        shape: &mut Nshape,
+        shape: &mut dyn Nshape,
         instance: u16,
         transform: crate::Transform,
     ) {
@@ -774,11 +774,11 @@ impl Draw for OpenGL {
         pixels: &[u8],
         width: usize,
         height: usize,
-    ) -> Box<Ngraphic> {
+    ) -> Box<dyn Ngraphic> {
         Box::new(Graphic::new(pixels, width, height))
     }
 
-    fn bind_graphic(&mut self, graphic: &Ngraphic) {
+    fn bind_graphic(&mut self, graphic: &dyn Ngraphic) {
         // Only bind, if it's not already bound.
         if self.graphic != graphic.id() {
             unsafe {
@@ -792,7 +792,7 @@ impl Draw for OpenGL {
 
     fn texture_coords(
         &mut self,
-        shader: &Nshader,
+        shader: &dyn Nshader,
         coords: ([f32; 2], [f32; 2]),
     ) {
         if let Some((a, b)) = shader.graphic() {
@@ -804,7 +804,7 @@ impl Draw for OpenGL {
         }
     }
 
-    fn camera(&mut self, shader: &Nshader, cam: crate::Transform) {
+    fn camera(&mut self, shader: &dyn Nshader, cam: crate::Transform) {
         if let Some(a) = shader.depth() {
             self.bind_shader(shader);
             unsafe {
@@ -818,7 +818,7 @@ impl Draw for OpenGL {
         }
     }
 
-    fn tint(&mut self, shader: &Nshader, tint: [f32; 4]) {
+    fn tint(&mut self, shader: &dyn Nshader, tint: [f32; 4]) {
         if let Some(a) = shader.tint() {
             self.bind_shader(shader);
             unsafe {
@@ -829,7 +829,7 @@ impl Draw for OpenGL {
 }
 
 impl OpenGL {
-    fn bind_shader(&mut self, shader: &Nshader) {
+    fn bind_shader(&mut self, shader: &dyn Nshader) {
         let shader_id = shader.program();
         if shader_id != self.shader {
             shader.bind();
@@ -1108,7 +1108,7 @@ fn create_shader(source: *const i8, shader_type: u32) -> u32 {
 }
 
 #[cfg(unix)]
-pub(super) fn new(window: &mut Window) -> Option<Box<Draw>> {
+pub(super) fn new(window: &mut Window) -> Option<Box<dyn Draw>> {
     let (display, config, context) = unsafe {
         // Get EGL Display from Window.
         let display = eglGetDisplay(match window.nwin.handle() {
