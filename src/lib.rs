@@ -14,17 +14,18 @@
 use std::ffi::c_void;
 
 /// **video** Load a generated shader from `res`.
-#[macro_export(self)] macro_rules! shader {
+#[macro_export(self)]
+macro_rules! shader {
     ($shadername: literal) => {
         include!(concat!(env!("OUT_DIR"), "/res/", $shadername, ".rs"));
-    }
+    };
 }
 
 /// A transformation matrix.
 #[repr(C)]
 #[derive(Copy, Clone)]
 pub struct Transform {
-    mat: [[f32;4];4],
+    mat: [[f32; 4]; 4],
 }
 
 impl Default for Transform {
@@ -37,10 +38,12 @@ impl Transform {
     /// Create a new identity matrix (transform that does nothing).
     pub fn new() -> Self {
         Self {
-            mat: [[1.0, 0.0, 0.0, 0.0],
-            [0.0, 1.0, 0.0, 0.0],
-            [0.0, 0.0, 1.0, 0.0],
-            [0.0, 0.0, 0.0, 1.0]],
+            mat: [
+                [1.0, 0.0, 0.0, 0.0],
+                [0.0, 1.0, 0.0, 0.0],
+                [0.0, 0.0, 1.0, 0.0],
+                [0.0, 0.0, 0.0, 1.0],
+            ],
         }
     }
 
@@ -65,7 +68,7 @@ impl Transform {
     /// - `y`: axis-vector y.
     /// - `z`: axis-vector z.
     /// - `c`: angle in cycles.
-    pub /*const*/ fn rotate(self, x: f32, y: f32, z: f32, c: f32) -> Self {
+    pub fn rotate(self, x: f32, y: f32, z: f32, c: f32) -> Self {
         // Step 1. Normalize xyz rotation vector.
         let length = ((x * x) + (y * y) + (z * z)).sqrt();
         let (x, y, z) = (x / length, y / length, z / length);
@@ -133,81 +136,86 @@ impl Transform {
 }
 
 impl std::ops::Mul<Transform> for Transform {
-	type Output = Transform;
+    type Output = Transform;
 
-	fn mul(self, rhs: Transform) -> Self::Output {
+    fn mul(self, rhs: Transform) -> Self::Output {
         Transform {
             mat: [
-			    [(self.mat[0][0] * rhs.mat[0][0])
-                + (self.mat[0][1] * rhs.mat[1][0])
-                + (self.mat[0][2] * rhs.mat[2][0])
-                + (self.mat[0][3] * rhs.mat[3][0]),
-			    (self.mat[0][0] * rhs.mat[0][1])
-                + (self.mat[0][1] * rhs.mat[1][1])
-                + (self.mat[0][2] * rhs.mat[2][1])
-                + (self.mat[0][3] * rhs.mat[3][1]),
-			    (self.mat[0][0] * rhs.mat[0][2])
-                + (self.mat[0][1] * rhs.mat[1][2])
-                + (self.mat[0][2] * rhs.mat[2][2])
-                + (self.mat[0][3] * rhs.mat[3][2]),
-			    (self.mat[0][0] * rhs.mat[0][3])
-                + (self.mat[0][1] * rhs.mat[1][3])
-                + (self.mat[0][2] * rhs.mat[2][3])
-                + (self.mat[0][3] * rhs.mat[3][3])],
-
-			    [(self.mat[1][0] * rhs.mat[0][0])
-                + (self.mat[1][1] * rhs.mat[1][0])
-                + (self.mat[1][2] * rhs.mat[2][0])
-                + (self.mat[1][3] * rhs.mat[3][0]),
-			    (self.mat[1][0] * rhs.mat[0][1])
-                + (self.mat[1][1] * rhs.mat[1][1])
-                + (self.mat[1][2] * rhs.mat[2][1])
-                + (self.mat[1][3] * rhs.mat[3][1]),
-			    (self.mat[1][0] * rhs.mat[0][2])
-                + (self.mat[1][1] * rhs.mat[1][2])
-                + (self.mat[1][2] * rhs.mat[2][2])
-                + (self.mat[1][3] * rhs.mat[3][2]),
-			    (self.mat[1][0] * rhs.mat[0][3])
-                + (self.mat[1][1] * rhs.mat[1][3])
-                + (self.mat[1][2] * rhs.mat[2][3])
-                + (self.mat[1][3] * rhs.mat[3][3])],
-
-			    [(self.mat[2][0] * rhs.mat[0][0])
-                + (self.mat[2][1] * rhs.mat[1][0])
-                + (self.mat[2][2] * rhs.mat[2][0])
-                + (self.mat[2][3] * rhs.mat[3][0]),
-			    (self.mat[2][0] * rhs.mat[0][1])
-                + (self.mat[2][1] * rhs.mat[1][1])
-                + (self.mat[2][2] * rhs.mat[2][1])
-                + (self.mat[2][3] * rhs.mat[3][1]),
-			    (self.mat[2][0] * rhs.mat[0][2])
-                + (self.mat[2][1] * rhs.mat[1][2])
-                + (self.mat[2][2] * rhs.mat[2][2])
-                + (self.mat[2][3] * rhs.mat[3][2]),
-			    (self.mat[2][0] * rhs.mat[0][3])
-                + (self.mat[2][1] * rhs.mat[1][3])
-                + (self.mat[2][2] * rhs.mat[2][3])
-                + (self.mat[2][3] * rhs.mat[3][3])],
-
-			    [(self.mat[3][0] * rhs.mat[0][0])
-                + (self.mat[3][1] * rhs.mat[1][0])
-                + (self.mat[3][2] * rhs.mat[2][0])
-                + (self.mat[3][3] * rhs.mat[3][0]),
-			    (self.mat[3][0] * rhs.mat[0][1])
-                + (self.mat[3][1] * rhs.mat[1][1])
-                + (self.mat[3][2] * rhs.mat[2][1])
-                + (self.mat[3][3] * rhs.mat[3][1]),
-			    (self.mat[3][0] * rhs.mat[0][2])
-                + (self.mat[3][1] * rhs.mat[1][2])
-                + (self.mat[3][2] * rhs.mat[2][2])
-                + (self.mat[3][3] * rhs.mat[3][2]),
-			    (self.mat[3][0] * rhs.mat[0][3])
-                + (self.mat[3][1] * rhs.mat[1][3])
-                + (self.mat[3][2] * rhs.mat[2][3])
-                + (self.mat[3][3] * rhs.mat[3][3])],
+                [
+                    (self.mat[0][0] * rhs.mat[0][0])
+                        + (self.mat[0][1] * rhs.mat[1][0])
+                        + (self.mat[0][2] * rhs.mat[2][0])
+                        + (self.mat[0][3] * rhs.mat[3][0]),
+                    (self.mat[0][0] * rhs.mat[0][1])
+                        + (self.mat[0][1] * rhs.mat[1][1])
+                        + (self.mat[0][2] * rhs.mat[2][1])
+                        + (self.mat[0][3] * rhs.mat[3][1]),
+                    (self.mat[0][0] * rhs.mat[0][2])
+                        + (self.mat[0][1] * rhs.mat[1][2])
+                        + (self.mat[0][2] * rhs.mat[2][2])
+                        + (self.mat[0][3] * rhs.mat[3][2]),
+                    (self.mat[0][0] * rhs.mat[0][3])
+                        + (self.mat[0][1] * rhs.mat[1][3])
+                        + (self.mat[0][2] * rhs.mat[2][3])
+                        + (self.mat[0][3] * rhs.mat[3][3]),
+                ],
+                [
+                    (self.mat[1][0] * rhs.mat[0][0])
+                        + (self.mat[1][1] * rhs.mat[1][0])
+                        + (self.mat[1][2] * rhs.mat[2][0])
+                        + (self.mat[1][3] * rhs.mat[3][0]),
+                    (self.mat[1][0] * rhs.mat[0][1])
+                        + (self.mat[1][1] * rhs.mat[1][1])
+                        + (self.mat[1][2] * rhs.mat[2][1])
+                        + (self.mat[1][3] * rhs.mat[3][1]),
+                    (self.mat[1][0] * rhs.mat[0][2])
+                        + (self.mat[1][1] * rhs.mat[1][2])
+                        + (self.mat[1][2] * rhs.mat[2][2])
+                        + (self.mat[1][3] * rhs.mat[3][2]),
+                    (self.mat[1][0] * rhs.mat[0][3])
+                        + (self.mat[1][1] * rhs.mat[1][3])
+                        + (self.mat[1][2] * rhs.mat[2][3])
+                        + (self.mat[1][3] * rhs.mat[3][3]),
+                ],
+                [
+                    (self.mat[2][0] * rhs.mat[0][0])
+                        + (self.mat[2][1] * rhs.mat[1][0])
+                        + (self.mat[2][2] * rhs.mat[2][0])
+                        + (self.mat[2][3] * rhs.mat[3][0]),
+                    (self.mat[2][0] * rhs.mat[0][1])
+                        + (self.mat[2][1] * rhs.mat[1][1])
+                        + (self.mat[2][2] * rhs.mat[2][1])
+                        + (self.mat[2][3] * rhs.mat[3][1]),
+                    (self.mat[2][0] * rhs.mat[0][2])
+                        + (self.mat[2][1] * rhs.mat[1][2])
+                        + (self.mat[2][2] * rhs.mat[2][2])
+                        + (self.mat[2][3] * rhs.mat[3][2]),
+                    (self.mat[2][0] * rhs.mat[0][3])
+                        + (self.mat[2][1] * rhs.mat[1][3])
+                        + (self.mat[2][2] * rhs.mat[2][3])
+                        + (self.mat[2][3] * rhs.mat[3][3]),
+                ],
+                [
+                    (self.mat[3][0] * rhs.mat[0][0])
+                        + (self.mat[3][1] * rhs.mat[1][0])
+                        + (self.mat[3][2] * rhs.mat[2][0])
+                        + (self.mat[3][3] * rhs.mat[3][0]),
+                    (self.mat[3][0] * rhs.mat[0][1])
+                        + (self.mat[3][1] * rhs.mat[1][1])
+                        + (self.mat[3][2] * rhs.mat[2][1])
+                        + (self.mat[3][3] * rhs.mat[3][1]),
+                    (self.mat[3][0] * rhs.mat[0][2])
+                        + (self.mat[3][1] * rhs.mat[1][2])
+                        + (self.mat[3][2] * rhs.mat[2][2])
+                        + (self.mat[3][3] * rhs.mat[3][2]),
+                    (self.mat[3][0] * rhs.mat[0][3])
+                        + (self.mat[3][1] * rhs.mat[1][3])
+                        + (self.mat[3][2] * rhs.mat[2][3])
+                        + (self.mat[3][3] * rhs.mat[3][3]),
+                ],
             ],
         }
-	}
+    }
 }
 
 mod keycodes;
@@ -283,15 +291,37 @@ trait Draw {
     /// Set instances for a shape.
     fn instances(&mut self, shape: &mut Nshape, matrices: &[Transform]);
     /// Transform 1 instance.
-    fn transform(&mut self, shape: &mut Nshape, instance: u16, transform: Transform);
+    fn transform(
+        &mut self,
+        shape: &mut Nshape,
+        instance: u16,
+        transform: Transform,
+    );
     /// Upload graphic.
-    fn graphic(&mut self, pixels: &[u8], width: usize, height: usize) -> Box<Ngraphic>;
+    fn graphic(
+        &mut self,
+        pixels: &[u8],
+        width: usize,
+        height: usize,
+    ) -> Box<Ngraphic>;
     /// Use a graphic.
     fn bind_graphic(&mut self, graphic: &Ngraphic);
     /// Render toolbar with width & height.
-    fn toolbar(&mut self, w: u16, height: u16, toolbar_height: u16, shader: &Nshader, vertlist: &Nvertices, shape: &Nshape);
+    fn toolbar(
+        &mut self,
+        w: u16,
+        height: u16,
+        toolbar_height: u16,
+        shader: &Nshader,
+        vertlist: &Nvertices,
+        shape: &Nshape,
+    );
     /// Set texture coordinates
-    fn texture_coords(&mut self, shader: &Nshader, coords: ([f32; 2], [f32; 2]));
+    fn texture_coords(
+        &mut self,
+        shader: &Nshader,
+        coords: ([f32; 2], [f32; 2]),
+    );
     /// Set camera
     fn camera(&mut self, shader: &Nshader, cam: Transform);
     /// Set tint
@@ -308,6 +338,7 @@ trait Nshader {
     fn transform(&self, index: usize) -> Option<&i32>;
     fn id(&self) -> i32;
     fn num_instances(&self) -> u16;
+    fn program(&self) -> u32;
 }
 
 trait Nshape {
@@ -343,20 +374,25 @@ enum Either {
 }
 
 fn nearly_equal(a: f32, b: f32) -> bool {
-	let abs_a = a.abs();
-	let abs_b = b.abs();
-	let diff = (a - b).abs();
+    let abs_a = a.abs();
+    let abs_b = b.abs();
+    let diff = (a - b).abs();
     let both = abs_a + abs_b;
 
-	if a.to_bits() == b.to_bits() { // shortcut, handles infinities
-		true
-    } else if a.to_bits() == 0 || b.to_bits() == 0 || (abs_a + abs_b < std::f32::MIN_POSITIVE) {
-		// a or b is zero or both are extremely close to it
-		// relative error is less meaningful here
-		diff < (std::f32::EPSILON * std::f32::MIN_POSITIVE)
-	} else if both < std::f32::MAX { // use relative error
-		diff / both < std::f32::EPSILON
-	} else {
+    if a.to_bits() == b.to_bits() {
+        // shortcut, handles infinities
+        true
+    } else if a.to_bits() == 0
+        || b.to_bits() == 0
+        || (abs_a + abs_b < std::f32::MIN_POSITIVE)
+    {
+        // a or b is zero or both are extremely close to it
+        // relative error is less meaningful here
+        diff < (std::f32::EPSILON * std::f32::MIN_POSITIVE)
+    } else if both < std::f32::MAX {
+        // use relative error
+        diff / both < std::f32::EPSILON
+    } else {
         diff / std::f32::MAX < std::f32::EPSILON
     }
 }
@@ -393,16 +429,23 @@ impl<'a> ShapeBuilder<'a> {
 
     /// Add a face to the shape.
     pub fn face(mut self, transform: Transform) -> Self {
-        let dimensions = if self.shader.0.depth().is_some() { 3 } else { 2 };
+        let dimensions = if self.shader.0.depth().is_some() {
+            3
+        } else {
+            2
+        };
         let components = if self.shader.0.blending() { 4 } else { 3 };
         let stride = dimensions
             + if self.shader.0.gradient() {
                 components
             } else {
                 0
-            } + if self.shader.0.graphic().is_some() {
+            }
+            + if self.shader.0.graphic().is_some() {
                 2
-            } else { 0 };
+            } else {
+                0
+            };
         assert!(self.vertices.len() % stride == 0);
         let mut index = 0;
         let shader1 = match self.shader.1 {
@@ -466,7 +509,10 @@ impl<'a> ShapeBuilder<'a> {
                     }
                 }
                 'c: for k in dimensions..stride {
-                    if !nearly_equal(self.vertices[index + k], shader1[jndex + k]) {
+                    if !nearly_equal(
+                        self.vertices[index + k],
+                        shader1[jndex + k],
+                    ) {
                         equal = false;
                         break 'c;
                     }
@@ -521,7 +567,11 @@ pub struct Window {
 
 impl Window {
     /// Start the Wayland + OpenGL application.
-    pub fn new(name: &str, run: fn(nanos: u64) -> (), toolbar: fn(&mut Self) -> (Shader, Shape)) -> Box<Self> {
+    pub fn new(
+        name: &str,
+        run: fn(nanos: u64) -> (),
+        toolbar: fn(&mut Self) -> (Shader, Shape),
+    ) -> Box<Self> {
         /*********************/
         /* Declare Variables */
         /*********************/
@@ -591,7 +641,8 @@ impl Window {
         let width = window.nwin.dimensions().0;
         let height = window.toolbar_height;
         let pixels = vec![255; (width * window.toolbar_height) as usize * 4];
-        let toolbar_graphic = window.graphic(pixels.as_slice(), width as usize, height as usize);
+        let toolbar_graphic =
+            window.graphic(pixels.as_slice(), width as usize, height as usize);
         fn toolbar_callback(_: &mut [u8], _: u16) {}
 
         unsafe {
@@ -630,17 +681,31 @@ impl Window {
     }
 
     /// Update transformation matrix for an instance of a shape.
-    pub fn transform(&mut self, shape: &mut Shape, instance: u16, transform: Transform) {
+    pub fn transform(
+        &mut self,
+        shape: &mut Shape,
+        instance: u16,
+        transform: Transform,
+    ) {
         self.draw.transform(&mut *shape.0, instance, transform);
     }
 
     /// Load an RGBA graphic to the GPU.
-    pub fn graphic(&mut self, pixels: &[u8], width: usize, height: usize) -> Graphic {
+    pub fn graphic(
+        &mut self,
+        pixels: &[u8],
+        width: usize,
+        height: usize,
+    ) -> Graphic {
         Graphic(self.draw.graphic(pixels, width, height))
     }
 
     /// Update RGBA graphic on the GPU.
-    pub fn update_graphic(&mut self, graphic: &mut Graphic, closure: &mut FnMut(&mut [u8], u16)) {
+    pub fn update_graphic(
+        &mut self,
+        graphic: &mut Graphic,
+        closure: &mut FnMut(&mut [u8], u16),
+    ) {
         graphic.0.update(closure);
     }
 
@@ -655,12 +720,21 @@ impl Window {
     }
 
     /// Set texture coordinates for a shader.
-    pub fn texture_coords(&mut self, shader: &Shader, coords: ([f32; 2], [f32; 2])) {
+    pub fn texture_coords(
+        &mut self,
+        shader: &Shader,
+        coords: ([f32; 2], [f32; 2]),
+    ) {
         self.draw.texture_coords(&*shader.0, coords)
     }
 
     /// Use a graphic for drawing.
-    pub fn draw_graphic(&mut self, shader: &Shader, shape: &Shape, graphic: &Graphic) {
+    pub fn draw_graphic(
+        &mut self,
+        shader: &Shader,
+        shape: &Shape,
+        graphic: &Graphic,
+    ) {
         self.draw.bind_graphic(&*graphic.0);
         self.draw(shader, shape);
     }
@@ -678,9 +752,15 @@ impl Window {
     }
 
     /// Draw the toolbar.
-    fn draw_toolbar(&mut self, shader: &Shader, shape: &Shape, graphic: &Graphic) {
+    fn draw_toolbar(
+        &mut self,
+        shader: &Shader,
+        shape: &Shape,
+        graphic: &Graphic,
+    ) {
         self.draw.bind_graphic(&*graphic.0);
-        self.draw.texture_coords(&*shader.0, ([0f32, 0f32], [1f32, 1f32]));
+        self.draw
+            .texture_coords(&*shader.0, ([0f32, 0f32], [1f32, 1f32]));
         self.draw.toolbar(
             self.nwin.dimensions().0,
             self.nwin.dimensions().1,

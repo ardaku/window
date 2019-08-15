@@ -3,10 +3,10 @@ use std::ffi::c_void;
 use super::Draw;
 use super::DrawHandle;
 use super::Window;
+use crate::Ngraphic;
 use crate::Nshader;
 use crate::Nshape;
 use crate::Nvertices;
-use crate::Ngraphic;
 
 mod platform;
 
@@ -25,29 +25,29 @@ extern "C" {
 }
 
 #[allow(unused)]
-fn get_error() {
+fn _get_error(string: &str) {
     match unsafe { glGetError() } {
-        0 => print!(""),
-        0x0500 => panic!("OpenGL: Invalid Enum"),
-        0x0501 => panic!("OpenGL: Invalid Value"),
-        0x0502 => panic!("OpenGL: Invalid Operation"),
-        0x0503 => panic!("OpenGL: Invalid Stack Overflow"),
-        0x0504 => panic!("OpenGL: Invalid Stack Underflow"),
-        0x0505 => panic!("OpenGL: Invalid Out of Memory"),
-        _ => panic!("OpenGL: Unknown Error"),
+        0 => println!("GL {}", string),
+        0x0500 => panic!("OpenGL '{}()': Invalid Enum", string),
+        0x0501 => panic!("OpenGL '{}()': Invalid Value", string),
+        0x0502 => panic!("OpenGL '{}()': Invalid Operation", string),
+        0x0503 => panic!("OpenGL '{}()': Invalid Stack Overflow", string),
+        0x0504 => panic!("OpenGL '{}()': Invalid Stack Underflow", string),
+        0x0505 => panic!("OpenGL '{}()': Invalid Out of Memory", string),
+        u => panic!("OpenGL '{}()': Unknown Error {}", string, u),
     }
 }
 
 #[cfg(debug_assertions)]
 macro_rules! gl_assert {
-    () => {
-        get_error();
+    ($x:expr) => {
+        _get_error($x);
     };
 }
 
 #[cfg(not(debug_assertions))]
 macro_rules! gl_assert {
-    () => {};
+    ($x:expr) => {$x};
 }
 
 extern "C" {
@@ -138,8 +138,13 @@ extern "C" {
     fn glDisable(cap: u32) -> ();
     fn glEnable(cap: u32) -> ();
     fn glEnableVertexAttribArray(index: u32) -> ();
-//    fn glDrawArrays(mode: u32, first: i32, count: i32);
-    fn glDrawElements(mode: u32, count: i32, draw_type: u32, indices: *const c_void) -> ();
+    //    fn glDrawArrays(mode: u32, first: i32, count: i32);
+    fn glDrawElements(
+        mode: u32,
+        count: i32,
+        draw_type: u32,
+        indices: *const c_void,
+    ) -> ();
     // fn glDrawElementsInstanced(mode: u32, count: i32, draw_type: u32, indices: *const c_void, instance_count: i32) -> ();
     fn glGenBuffers(n: i32, buffers: *mut u32) -> ();
     fn glBindBuffer(target: u32, buffer: u32) -> ();
@@ -155,8 +160,17 @@ extern "C" {
     fn glGenTextures(n: u32, textures: *mut u32) -> ();
     fn glBindTexture(target: u32, texture: u32) -> ();
     fn glTexParameteri(target: u32, pname: u32, param: i32) -> ();
-    fn glTexImage2D(target: u32, level: i32, internalFormat: i32, width: i32,
-        height: i32, border: i32, format: u32, stype: u32, pixels: *const u8) -> ();
+    fn glTexImage2D(
+        target: u32,
+        level: i32,
+        internalFormat: i32,
+        width: i32,
+        height: i32,
+        border: i32,
+        format: u32,
+        stype: u32,
+        pixels: *const u8,
+    ) -> ();
     fn glGenerateMipmap(target: u32);
     fn glViewport(x: i32, y: i32, width: i32, height: i32) -> ();
     fn glBlendFuncSeparate(a: u32, b: u32, c: u32, d: u32) -> ();
@@ -184,7 +198,7 @@ pub struct Shader {
     id: i32,
 }
 
-/// 
+///
 pub struct Graphic {
     id: u32,
     pixels: Vec<u8>,
@@ -201,7 +215,7 @@ impl Graphic {
         let new_texture = unsafe {
             let mut new_texture = std::mem::MaybeUninit::uninit();
             glGenTextures(1, new_texture.as_mut_ptr());
-            get_error();
+            gl_assert!("glGenTextures");
             new_texture.assume_init()
         };
 
@@ -210,16 +224,21 @@ impl Graphic {
             const GL_TEXTURE_MIN_FILTER: u32 = 0x2801;
             const GL_NEAREST: i32 = 0x2600;
             const GL_NEAREST_MIPMAP_LINEAR: i32 = 0x2702;
+//            const GL_NEAREST_MIPMAP_NEAREST: i32 = 0x2700;
 
             glBindTexture(GL_TEXTURE_2D, new_texture);
-            get_error();
+            gl_assert!("glBindTexture");
 
-            // Rendered bigger than texture
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST_MIPMAP_LINEAR);
-            get_error();
-            // Rendered smaller than texture.
+            // Rendered smaller than texture
+            glTexParameteri(
+                GL_TEXTURE_2D,
+                GL_TEXTURE_MIN_FILTER,
+                GL_NEAREST_MIPMAP_LINEAR,
+            );
+            gl_assert!("glTexParameteri#1");
+            // Rendered bigger than texture.
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-            get_error();
+            gl_assert!("glTexParameteri#2");
 
             glTexImage2D(
                 GL_TEXTURE_2D,
@@ -229,16 +248,17 @@ impl Graphic {
                 height,
                 0,
                 GL_RGBA,
-                0x1401 /*GL_UNSIGNED_BYTE*/,
+                0x1401, /*GL_UNSIGNED_BYTE*/
                 pixels.as_ptr() as *const _,
             );
-            get_error();
+            gl_assert!("glTexImage2D");
 
             // Generate Mipmaps.
             let mut mipmap_level = 0;
             let mut offset = width as usize * height as usize * 4;
-//            let mut skip = 1;
-           while width > 1 && height > 1 && offset != pixels.len() { // 2 ^ 5
+            //            let mut skip = 1;
+            while width > 1 && height > 1 && offset != pixels.len() {
+                // 2 ^ 5
                 // Divide width & height.
                 width >>= 1;
                 height >>= 1;
@@ -246,7 +266,7 @@ impl Graphic {
                 mipmap_level += 1;
 
                 glBindTexture(GL_TEXTURE_2D, new_texture);
-                get_error();
+                gl_assert!("glBindTexture");
                 glTexImage2D(
                     GL_TEXTURE_2D,
                     mipmap_level,
@@ -255,16 +275,20 @@ impl Graphic {
                     height,
                     0,
                     GL_RGBA,
-                    0x1401 /*GL_UNSIGNED_BYTE*/,
+                    0x1401, /*GL_UNSIGNED_BYTE*/
                     pixels[offset..].as_ptr() as *const _,
                 );
-                get_error();
+                gl_assert!("glTexImage2D");
 
                 offset += width as usize * height as usize * 4;
             }
 
-            glTexParameteri(GL_TEXTURE_2D, 0x813D /*GL_TEXTURE_MAX_LEVEL*/, mipmap_level);
-            get_error();
+            glTexParameteri(
+                GL_TEXTURE_2D,
+                0x813D, /*GL_TEXTURE_MAX_LEVEL*/
+                mipmap_level,
+            );
+            gl_assert!("glTexParameteri#3");
         }
 
         Graphic {
@@ -343,7 +367,7 @@ impl Nshader for Shader {
         unsafe {
             debug_assert_ne!(self.program, 0);
             glUseProgram(self.program);
-            gl_assert!();
+            gl_assert!("glUseProgram");
         }
     }
 
@@ -357,6 +381,10 @@ impl Nshader for Shader {
 
     fn num_instances(&self) -> u16 {
         self.instance_count
+    }
+
+    fn program(&self) -> u32 {
+        self.program
     }
 }
 
@@ -379,10 +407,10 @@ impl Nshape for Shape {
 
     fn instances_ptr(&self) -> *const c_void {
         self.instances.as_ptr() as *const _ as *const _
-/*        debug_assert_ne!(self.instances_vbo, 0);
+        /*        debug_assert_ne!(self.instances_vbo, 0);
         unsafe {
             glBindBufferBase(0x8A11 /*GL_UNIFORM_BUFFER*/, 0, self.instances_vbo);
-            gl_assert!();
+            gl_assert!("glBindBufferBase");
         }*/
     }
 
@@ -396,7 +424,7 @@ impl Nvertices for Vertices {
         debug_assert_ne!(self.vbo, 0);
         unsafe {
             glBindBuffer(0x8892 /*GL_ARRAY_BUFFER*/, self.vbo);
-            gl_assert!();
+            gl_assert!("glBindBuffer");
         }
     }
 }
@@ -422,23 +450,23 @@ impl Ngraphic for Graphic {
 
         unsafe {
             glBindTexture(GL_TEXTURE_2D, self.id);
-            get_error();
+            gl_assert!("glBindTexture");
 
             glTexImage2D(
                 GL_TEXTURE_2D,
                 0,
                 GL_RGBA as i32,
-                width, // w
+                width,                                // w
                 ((pixels.len() >> 2) as i32) / width, // h
                 0,
                 GL_RGBA,
-                0x1401 /*GL_UNSIGNED_BYTE*/,
+                0x1401, /*GL_UNSIGNED_BYTE*/
                 pixels.as_ptr() as *const _,
             );
-            get_error();
+            gl_assert!("glTexImage2D");
 
             glGenerateMipmap(GL_TEXTURE_2D);
-            get_error();
+            gl_assert!("glGenerateMipmap");
         }
     }
 
@@ -447,20 +475,20 @@ impl Ngraphic for Graphic {
 
         unsafe {
             glBindTexture(GL_TEXTURE_2D, self.id);
-            get_error();
+            gl_assert!("glBindTexture");
 
             glTexImage2D(
                 GL_TEXTURE_2D,
                 0,
                 GL_RGBA as i32,
-                self.width, // w
+                self.width,                                     // w
                 ((self.pixels.len() >> 2) as i32) / self.width, // h
                 0,
                 GL_RGBA,
-                0x1401 /*GL_UNSIGNED_BYTE*/,
+                0x1401, /*GL_UNSIGNED_BYTE*/
                 self.pixels.as_ptr() as *const _,
             );
-            get_error();
+            gl_assert!("glTexImage2D");
         }
     }
 }
@@ -473,6 +501,7 @@ pub struct OpenGL {
     graphic: u32,
     depth: bool,
     blending: bool,
+    shader: u32,
 }
 
 impl Drop for OpenGL {
@@ -520,19 +549,32 @@ impl Draw for OpenGL {
 
         unsafe {
             glEnable(0x0B44 /*GL_CULL_FACES*/);
-            gl_assert!();
+            gl_assert!("glEnable#0");
+            glDisable(0x0BD0 /*GL_DITHER*/);
+            gl_assert!("glDisable#0");
         }
 
         unsafe {
             glEnableVertexAttribArray(GL_ATTRIB_POS);
-            gl_assert!();
+            gl_assert!("glEnableVertexAttribArray#1");
             glEnableVertexAttribArray(GL_ATTRIB_COL);
-            gl_assert!();
+            gl_assert!("glEnableVertexAttribArray#2");
             glEnableVertexAttribArray(GL_ATTRIB_TEX);
-            gl_assert!();
+            gl_assert!("glEnableVertexAttribArray#3");
         }
 
-/*        unsafe {
+        unsafe {
+            // Alpha Blending.
+            glBlendFuncSeparate(
+                /* GL_SRC_ALPHA */ 0x0302u32,
+                /* GL_ONE_MINUS_SRC_ALPHA*/ 0x0303u32,
+                /* GL_SRC_ALPHA */ 0x0302u32,
+                /* GL_DST_ALPHA */ 0x0304u32,
+            );
+            gl_assert!("glBlendFuncSeparate");
+        }
+
+        /*        unsafe {
             let string = glGetString(0x1F03 /*gl extensions*/);
             let slice = std::ffi::CStr::from_ptr(string as *const _ as *const _);
             println!("ext: {}", slice.to_str().unwrap().contains("GL_EXT_base_instance"));
@@ -545,7 +587,7 @@ impl Draw for OpenGL {
     fn background(&mut self, r: f32, g: f32, b: f32) {
         unsafe {
             glClearColor(r, g, b, 1.0);
-            gl_assert!();
+            gl_assert!("glClearColor");
         }
     }
 
@@ -561,7 +603,15 @@ impl Draw for OpenGL {
         Box::new(Shape::new(builder))
     }
 
-    fn toolbar(&mut self, w: u16, h: u16, toolbar_height: u16, shader: &Nshader, vertlist: &Nvertices, shape: &Nshape) -> () {
+    fn toolbar(
+        &mut self,
+        w: u16,
+        h: u16,
+        toolbar_height: u16,
+        shader: &Nshader,
+        vertlist: &Nvertices,
+        shape: &Nshape,
+    ) -> () {
         let w = w as i32;
         let h = h as i32;
         let toolbar_height = toolbar_height as i32;
@@ -574,8 +624,10 @@ impl Draw for OpenGL {
 
     fn begin_draw(&mut self) {
         unsafe {
-            glClear(0x0000_4000 /*GL_COLOR_BUFFER_BIT*/ | 0x0000_0100 /*GL_DEPTH_BUFFER_BIT*/);
-            gl_assert!();
+            glClear(
+                0x0000_4000 /*GL_COLOR_BUFFER_BIT*/ | 0x0000_0100, /*GL_DEPTH_BUFFER_BIT*/
+            );
+            gl_assert!("glClear");
         }
     }
 
@@ -586,26 +638,18 @@ impl Draw for OpenGL {
     }
 
     fn draw(&mut self, shader: &Nshader, vertlist: &Nvertices, shape: &Nshape) {
-        shader.bind();
+        self.bind_shader(shader);
 
         if shader.blending() && !self.blending {
             unsafe {
                 glEnable(0x0BE2 /*BLEND*/);
-                gl_assert!();
-                // Alpha Blending.
-                glBlendFuncSeparate(
-                     /* GL_SRC_ALPHA */ 0x0302u32,
-                     /* GL_ONE_MINUS_SRC_ALPHA*/ 0x0303u32,
-                     /* GL_SRC_ALPHA */ 0x0302u32,
-                     /* GL_DST_ALPHA */ 0x0304u32,
-                );
-                gl_assert!();
+                gl_assert!("glEnable#Blend");
             }
             self.blending = true;
         } else if !shader.blending() && self.blending {
             unsafe {
                 glDisable(0x0BE2 /*BLEND*/);
-                gl_assert!();
+                gl_assert!("glDisable#Blend");
             }
             self.blending = false;
         }
@@ -613,13 +657,13 @@ impl Draw for OpenGL {
         if shader.depth().is_some() && !self.depth {
             unsafe {
                 glEnable(0x0B71 /*DEPTH_TEST*/);
-                gl_assert!();
+                gl_assert!("glEnable#DEPTH_TEST");
             }
             self.depth = true;
         } else if shader.depth().is_none() && self.depth {
             unsafe {
                 glDisable(0x0B71 /*DEPTH_TEST*/);
-                gl_assert!();
+                gl_assert!("glDisable#DEPTH_TEST");
             }
             self.depth = false;
         }
@@ -633,11 +677,13 @@ impl Draw for OpenGL {
                     0, /*GL_FALSE*/
                     shape.instances_ptr(),
                 );
-                gl_assert!();
+                gl_assert!("glUniformMatrix4fv");
                 index += 1;
             }
 
-            let stride = if shader.depth().is_some() { 3 } else { 2 } + if shader.gradient() { 3 } else { 0 } + if shader.graphic().is_some() { 2 } else { 0 };
+            let stride = if shader.depth().is_some() { 3 } else { 2 }
+                + if shader.gradient() { 3 } else { 0 }
+                + if shader.graphic().is_some() { 2 } else { 0 };
             let stride = (stride * std::mem::size_of::<f32>()) as i32;
 
             vertlist.bind();
@@ -652,13 +698,11 @@ impl Draw for OpenGL {
                     stride,
                     std::ptr::null(),
                 );
-                gl_assert!();
+                gl_assert!("glVertexAttribPointer#POS");
             }
 
             // Only if Gradient is enabled.
             if shader.gradient() {
-                vertlist.bind(); // TODO: is needed?
-
                 let ptr: *const f32 = std::ptr::null();
                 glVertexAttribPointer(
                     GL_ATTRIB_COL,
@@ -668,13 +712,11 @@ impl Draw for OpenGL {
                     stride,
                     ptr.offset(if shader.depth().is_some() { 3 } else { 2 }),
                 );
-                gl_assert!();
+                gl_assert!("glVertexAttribPointer#COL");
             }
 
-            // Only if Gradient is enabled.
+            // Only if Texture is enabled.
             if shader.graphic().is_some() {
-                vertlist.bind(); // TODO: is needed?
-
                 let ptr: *const f32 = std::ptr::null();
                 glVertexAttribPointer(
                     GL_ATTRIB_TEX,
@@ -682,46 +724,57 @@ impl Draw for OpenGL {
                     0x1406, /*GL_FLOAT*/
                     0,      /*GL_FALSE*/
                     stride,
-                    ptr.offset(if shader.depth().is_some() { 3 } else { 2 } + if shader.gradient() { 3 } else { 0 }),
+                    ptr.offset(
+                        if shader.depth().is_some() { 3 } else { 2 }
+                            + if shader.gradient() { 3 } else { 0 },
+                    ),
                 );
-                gl_assert!();
+                gl_assert!("glVertexAttribPointer#TEX");
             }
 
             // Draw
             // TODO use glDrawElementsInstanced only if available (when not
             // GLES2).
-//            glDrawElementsInstanced(0x0004 /*GL_TRIANGLES*/, shape.len(), 0x1403 /*GL_UNSIGNED_SHORT*/, shape.ptr(), shape.instances_num());
+            //            glDrawElementsInstanced(0x0004 /*GL_TRIANGLES*/, shape.len(), 0x1403 /*GL_UNSIGNED_SHORT*/, shape.ptr(), shape.instances_num());
             {
                 for i in 0..shape.instances_num() {
                     glUniform1i(shader.id(), i);
-                    glDrawElements(0x0004 /*GL_TRIANGLES*/, shape.len(), 0x1403 /*GL_UNSIGNED_SHORT*/, shape.ptr());
+                    gl_assert!("glUniform1i");
+                    glDrawElements(
+                        0x0004, /*GL_TRIANGLES*/
+                        shape.len(),
+                        0x1403, /*GL_UNSIGNED_SHORT*/
+                        shape.ptr(),
+                    );
+                    gl_assert!("glDrawElements");
                 }
             }
-            gl_assert!();
-
-/*            // Disable
-            glDisableVertexAttribArray(GL_ATTRIB_POS);
-            gl_assert!();
-            if shader.gradient() {
-                glDisableVertexAttribArray(GL_ATTRIB_COL);
-                gl_assert!();
-            }
-            if shader.graphic().is_some() {
-                glDisableVertexAttribArray(GL_ATTRIB_TEX);
-                gl_assert!();
-            }*/
         }
     }
 
-    fn instances(&mut self, shape: &mut Nshape, transforms: &[crate::Transform]) {
+    fn instances(
+        &mut self,
+        shape: &mut Nshape,
+        transforms: &[crate::Transform],
+    ) {
         shape.instances(transforms);
     }
 
-    fn transform(&mut self, shape: &mut Nshape, instance: u16, transform: crate::Transform) {
+    fn transform(
+        &mut self,
+        shape: &mut Nshape,
+        instance: u16,
+        transform: crate::Transform,
+    ) {
         shape.transform(instance, transform);
     }
 
-    fn graphic(&mut self, pixels: &[u8], width: usize, height: usize) -> Box<Ngraphic> {
+    fn graphic(
+        &mut self,
+        pixels: &[u8],
+        width: usize,
+        height: usize,
+    ) -> Box<Ngraphic> {
         Box::new(Graphic::new(pixels, width, height))
     }
 
@@ -731,15 +784,19 @@ impl Draw for OpenGL {
             unsafe {
                 glBindTexture(GL_TEXTURE_2D, graphic.id());
             }
-            get_error();
+            gl_assert!("glBindTexture");
             // Update which graphic is bound.
             self.graphic = graphic.id();
         }
     }
 
-    fn texture_coords(&mut self, shader: &Nshader, coords: ([f32; 2], [f32; 2])) {
+    fn texture_coords(
+        &mut self,
+        shader: &Nshader,
+        coords: ([f32; 2], [f32; 2]),
+    ) {
         if let Some((a, b)) = shader.graphic() {
-            shader.bind();
+            self.bind_shader(shader);
             unsafe {
                 glUniform2f(a, coords.0[0], coords.0[1]);
                 glUniform2f(b, coords.1[0], coords.1[1]);
@@ -749,7 +806,7 @@ impl Draw for OpenGL {
 
     fn camera(&mut self, shader: &Nshader, cam: crate::Transform) {
         if let Some(a) = shader.depth() {
-            shader.bind();
+            self.bind_shader(shader);
             unsafe {
                 glUniformMatrix4fv(
                     a,
@@ -763,12 +820,20 @@ impl Draw for OpenGL {
 
     fn tint(&mut self, shader: &Nshader, tint: [f32; 4]) {
         if let Some(a) = shader.tint() {
-            shader.bind();
+            self.bind_shader(shader);
             unsafe {
-                glUniform4f(
-                    a, tint[0], tint[1], tint[2], tint[3],
-                );
+                glUniform4f(a, tint[0], tint[1], tint[2], tint[3]);
             }
+        }
+    }
+}
+
+impl OpenGL {
+    fn bind_shader(&mut self, shader: &Nshader) {
+        let shader_id = shader.program();
+        if shader_id != self.shader {
+            shader.bind();
+            self.shader = shader_id;
         }
     }
 }
@@ -778,14 +843,14 @@ fn create_vbo<T>(vertices: &[T], target: u32) -> u32 {
     unsafe {
         let mut buffer = std::mem::MaybeUninit::<u32>::uninit();
         glGenBuffers(1 /*1 buffer*/, buffer.as_mut_ptr());
-        gl_assert!();
+        gl_assert!("glGenBuffers");
         let buffer = buffer.assume_init();
         if target == 0x8892 {
             glBindBuffer(target, buffer);
         } else {
             glBindBufferBase(target, 0, buffer);
         }
-        gl_assert!();
+        gl_assert!("BIND_BUFFER");
         // TODO: maybe use glMapBuffer & glUnmapBuffer instead?
         glBufferData(
             target,
@@ -797,7 +862,7 @@ fn create_vbo<T>(vertices: &[T], target: u32) -> u32 {
                 0x88E8 /*GL_DYNAMIC_DRAW*/
             },
         );
-        gl_assert!();
+        gl_assert!("glBufferData");
         buffer
     }
 }
@@ -825,19 +890,57 @@ fn create_program(builder: crate::ShaderBuilder) -> Shader {
         0x8B31, /*GL_VERTEX_SHADER*/
     );
     let program = unsafe { glCreateProgram() };
-    gl_assert!();
+    gl_assert!("glCreateProgram");
     unsafe {
         glAttachShader(program, frag);
-        gl_assert!();
+        gl_assert!("glAttachShader#1");
         glAttachShader(program, vert);
-        gl_assert!();
-        glLinkProgram(program);
-        gl_assert!();
+        gl_assert!("glAttachShader#2");
     }
+    // Vertex attributes
+    unsafe {
+        // All shader programs have position.
+        glBindAttribLocation(
+            program,
+            GL_ATTRIB_POS,
+            b"pos\0".as_ptr() as *const _ as *const _,
+        );
+        gl_assert!("glBindAttribLocation#pos");
+        //
+        if builder.gradient {
+            glBindAttribLocation(
+                program,
+                GL_ATTRIB_COL,
+                b"col\0".as_ptr() as *const _ as *const _,
+            );
+            gl_assert!("glBindAttribLocation#col");
+        }
+        //
+        if builder.graphic {
+            glBindAttribLocation(
+                program,
+                GL_ATTRIB_TEX,
+                b"texpos\0".as_ptr() as *const _ as *const _,
+            );
+            gl_assert!("glBindAttribLocation#texpos");
+        }
+        glLinkProgram(program);
+        gl_assert!("glLinkProgram");
+    }
+    // Bind the shader program.
+    unsafe {
+        glUseProgram(program);
+        gl_assert!("glUseProgram#0");
+    }
+    // Link status
     let mut status = std::mem::MaybeUninit::<i32>::uninit();
     let status = unsafe {
-        glGetProgramiv(program, 0x8B82, /*GL_LINK_STATUS*/ status.as_mut_ptr());
-        gl_assert!();
+        glGetProgramiv(
+            program,
+            0x8B82,
+            /*GL_LINK_STATUS*/ status.as_mut_ptr(),
+        );
+        gl_assert!("glGetProgramiv");
         status.assume_init()
     };
     if status == 0 {
@@ -850,49 +953,15 @@ fn create_program(builder: crate::ShaderBuilder) -> Shader {
                 len.as_mut_ptr(),
                 log.as_mut_ptr() as *mut _ as *mut _,
             );
-            gl_assert!();
+            gl_assert!("glGetProgramInfoLog");
         }
         let log = String::from_utf8_lossy(&log);
         panic!("Error: linking:\n{}", log);
     }
-    // Bind the shader program.
-    unsafe {
-        glUseProgram(program);
-        gl_assert!();
-    }
-    // Vertex attributes
-    unsafe {
-        // All shader programs have position.
-        glBindAttribLocation(
-            program,
-            GL_ATTRIB_POS,
-            b"pos\0".as_ptr() as *const _ as *const _,
-        );
-        gl_assert!();
-        //
-        if builder.gradient {
-            glBindAttribLocation(
-                program,
-                GL_ATTRIB_COL,
-                b"col\0".as_ptr() as *const _ as *const _,
-            );
-            gl_assert!();
-        }
-        //
-        if builder.graphic {
-            glBindAttribLocation(
-                program,
-                GL_ATTRIB_TEX,
-                b"texpos\0".as_ptr() as *const _ as *const _,
-            );
-            gl_assert!();
-        }
-        // 
-        glLinkProgram(program);
-        gl_assert!();
-    }
+
+
     // Uniforms
-//    let mut groups = Vec::with_capacity(builder.group as usize);
+    //    let mut groups = Vec::with_capacity(builder.group as usize);
     let mut transforms = Vec::with_capacity(builder.transform as usize);
     /*//
     for group in builder.groups.iter() {
@@ -906,28 +975,37 @@ fn create_program(builder: crate::ShaderBuilder) -> Shader {
         let handle = unsafe {
             glGetUniformLocation(program, id.as_ptr() as *const _ as *const _)
         };
-        gl_assert!();
+        gl_assert!("glGetUniformLocation");
         assert!(handle > -1);
         transforms.push(handle);
     }
 
     let id = unsafe {
-        glGetUniformLocation(program, "cala_InstanceID\0".as_ptr() as *const _ as *const _)
+        glGetUniformLocation(
+            program,
+            "cala_InstanceID\0".as_ptr() as *const _ as *const _,
+        )
     };
-    gl_assert!();
+    gl_assert!("glGetUniformLocation#cala_InstanceID");
     assert!(id > -1);
 
     let graphic = if builder.graphic {
         let tsc_translate = unsafe {
-            glGetUniformLocation(program, "tsc_translate\0".as_ptr() as *const _ as *const _)
+            glGetUniformLocation(
+                program,
+                "tsc_translate\0".as_ptr() as *const _ as *const _,
+            )
         };
-        gl_assert!();
+        gl_assert!("glGetUniformLocation#tsc_translate");
         assert!(tsc_translate > -1);
 
         let tsc_scale = unsafe {
-            glGetUniformLocation(program, "tsc_scale\0".as_ptr() as *const _ as *const _)
+            glGetUniformLocation(
+                program,
+                "tsc_scale\0".as_ptr() as *const _ as *const _,
+            )
         };
-        gl_assert!();
+        gl_assert!("glGetUniformLocation#tsc_scale");
         assert!(tsc_scale > -1);
 
         Some((tsc_translate, tsc_scale))
@@ -937,9 +1015,12 @@ fn create_program(builder: crate::ShaderBuilder) -> Shader {
 
     let depth = if builder.depth {
         let camera = unsafe {
-            glGetUniformLocation(program, "cam\0".as_ptr() as *const _ as *const _)
+            glGetUniformLocation(
+                program,
+                "cam\0".as_ptr() as *const _ as *const _,
+            )
         };
-        gl_assert!();
+        gl_assert!("glGetUniformLocation#cam");
         assert!(camera > -1);
 
         Some(camera)
@@ -949,9 +1030,12 @@ fn create_program(builder: crate::ShaderBuilder) -> Shader {
 
     let tint = if builder.tint {
         let tint = unsafe {
-            glGetUniformLocation(program, "tint\0".as_ptr() as *const _ as *const _)
+            glGetUniformLocation(
+                program,
+                "tint\0".as_ptr() as *const _ as *const _,
+            )
         };
-        gl_assert!();
+        gl_assert!("glGetUniformLocation#tint");
         assert!(tint > -1);
 
         Some(tint)
@@ -974,20 +1058,24 @@ fn create_program(builder: crate::ShaderBuilder) -> Shader {
 
 fn create_shader(source: *const i8, shader_type: u32) -> u32 {
     let shader = unsafe { glCreateShader(shader_type) };
-    gl_assert!();
+    gl_assert!("glCreateShader");
     debug_assert!(shader != 0);
 
     unsafe {
         glShaderSource(shader, 1, [source].as_ptr(), std::ptr::null());
-        gl_assert!();
+        gl_assert!("glShaderSource");
         glCompileShader(shader);
-        gl_assert!();
+        gl_assert!("glCompileShader");
     }
 
     let mut status = std::mem::MaybeUninit::<i32>::uninit();
     let status = unsafe {
-        glGetShaderiv(shader, 0x8B81 /*GL_COMPILE_STATUS*/, status.as_mut_ptr());
-        gl_assert!();
+        glGetShaderiv(
+            shader,
+            0x8B81, /*GL_COMPILE_STATUS*/
+            status.as_mut_ptr(),
+        );
+        gl_assert!("glGetShaderiv");
         status.assume_init()
     };
     if status == 0 {
@@ -1000,12 +1088,14 @@ fn create_shader(source: *const i8, shader_type: u32) -> u32 {
                 len.as_mut_ptr(),
                 log.as_mut_ptr() as *mut _ as *mut _,
             );
-            gl_assert!();
+            gl_assert!("glGetShaderInfoLog");
         }
         let log = String::from_utf8_lossy(&log);
         panic!(
             "Error: compiling {}: {}\n",
-            if shader_type == 0x8B31 /*GL_VERTEX_SHADER*/ {
+            if shader_type == 0x8B31
+            /*GL_VERTEX_SHADER*/
+            {
                 "vertex"
             } else {
                 "fragment"
@@ -1034,7 +1124,8 @@ pub(super) fn new(window: &mut Window) -> Option<Box<Draw>> {
         // Initialize EGL Display.
         let mut major = std::mem::MaybeUninit::uninit();
         let mut minor = std::mem::MaybeUninit::uninit();
-        let ret = eglInitialize(display, major.as_mut_ptr(), minor.as_mut_ptr());
+        let ret =
+            eglInitialize(display, major.as_mut_ptr(), minor.as_mut_ptr());
         debug_assert_eq!(ret, 1);
 
         // Connect EGL to either OpenGL or OpenGLES, whichever is available.
@@ -1049,15 +1140,13 @@ pub(super) fn new(window: &mut Window) -> Option<Box<Draw>> {
             display,
             [
                 /*EGL_SURFACE_TYPE:*/ 0x3033,
-                /*EGL_WINDOW_BIT:*/ 0x04,
-                /*EGL_RED_SIZE:*/ 0x3024, 8,
-                /*EGL_GREEN_SIZE:*/ 0x3023, 8,
+                /*EGL_WINDOW_BIT:*/ 0x04, /*EGL_RED_SIZE:*/ 0x3024,
+                8, /*EGL_GREEN_SIZE:*/ 0x3023, 8,
                 /*EGL_BLUE_SIZE:*/ 0x3022, 8,
-                /*EGL_ALPHA_SIZE:*/ 0x3021, 8,
+//                /*EGL_ALPHA_SIZE:*/ 0x3021, 8,
                 /*EGL_DEPTH_SIZE*/ 0x3025, 24,
                 /*EGL_RENDERABLE_TYPE:*/ 0x3040,
-                /*EGL_OPENGL_ES2_BIT:*/ 0x0004,
-                /*EGL_NONE:*/ 0x3038,
+                /*EGL_OPENGL_ES2_BIT:*/ 0x0004, /*EGL_NONE:*/ 0x3038,
             ]
             .as_ptr(),
             config.as_mut_ptr(),
@@ -1092,6 +1181,7 @@ pub(super) fn new(window: &mut Window) -> Option<Box<Draw>> {
         graphic: 0,
         depth: false,
         blending: false,
+        shader: 0,
     };
 
     Some(Box::new(draw))

@@ -461,7 +461,11 @@ unsafe extern "C" fn redraw_wl(
 
     // Redraw on the screen.
     (*c).draw.begin_draw();
-    (*c).draw_toolbar(&(*c).toolbar_shader, &(*c).toolbar_shape, &(*c).toolbar_graphic);
+    (*c).draw_toolbar(
+        &(*c).toolbar_shader,
+        &(*c).toolbar_shape,
+        &(*c).toolbar_graphic,
+    );
 
     ((*c).redraw)(diff_nanos);
 
@@ -495,8 +499,14 @@ unsafe extern "C" fn configure_callback(
     let width = (*c).window_width;
     let height = (*window).toolbar_height;
     let pixels = vec![255; height as usize * width as usize * 4];
-    (*window).toolbar_graphic.0.resize(pixels.as_slice(), width as usize);
-    (*window).toolbar_graphic.0.update(&mut |a, b| ((*window).toolbar_callback)(a, b));
+    (*window)
+        .toolbar_graphic
+        .0
+        .resize(pixels.as_slice(), width as usize);
+    (*window)
+        .toolbar_graphic
+        .0
+        .update(&mut |a, b| ((*window).toolbar_callback)(a, b));
 
     if (*c).callback.is_null() {
         redraw_wl(window, std::ptr::null_mut(), time);
@@ -733,7 +743,11 @@ unsafe extern "C" fn keyboard_handle_key(
             119 => Break,
             125 => System,
             127 => Menu,
-            143 => /*Function Key should be ignored*/ ExtraClick,
+            143 =>
+            /*Function Key should be ignored*/
+            {
+                ExtraClick
+            }
             163 => FastForward,
             164 => PausePlay,
             165 => Rewind,
@@ -745,7 +759,10 @@ unsafe extern "C" fn keyboard_handle_key(
             224 => BrightnessDown,
             225 => BrightnessUp,
             247 => AirplaneMode,
-            e => { eprintln!("Error: Unknown key combination: {}", e); ExtraClick },
+            e => {
+                eprintln!("Error: Unknown key combination: {}", e);
+                ExtraClick
+            }
         } as i8;
 
         if !offset.is_negative() {
@@ -988,8 +1005,14 @@ unsafe extern "C" fn toplevel_configure(
         let width = (*c).window_width;
         let height = (*window).toolbar_height;
         let pixels = vec![255; height as usize * width as usize * 4];
-        (*window).toolbar_graphic.0.resize(pixels.as_slice(), width as usize);
-        (*window).toolbar_graphic.0.update(&mut |a, b| ((*window).toolbar_callback)(a, b));
+        (*window)
+            .toolbar_graphic
+            .0
+            .resize(pixels.as_slice(), width as usize);
+        (*window)
+            .toolbar_graphic
+            .0
+            .update(&mut |a, b| ((*window).toolbar_callback)(a, b));
     }
 }
 
