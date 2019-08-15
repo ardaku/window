@@ -429,6 +429,10 @@ impl Nshape for Shape {
             gl_assert!("glBindBuffer#Element");
         }
     }
+
+    fn id(&self) -> u32 {
+        self.index_buf
+    }
 }
 
 impl Nvertices for Vertices {
@@ -515,6 +519,7 @@ pub struct OpenGL {
     blending: bool,
     shader: u32,
     tex_coords_id: (u32, [f32; 2], [f32; 2]),
+    shape_id: u32,
 }
 
 impl Drop for OpenGL {
@@ -636,6 +641,7 @@ impl Draw for OpenGL {
     }
 
     fn begin_draw(&mut self) {
+        self.shape_id = std::u32::MAX;
         unsafe {
             glClear(
                 0x0000_4000 /*GL_COLOR_BUFFER_BIT*/ | 0x0000_0100, /*GL_DEPTH_BUFFER_BIT*/
@@ -652,6 +658,11 @@ impl Draw for OpenGL {
 
     fn draw(&mut self, shader: &dyn Nshader, vertlist: &dyn Nvertices, shape: &dyn Nshape) {
         self.bind_shader(shader);
+
+        // IF SAME SHAPE
+        let id = shape.id();
+        if self.shape_id != id {
+            self.shape_id = id;
 
         if shader.blending() && !self.blending {
             unsafe {
@@ -682,18 +693,6 @@ impl Draw for OpenGL {
         }
 
         unsafe {
-            let mut index = 0;
-            while let Some(uniform_id) = shader.transform(index) {
-                glUniformMatrix4fv(
-                    *uniform_id,
-                    shape.instances_num(),
-                    0, /*GL_FALSE*/
-                    shape.instances_ptr(),
-                );
-                gl_assert!("glUniformMatrix4fv");
-                index += 1;
-            }
-
             let stride = if shader.depth().is_some() { 3 } else { 2 }
                 + if shader.gradient() { 3 } else { 0 }
                 + if shader.graphic().is_some() { 2 } else { 0 };
@@ -745,6 +744,25 @@ impl Draw for OpenGL {
                 );
                 gl_assert!("glVertexAttribPointer#TEX");
             }
+        }
+
+        } // END IF
+
+        unsafe {
+            let mut index = 0;
+            while let Some(uniform_id) = shader.transform(index) {
+                glUniformMatrix4fv(
+                    *uniform_id,
+                    shape.instances_num(),
+                    0, /*GL_FALSE*/
+                    shape.instances_ptr(),
+                );
+                gl_assert!("glUniformMatrix4fv");
+                index += 1;
+            }
+        }
+
+        unsafe {
 
             // Draw
             // TODO use glDrawElementsInstanced only if available (when not
@@ -1202,6 +1220,7 @@ pub(super) fn new(window: &mut Window) -> Option<Box<dyn Draw>> {
         blending: false,
         shader: 0,
         tex_coords_id: (std::u32::MAX, [0.0, 0.0], [1.0, 1.0]),
+        shape_id: std::u32::MAX,
     };
 
     Some(Box::new(draw))

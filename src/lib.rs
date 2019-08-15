@@ -349,6 +349,7 @@ trait Nshape {
     fn instances_ptr(&self) -> *const c_void;
     fn instances_num(&self) -> i32;
     fn bind(&self);
+    fn id(&self) -> u32;
 }
 
 trait Nvertices {
