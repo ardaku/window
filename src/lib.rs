@@ -112,7 +112,7 @@ impl Transform {
     /// Create a perspective matrix.
     /// - `fovy` - Y dimension field of view (in cycles), 0.25 is standard
     ///   domain: 0 < fovy < 0.5
-    /// - `aspect` - `screen.width / screen.height`
+    /// - `aspect` - `window_height / window_width`
     /// - `near` - Near clipping pane, domain: 0 < near
     /// - `far` - Far clipping pane, domain: near < far
     pub fn perspective(fovy: f32, aspect: f32, near: f32, far: f32) -> Self {
@@ -264,7 +264,7 @@ trait Nwin {
     /// Get the next frame.  Return false on quit.
     fn run(&mut self) -> bool;
     /// Get the window width & height.
-    fn dimensions(&mut self) -> (u16, u16);
+    fn dimensions(&self) -> (u16, u16);
     /// Get if a key is held down.
     fn key_held(&self, key: crate::Key) -> bool;
 }
@@ -794,5 +794,13 @@ impl Window {
     /// If a key is being held down.
     pub fn key(&self, key: Key) -> bool {
         self.nwin.key_held(key)
+    }
+
+    /// Get the aspect ratio: `window_height / window_width`.
+    pub fn aspect(&self) -> f32 {
+        let (w, h) = self.nwin.dimensions();
+        let (w, h) = (w as f32, h as f32);
+
+        h / w
     }
 }

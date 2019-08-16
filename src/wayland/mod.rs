@@ -1151,7 +1151,7 @@ impl Nwin for WaylandWindow {
         ret != -1 && self.running != 0 // TODO: running should be bool.
     }
 
-    fn dimensions(&mut self) -> (u16, u16) {
+    fn dimensions(&self) -> (u16, u16) {
         (self.window_width as u16, self.window_height as u16)
     }
 

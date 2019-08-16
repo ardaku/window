@@ -771,8 +771,8 @@ impl Draw for OpenGL {
 
             {
                 for i in 0..shape.instances_num() {
-                    glUniform1i(shader.id(), i);
-                    gl_assert!("glUniform1i");
+//                    glUniform1i(shader.id(), i);
+//                    gl_assert!("glUniform1i");
                     glDrawElements(
                         0x0004, /*GL_TRIANGLES*/
                         shape.len(),
