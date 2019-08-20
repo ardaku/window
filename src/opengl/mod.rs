@@ -376,10 +376,6 @@ impl Nshader for Shader {
         self.transforms.get(index)
     }
 
-    fn id(&self) -> i32 {
-        self.id
-    }
-
     fn num_instances(&self) -> u16 {
         self.instance_count
     }

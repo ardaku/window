@@ -336,7 +336,6 @@ trait Nshader {
     fn blending(&self) -> bool;
     fn bind(&self);
     fn transform(&self, index: usize) -> Option<&i32>;
-    fn id(&self) -> i32;
     fn num_instances(&self) -> u16;
     fn program(&self) -> u32;
 }
