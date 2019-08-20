@@ -559,9 +559,9 @@ unsafe extern "C" fn output_geometry(
 	_physical_width: i32, // Width in millimeters.
 	_physical_height: i32, // Height in millimeters.
 	_subpixel: i32, // subpixel orientation.
-	make: *const c_void, // Text of make.
-	model: *const c_void, // Text of model.
-	transform: i32,
+	_make: *const c_void, // Text of make.
+	_model: *const c_void, // Text of model.
+	_transform: i32,
 ) {
 }
 

@@ -195,8 +195,6 @@ pub struct Shader {
     blending: bool,
     // Maximum number of instances.
     instance_count: u16,
-    //
-    id: i32,
 }
 
 ///
@@ -266,8 +264,6 @@ impl Graphic {
                 // Increase mipmap level.
                 mipmap_level += 1;
 
-                glBindTexture(GL_TEXTURE_2D, new_texture);
-                gl_assert!("glBindTexture");
                 glTexImage2D(
                     GL_TEXTURE_2D,
                     mipmap_level,
@@ -1044,15 +1040,6 @@ fn create_program(builder: crate::ShaderBuilder) -> Shader {
         transforms.push(handle);
     }
 
-    let id = unsafe {
-        glGetUniformLocation(
-            program,
-            "cala_InstanceID\0".as_ptr() as *const _ as *const _,
-        )
-    };
-    gl_assert!("glGetUniformLocation#cala_InstanceID");
-    assert!(id > -1);
-
     let graphic = if builder.graphic {
         let tsc_translate = unsafe {
             glGetUniformLocation(
@@ -1116,7 +1103,6 @@ fn create_program(builder: crate::ShaderBuilder) -> Shader {
         tint,
         blending: builder.blend,
         instance_count: builder.instance_count,
-        id,
     }
 }
 
