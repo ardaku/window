@@ -12,10 +12,10 @@ mod platform;
 
 // Position
 const GL_ATTRIB_POS: u32 = 0;
-// Color
-const GL_ATTRIB_COL: u32 = 1;
 // Texture Coordinates Begin (May have multiple)
-const GL_ATTRIB_TEX: u32 = 2;
+const GL_ATTRIB_TEX: u32 = 1;
+// Color
+const GL_ATTRIB_COL: u32 = 2;
 
 const GL_RGBA: u32 = 0x1908;
 const GL_TEXTURE_2D: u32 = 0x0DE1;
@@ -138,6 +138,7 @@ extern "C" {
     fn glDisable(cap: u32) -> ();
     fn glEnable(cap: u32) -> ();
     fn glEnableVertexAttribArray(index: u32) -> ();
+    fn glDisableVertexAttribArray(index: u32) -> ();
     //    fn glDrawArrays(mode: u32, first: i32, count: i32);
     fn glDrawElements(
         mode: u32,
@@ -371,7 +372,7 @@ impl Nshader for Shader {
         unsafe {
             debug_assert_ne!(self.program, 0);
             glUseProgram(self.program);
-            gl_assert!("glUseProgram");
+            gl_assert!(&format!("glUseProgram {}", self.program));
         }
     }
 
@@ -520,6 +521,8 @@ pub struct OpenGL {
     shader: u32,
     tex_coords_id: (u32, [f32; 2], [f32; 2]),
     shape_id: u32,
+    vaa_col: bool,
+    vaa_tex: bool,
 }
 
 impl Drop for OpenGL {
@@ -570,15 +573,6 @@ impl Draw for OpenGL {
             gl_assert!("glEnable#0");
             glDisable(0x0BD0 /*GL_DITHER*/);
             gl_assert!("glDisable#0");
-        }
-
-        unsafe {
-            glEnableVertexAttribArray(GL_ATTRIB_POS);
-            gl_assert!("glEnableVertexAttribArray#1");
-            glEnableVertexAttribArray(GL_ATTRIB_COL);
-            gl_assert!("glEnableVertexAttribArray#2");
-            glEnableVertexAttribArray(GL_ATTRIB_TEX);
-            gl_assert!("glEnableVertexAttribArray#3");
         }
 
         unsafe {
@@ -648,16 +642,47 @@ impl Draw for OpenGL {
             );
             gl_assert!("glClear");
         }
+        unsafe { glEnableVertexAttribArray(GL_ATTRIB_POS) }
+        gl_assert!("glEnableVertexAttribArray#4");
     }
 
     fn finish_draw(&mut self) {
+        if self.vaa_col {
+            unsafe { glDisableVertexAttribArray(GL_ATTRIB_COL) }
+            gl_assert!("glDisableVertexAttribArray#0");
+            self.vaa_col = false;
+        }
+        if self.vaa_tex {
+            unsafe { glDisableVertexAttribArray(GL_ATTRIB_TEX) }
+            gl_assert!("glDisableVertexAttribArray#1");
+            self.vaa_tex = false;
+        }
+        unsafe { glDisableVertexAttribArray(GL_ATTRIB_POS) }
+        gl_assert!("glDisableVertexAttribArray#4");
         unsafe {
             eglSwapBuffers(self.display, self.surface);
         }
     }
 
     fn draw(&mut self, shader: &dyn Nshader, vertlist: &dyn Nvertices, shape: &dyn Nshape) {
-        self.bind_shader(shader);
+        if self.bind_shader(shader) {
+            if !self.vaa_col && shader.graphic().is_some() {
+                unsafe { glEnableVertexAttribArray(GL_ATTRIB_COL) }
+                gl_assert!("glEnableVertexAttribArray#2");
+            }
+            if !self.vaa_tex && shader.gradient() {
+                unsafe { glEnableVertexAttribArray(GL_ATTRIB_TEX) }
+                gl_assert!("glEnableVertexAttribArray#3");
+            }
+            if self.vaa_col && shader.graphic().is_none() {
+                unsafe { glDisableVertexAttribArray(GL_ATTRIB_COL) }
+                gl_assert!("glDisableVertexAttribArray#2");
+            }
+            if self.vaa_tex && !shader.gradient() {
+                unsafe { glDisableVertexAttribArray(GL_ATTRIB_TEX) }
+                gl_assert!("glDisableVertexAttribArray#3");
+            }
+        }
 
         // IF SAME SHAPE
         let id = shape.id();
@@ -769,8 +794,8 @@ impl Draw for OpenGL {
             // GLES2).
             //            glDrawElementsInstanced(0x0004 /*GL_TRIANGLES*/, shape.len(), 0x1403 /*GL_UNSIGNED_SHORT*/, shape.ptr(), shape.instances_num());
 
-            {
-                for i in 0..shape.instances_num() {
+//            {
+//                for i in 0..shape.instances_num() {
 //                    glUniform1i(shader.id(), i);
 //                    gl_assert!("glUniform1i");
                     glDrawElements(
@@ -779,9 +804,9 @@ impl Draw for OpenGL {
                         0x1403, /*GL_UNSIGNED_SHORT*/
                         std::ptr::null(),
                     );
-                    gl_assert!("glDrawElements");
-                }
-            }
+//                    gl_assert!("glDrawElements");
+//                }
+//            }
         }
     }
 
@@ -865,12 +890,14 @@ impl Draw for OpenGL {
 }
 
 impl OpenGL {
-    fn bind_shader(&mut self, shader: &dyn Nshader) {
+    fn bind_shader(&mut self, shader: &dyn Nshader) -> bool {
         let shader_id = shader.program();
         if shader_id != self.shader {
             shader.bind();
             self.shader = shader_id;
+            return true;
         }
+        false
     }
 }
 
@@ -967,7 +994,7 @@ fn create_program(builder: crate::ShaderBuilder) -> Shader {
     // Bind the shader program.
     unsafe {
         glUseProgram(program);
-        gl_assert!("glUseProgram#0");
+        gl_assert!(&format!("glUseProgram#0 {}", program));
     }
     // Link status
     let mut status = std::mem::MaybeUninit::<i32>::uninit();
@@ -1221,6 +1248,8 @@ pub(super) fn new(window: &mut Window) -> Option<Box<dyn Draw>> {
         shader: 0,
         tex_coords_id: (std::u32::MAX, [0.0, 0.0], [1.0, 1.0]),
         shape_id: std::u32::MAX,
+        vaa_col: false,
+        vaa_tex: false,
     };
 
     Some(Box::new(draw))
