@@ -47,7 +47,9 @@ macro_rules! gl_assert {
 
 #[cfg(not(debug_assertions))]
 macro_rules! gl_assert {
-    ($x:expr) => {$x};
+    ($x:expr) => {
+        $x
+    };
 }
 
 extern "C" {
@@ -223,7 +225,7 @@ impl Graphic {
             const GL_TEXTURE_MIN_FILTER: u32 = 0x2801;
             const GL_NEAREST: i32 = 0x2600;
             const GL_NEAREST_MIPMAP_LINEAR: i32 = 0x2702;
-//            const GL_NEAREST_MIPMAP_NEAREST: i32 = 0x2700;
+            //            const GL_NEAREST_MIPMAP_NEAREST: i32 = 0x2700;
 
             glBindTexture(GL_TEXTURE_2D, new_texture);
             gl_assert!("glBindTexture");
@@ -418,7 +420,10 @@ impl Nshape for Shape {
     fn bind(&self) {
         debug_assert_ne!(self.index_buf, 0);
         unsafe {
-            glBindBuffer(0x8893 /*GL_ELEMENT_ARRAY_BUFFER*/, self.index_buf);
+            glBindBuffer(
+                0x8893, /*GL_ELEMENT_ARRAY_BUFFER*/
+                self.index_buf,
+            );
             gl_assert!("glBindBuffer#Element");
         }
     }
@@ -595,7 +600,10 @@ impl Draw for OpenGL {
         }
     }
 
-    fn shader_new(&mut self, builder: crate::ShaderBuilder) -> Box<dyn Nshader> {
+    fn shader_new(
+        &mut self,
+        builder: crate::ShaderBuilder,
+    ) -> Box<dyn Nshader> {
         Box::new(Shader::new(builder))
     }
 
@@ -656,7 +664,12 @@ impl Draw for OpenGL {
         }
     }
 
-    fn draw(&mut self, shader: &dyn Nshader, vertlist: &dyn Nvertices, shape: &dyn Nshape) {
+    fn draw(
+        &mut self,
+        shader: &dyn Nshader,
+        vertlist: &dyn Nvertices,
+        shape: &dyn Nshape,
+    ) {
         if self.bind_shader(shader) {
             if !self.vaa_col && shader.graphic().is_some() {
                 unsafe { glEnableVertexAttribArray(GL_ATTRIB_COL) }
@@ -681,88 +694,91 @@ impl Draw for OpenGL {
         if self.shape_id != id {
             self.shape_id = id;
 
-        if shader.blending() && !self.blending {
+            if shader.blending() && !self.blending {
+                unsafe {
+                    glEnable(0x0BE2 /*BLEND*/);
+                    gl_assert!("glEnable#Blend");
+                }
+                self.blending = true;
+            } else if !shader.blending() && self.blending {
+                unsafe {
+                    glDisable(0x0BE2 /*BLEND*/);
+                    gl_assert!("glDisable#Blend");
+                }
+                self.blending = false;
+            }
+
+            if shader.depth().is_some() && !self.depth {
+                unsafe {
+                    glEnable(0x0B71 /*DEPTH_TEST*/);
+                    gl_assert!("glEnable#DEPTH_TEST");
+                }
+                self.depth = true;
+            } else if shader.depth().is_none() && self.depth {
+                unsafe {
+                    glDisable(0x0B71 /*DEPTH_TEST*/);
+                    gl_assert!("glDisable#DEPTH_TEST");
+                }
+                self.depth = false;
+            }
+
             unsafe {
-                glEnable(0x0BE2 /*BLEND*/);
-                gl_assert!("glEnable#Blend");
-            }
-            self.blending = true;
-        } else if !shader.blending() && self.blending {
-            unsafe {
-                glDisable(0x0BE2 /*BLEND*/);
-                gl_assert!("glDisable#Blend");
-            }
-            self.blending = false;
-        }
+                let stride = if shader.depth().is_some() { 3 } else { 2 }
+                    + if shader.gradient() { 3 } else { 0 }
+                    + if shader.graphic().is_some() { 2 } else { 0 };
+                let stride = (stride * std::mem::size_of::<f32>()) as i32;
 
-        if shader.depth().is_some() && !self.depth {
-            unsafe {
-                glEnable(0x0B71 /*DEPTH_TEST*/);
-                gl_assert!("glEnable#DEPTH_TEST");
+                vertlist.bind();
+                shape.bind();
+
+                // Always
+                {
+                    glVertexAttribPointer(
+                        GL_ATTRIB_POS,
+                        if shader.depth().is_some() { 3 } else { 2 },
+                        0x1406, /*GL_FLOAT*/
+                        0,      /*GL_FALSE*/
+                        stride,
+                        std::ptr::null(),
+                    );
+                    gl_assert!("glVertexAttribPointer#POS");
+                }
+
+                // Only if Gradient is enabled.
+                if shader.gradient() {
+                    let ptr: *const f32 = std::ptr::null();
+                    glVertexAttribPointer(
+                        GL_ATTRIB_COL,
+                        3,
+                        0x1406, /*GL_FLOAT*/
+                        0,      /*GL_FALSE*/
+                        stride,
+                        ptr.offset(if shader.depth().is_some() {
+                            3
+                        } else {
+                            2
+                        }),
+                    );
+                    gl_assert!("glVertexAttribPointer#COL");
+                }
+
+                // Only if Texture is enabled.
+                if shader.graphic().is_some() {
+                    let ptr: *const f32 = std::ptr::null();
+                    glVertexAttribPointer(
+                        GL_ATTRIB_TEX,
+                        2,
+                        0x1406, /*GL_FLOAT*/
+                        0,      /*GL_FALSE*/
+                        stride,
+                        ptr.offset(
+                            if shader.depth().is_some() { 3 } else { 2 }
+                                + if shader.gradient() { 3 } else { 0 },
+                        ),
+                    );
+                    gl_assert!("glVertexAttribPointer#TEX");
+                }
             }
-            self.depth = true;
-        } else if shader.depth().is_none() && self.depth {
-            unsafe {
-                glDisable(0x0B71 /*DEPTH_TEST*/);
-                gl_assert!("glDisable#DEPTH_TEST");
-            }
-            self.depth = false;
-        }
-
-        unsafe {
-            let stride = if shader.depth().is_some() { 3 } else { 2 }
-                + if shader.gradient() { 3 } else { 0 }
-                + if shader.graphic().is_some() { 2 } else { 0 };
-            let stride = (stride * std::mem::size_of::<f32>()) as i32;
-
-            vertlist.bind();
-            shape.bind();
-
-            // Always
-            {
-                glVertexAttribPointer(
-                    GL_ATTRIB_POS,
-                    if shader.depth().is_some() { 3 } else { 2 },
-                    0x1406, /*GL_FLOAT*/
-                    0,      /*GL_FALSE*/
-                    stride,
-                    std::ptr::null(),
-                );
-                gl_assert!("glVertexAttribPointer#POS");
-            }
-
-            // Only if Gradient is enabled.
-            if shader.gradient() {
-                let ptr: *const f32 = std::ptr::null();
-                glVertexAttribPointer(
-                    GL_ATTRIB_COL,
-                    3,
-                    0x1406, /*GL_FLOAT*/
-                    0,      /*GL_FALSE*/
-                    stride,
-                    ptr.offset(if shader.depth().is_some() { 3 } else { 2 }),
-                );
-                gl_assert!("glVertexAttribPointer#COL");
-            }
-
-            // Only if Texture is enabled.
-            if shader.graphic().is_some() {
-                let ptr: *const f32 = std::ptr::null();
-                glVertexAttribPointer(
-                    GL_ATTRIB_TEX,
-                    2,
-                    0x1406, /*GL_FLOAT*/
-                    0,      /*GL_FALSE*/
-                    stride,
-                    ptr.offset(
-                        if shader.depth().is_some() { 3 } else { 2 }
-                            + if shader.gradient() { 3 } else { 0 },
-                    ),
-                );
-                gl_assert!("glVertexAttribPointer#TEX");
-            }
-        }
-
         } // END IF
 
         unsafe {
@@ -780,25 +796,24 @@ impl Draw for OpenGL {
         }
 
         unsafe {
-
             // Draw
             // TODO use glDrawElementsInstanced only if available (when not
             // GLES2).
             //            glDrawElementsInstanced(0x0004 /*GL_TRIANGLES*/, shape.len(), 0x1403 /*GL_UNSIGNED_SHORT*/, shape.ptr(), shape.instances_num());
 
-//            {
-//                for i in 0..shape.instances_num() {
-//                    glUniform1i(shader.id(), i);
-//                    gl_assert!("glUniform1i");
-                    glDrawElements(
-                        0x0004, /*GL_TRIANGLES*/
-                        shape.len(),
-                        0x1403, /*GL_UNSIGNED_SHORT*/
-                        std::ptr::null(),
-                    );
-//                    gl_assert!("glDrawElements");
-//                }
-//            }
+            //            {
+            //                for i in 0..shape.instances_num() {
+            //                    glUniform1i(shader.id(), i);
+            //                    gl_assert!("glUniform1i");
+            glDrawElements(
+                0x0004, /*GL_TRIANGLES*/
+                shape.len(),
+                0x1403, /*GL_UNSIGNED_SHORT*/
+                std::ptr::null(),
+            );
+            //                    gl_assert!("glDrawElements");
+            //                }
+            //            }
         }
     }
 
@@ -865,7 +880,7 @@ impl Draw for OpenGL {
                     a,
                     1,
                     0, /*GL_FALSE*/
-                    cam.mat.as_ptr() as *const c_void,
+                    cam.as_ptr() as *const c_void,
                 );
             }
         }
@@ -1014,7 +1029,6 @@ fn create_program(builder: crate::ShaderBuilder) -> Shader {
         let log = String::from_utf8_lossy(&log);
         panic!("Error: linking:\n{}", log);
     }
-
 
     // Uniforms
     //    let mut groups = Vec::with_capacity(builder.group as usize);
@@ -1189,9 +1203,9 @@ pub(super) fn new(window: &mut Window) -> Option<Box<dyn Draw>> {
                 /*EGL_WINDOW_BIT:*/ 0x04, /*EGL_RED_SIZE:*/ 0x3024,
                 8, /*EGL_GREEN_SIZE:*/ 0x3023, 8,
                 /*EGL_BLUE_SIZE:*/ 0x3022, 8,
-//                /*EGL_ALPHA_SIZE:*/ 0x3021, 8,
-                /*EGL_DEPTH_SIZE*/ 0x3025, 24,
-                /*EGL_RENDERABLE_TYPE:*/ 0x3040,
+                //                /*EGL_ALPHA_SIZE:*/ 0x3021, 8,
+                /*EGL_DEPTH_SIZE*/
+                0x3025, 24, /*EGL_RENDERABLE_TYPE:*/ 0x3040,
                 /*EGL_OPENGL_ES2_BIT:*/ 0x0004, /*EGL_NONE:*/ 0x3038,
             ]
             .as_ptr(),

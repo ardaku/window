@@ -529,7 +529,12 @@ unsafe extern "C" fn handle_xdg_shell_ping(
     wl_proxy_marshal(shell, 3 /*ZXDG_SHELL_V6_PONG*/, serial);
 }
 
-static mut OUTPUT_LISTENER: [*mut c_void; 4] = [output_geometry as *mut _, output_mode as *mut _, output_done as *mut _, output_scale as *mut _];
+static mut OUTPUT_LISTENER: [*mut c_void; 4] = [
+    output_geometry as *mut _,
+    output_mode as *mut _,
+    output_done as *mut _,
+    output_scale as *mut _,
+];
 
 static mut FRAME_LISTENER: [*mut c_void; 1] = [redraw_wl as *mut _];
 
@@ -553,43 +558,44 @@ static mut POINTER_LISTENER: [*mut c_void; 9] = [
 
 unsafe extern "C" fn output_geometry(
     _data: *mut crate::Window,
-	_wl_output: *mut c_void,
-	_x: i32, // X position of window.
-	_y: i32, // Y position of window.
-	_physical_width: i32, // Width in millimeters.
-	_physical_height: i32, // Height in millimeters.
-	_subpixel: i32, // subpixel orientation.
-	_make: *const c_void, // Text of make.
-	_model: *const c_void, // Text of model.
-	_transform: i32,
+    _wl_output: *mut c_void,
+    _x: i32,               // X position of window.
+    _y: i32,               // Y position of window.
+    _physical_width: i32,  // Width in millimeters.
+    _physical_height: i32, // Height in millimeters.
+    _subpixel: i32,        // subpixel orientation.
+    _make: *const c_void,  // Text of make.
+    _model: *const c_void, // Text of model.
+    _transform: i32,
 ) {
 }
 
 unsafe extern "C" fn output_mode(
     data: *mut crate::Window,
-	_wl_output: *mut c_void,
-	_flags: u32,
-	_width: i32, // Monitor width (in pixels)
-	_height: i32, // Monitor height (in pixels)
-	refresh: i32)
-{
+    _wl_output: *mut c_void,
+    _flags: u32,
+    _width: i32,  // Monitor width (in pixels)
+    _height: i32, // Monitor height (in pixels)
+    refresh: i32,
+) {
     let data = get(&mut *(*data).nwin);
 
     // Convert from frames per 1000 seconds to seconds per frame.
     let refresh = (refresh as f64 * 0.001).recip();
     // Convert seconds to nanoseconds.
     (*data).refresh_rate = (refresh * 1_000_000_000.0) as u64;
-
-    dbg!((*data).refresh_rate);
 }
 
-unsafe extern "C" fn output_done(    _data: *mut crate::Window,
-	_wl_output: *mut c_void,) {
+unsafe extern "C" fn output_done(
+    _data: *mut crate::Window,
+    _wl_output: *mut c_void,
+) {
 }
 
-unsafe extern "C" fn output_scale(    _data: *mut crate::Window,
-	_wl_output: *mut c_void,
-		      factor: i32, // Pixel doubling
+unsafe extern "C" fn output_scale(
+    _data: *mut crate::Window,
+    _wl_output: *mut c_void,
+    factor: i32, // Pixel doubling
 ) {
 }
 
@@ -995,12 +1001,11 @@ unsafe extern "C" fn registry_handle_global(
             1,
             std::ptr::null_mut(),
         );
-		wl_proxy_add_listener(output, OUTPUT_LISTENER.as_ptr(), window as *mut _ as *mut _);
-    } else {
-        extern "C" {
-            fn printf(a: *const c_void, b: *const c_void) -> i32;
-        }
-        printf(b"DBG: %s\n\0" as *const _ as *const _, interface);
+        wl_proxy_add_listener(
+            output,
+            OUTPUT_LISTENER.as_ptr(),
+            window as *mut _ as *mut _,
+        );
     }
 }
 
@@ -1097,7 +1102,8 @@ pub(super) static mut REGISTRY_LISTENER: [*mut c_void; 2] = [
     registry_handle_global_remove as *mut _,
 ];
 
-static mut SHELL_SURFACE_LISTENER: [*mut c_void; 1] = [surface_configure as *mut _];
+static mut SHELL_SURFACE_LISTENER: [*mut c_void; 1] =
+    [surface_configure as *mut _];
 
 static mut TOPLEVEL_LISTENER: [*mut c_void; 2] =
     [toplevel_configure as *mut _, toplevel_close as *mut _];
