@@ -467,7 +467,7 @@ unsafe extern "C" fn redraw_wl(
     (*c).draw.begin_draw();
     (*c).draw_toolbar(
         &(*c).toolbar_shader,
-        &(*c).toolbar_shape,
+        &mut (*c).toolbar_shape,
         &(*c).toolbar_graphic,
     );
 

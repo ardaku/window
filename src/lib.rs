@@ -23,6 +23,7 @@ macro_rules! shader {
 
 mod keycodes;
 mod mat4;
+mod shape;
 
 #[cfg(unix)]
 mod wayland;
@@ -32,6 +33,7 @@ mod opengl;
 
 pub use self::keycodes::*;
 pub use self::mat4::*;
+pub use self::shape::*;
 
 /// Native Window Handle.
 enum NwinHandle {
@@ -87,25 +89,13 @@ trait Draw {
     fn background(&mut self, r: f32, g: f32, b: f32);
     /// Create a shader.
     fn shader_new(&mut self, builder: ShaderBuilder) -> Box<dyn Nshader>;
-    /// Create a collection of vertices.
-    fn vertices_new(&mut self, vertices: &[f32]) -> Box<dyn Nvertices>;
     /// Create a shape.
-    fn shape_new(&mut self, builder: ShapeBuilder) -> Box<dyn Nshape>;
+    fn group_new(&mut self) -> Box<dyn Ngroup>;
     /// Draw a shape.
     fn draw(
         &mut self,
         shader: &dyn Nshader,
-        vertlist: &dyn Nvertices,
-        shape: &dyn Nshape,
-    );
-    /// Set instances for a shape.
-    fn instances(&mut self, shape: &mut dyn Nshape, matrices: &[Transform]);
-    /// Transform 1 instance.
-    fn transform(
-        &mut self,
-        shape: &mut dyn Nshape,
-        instance: u16,
-        transform: Transform,
+        shape: &mut dyn Ngroup,
     );
     /// Upload graphic.
     fn graphic(
@@ -123,14 +113,7 @@ trait Draw {
         height: u16,
         toolbar_height: u16,
         shader: &dyn Nshader,
-        vertlist: &dyn Nvertices,
-        shape: &dyn Nshape,
-    );
-    /// Set texture coordinates
-    fn texture_coords(
-        &mut self,
-        shader: &dyn Nshader,
-        coords: (u32, [f32; 2], [f32; 2]),
+        shape: &mut dyn Ngroup,
     );
     /// Set camera
     fn camera(&mut self, shader: &dyn Nshader, cam: Transform);
@@ -142,31 +125,34 @@ trait Nshader {
     fn depth(&self) -> Option<i32>;
     fn tint(&self) -> Option<i32>;
     fn gradient(&self) -> bool;
-    fn graphic(&self) -> Option<(i32, i32)>;
+    fn graphic(&self) -> bool;
     fn blending(&self) -> bool;
     fn bind(&self);
-    fn transform(&self, index: usize) -> Option<&i32>;
-    fn num_instances(&self) -> u16;
     fn program(&self) -> u32;
 }
 
-trait Nshape {
+trait Ngroup {
     fn len(&self) -> i32;
-    fn buf(&self) -> u32;
-    fn instances(&mut self, matrices: &[Transform]);
-    fn transform(&mut self, index: u16, transform: Transform);
-    fn instances_ptr(&self) -> *const c_void;
-    fn instances_num(&self) -> i32;
-    fn bind(&self);
+    fn bind(&mut self);
     fn id(&self) -> u32;
+    fn push(&mut self, shape: &crate::Shape, transform: &crate::Transform);
+    fn push_tex(&mut self, shape: &crate::Shape, transform: &crate::Transform, tex_coords: (u32, [f32; 2], [f32; 2]));
 }
 
-trait Nvertices {
-    fn bind(&self);
-}
+/// A group.  Groups 
+pub struct Group(Box<dyn Ngroup>);
 
-/// A shape.
-pub struct Shape(Box<dyn Nshape>);
+impl Group {
+    /// Push a shape into the group.
+    pub fn push(&mut self, shape: &crate::Shape, transform: &crate::Transform) {
+        self.0.push(shape, transform);
+    }
+
+    /// Push a shape into the group.
+    pub fn push_tex(&mut self, shape: &crate::Shape, transform: &crate::Transform, tex_coords: (u32, [f32; 2], [f32; 2])) {
+        self.0.push_tex(shape, transform, tex_coords);
+    }
+}
 
 trait Ngraphic {
     fn id(&self) -> u32;
@@ -178,11 +164,6 @@ trait Ngraphic {
 
 /// A graphic on the GPU.
 pub struct Graphic(Box<dyn Ngraphic>);
-
-enum Either {
-    Builder(Vec<f32>),
-    VertList(Box<dyn Nvertices>),
-}
 
 fn nearly_equal(a: f32, b: f32) -> bool {
     let abs_a = a.abs();
@@ -209,129 +190,10 @@ fn nearly_equal(a: f32, b: f32) -> bool {
 }
 
 /// A shader.
-pub struct Shader(Box<dyn Nshader>, Either);
-
-/// A shape builder.
-pub struct ShapeBuilder<'a> {
-    shader: &'a mut Shader,
-    indices: Vec<u16>,
-    vertices: Vec<f32>,
-    num_instances: u16,
-}
-
-impl<'a> ShapeBuilder<'a> {
-    /// Create a new `ShapeBuilder` for a specific `Shader`.
-    pub fn new(shader: &'a mut Shader) -> ShapeBuilder<'a> {
-        let num_instances = shader.0.num_instances();
-
-        ShapeBuilder {
-            shader,
-            indices: Vec::new(),
-            vertices: Vec::new(),
-            num_instances,
-        }
-    }
-
-    /// Set vertices for shape.
-    pub fn vert(mut self, vertices: &[f32]) -> Self {
-        self.vertices = vertices.to_vec();
-        self
-    }
-
-    /// Add a face to the shape.
-    pub fn face(mut self, transform: Transform) -> Self {
-        let dimensions = if self.shader.0.depth().is_some() {
-            3
-        } else {
-            2
-        };
-        let components = if self.shader.0.blending() { 4 } else { 3 };
-        let stride = dimensions
-            + if self.shader.0.gradient() {
-                components
-            } else {
-                0
-            }
-            + if self.shader.0.graphic().is_some() {
-                2
-            } else {
-                0
-            };
-        assert!(self.vertices.len() % stride == 0);
-        let mut index = 0;
-        let shader1 = match self.shader.1 {
-            Either::Builder(ref mut list) => list,
-            Either::VertList(_) => panic!("Already built!"),
-        };
-        // Loop through vertices.
-        'v: loop {
-            // Break out of loop.
-            if index == self.vertices.len() {
-                break 'v;
-            }
-            // Read vertex position.
-            let vertex = if dimensions == 2 {
-                [self.vertices[index], self.vertices[index + 1], 0.0]
-            } else {
-                [
-                    self.vertices[index],
-                    self.vertices[index + 1],
-                    self.vertices[index + 2],
-                ]
-            };
-            // Transform vertex position.
-            let vertex = transform * vertex;
-            // Find index to push to index buffer.
-            let mut jndex = 0;
-            self.indices.push('l: loop {
-                // Haven't found the vertex, add to shader's vertex list.
-                if jndex == shader1.len() {
-                    let rtn = jndex / stride;
-                    // Push transformed coordinates
-                    for k in vertex.iter().take(dimensions) {
-                        shader1.push(*k)
-                    }
-                    // Don't transform the data.
-                    for k in dimensions..stride {
-                        shader1.push(self.vertices[index + k]);
-                    }
-                    break 'l rtn as u16;
-                }
-
-                // Test to see if vertex already exists.
-                let mut equal = true;
-                'b: for k in 0..dimensions {
-                    if !nearly_equal(vertex[k], shader1[jndex + k]) {
-                        equal = false;
-                        break 'b;
-                    }
-                }
-                'c: for k in dimensions..stride {
-                    if !nearly_equal(
-                        self.vertices[index + k],
-                        shader1[jndex + k],
-                    ) {
-                        equal = false;
-                        break 'c;
-                    }
-                }
-                if equal {
-                    break 'l (jndex / stride) as u16;
-                }
-                jndex += stride;
-            });
-
-            index += stride;
-        }
-
-        self
-    }
-}
+pub struct Shader(Box<dyn Nshader>);
 
 /// A builder for portable shaders.
 pub struct ShaderBuilder {
-    /// Number of transform matrices for this shader.
-    pub transform: u8,
     /// Whether or not shapes for this shader have a tint
     pub tint: bool,
     /// Whether or not vertices have attached colors for this shader.
@@ -346,15 +208,13 @@ pub struct ShaderBuilder {
     pub opengl_frag: &'static str,
     /// OpenGL/OpenGLES GLSL Vertex Shader
     pub opengl_vert: &'static str,
-    /// Number of instances allowed in shader.
-    pub instance_count: u16,
 }
 
 /// A window on the monitor.
 pub struct Window {
     toolbar_graphic: Graphic,
     toolbar_shader: Shader,
-    toolbar_shape: Shape,
+    toolbar_shape: Group,
     toolbar_callback: fn(&mut [u8], u16),
     /// Height of the toolbar.
     pub toolbar_height: u16,
@@ -368,7 +228,7 @@ impl Window {
     pub fn new(
         name: &str,
         run: fn(nanos: u64) -> (),
-        toolbar: fn(&mut Self) -> (Shader, Shape),
+        toolbar: fn(&mut Self) -> (Shader, Group),
     ) -> Box<Self> {
         /*********************/
         /* Declare Variables */
@@ -465,27 +325,12 @@ impl Window {
 
     /// Build a shader program.
     pub fn shader_new(&mut self, builder: ShaderBuilder) -> Shader {
-        Shader(self.draw.shader_new(builder), Either::Builder(vec![]))
+        Shader(self.draw.shader_new(builder))
     }
 
     /// Create a new shape.
-    pub fn shape_new(&mut self, builder: ShapeBuilder) -> Shape {
-        Shape(self.draw.shape_new(builder))
-    }
-
-    /// Set the instances for a shape.
-    pub fn instances(&mut self, shape: &mut Shape, transforms: &[Transform]) {
-        self.draw.instances(&mut *shape.0, transforms);
-    }
-
-    /// Update transformation matrix for an instance of a shape.
-    pub fn transform(
-        &mut self,
-        shape: &mut Shape,
-        instance: u16,
-        transform: Transform,
-    ) {
-        self.draw.transform(&mut *shape.0, instance, transform);
+    pub fn group_new(&mut self) -> Group {
+        Group(self.draw.group_new())
     }
 
     /// Load an RGBA graphic to the GPU.
@@ -517,35 +362,22 @@ impl Window {
         self.draw.tint(&*shader.0, color)
     }
 
-    /// Set texture coordinates for a shader.
-    pub fn texture_coords(
-        &mut self,
-        shader: &Shader,
-        coords: (u32, [f32; 2], [f32; 2]),
-    ) {
-        self.draw.texture_coords(&*shader.0, coords)
-    }
-
     /// Use a graphic for drawing.
     pub fn draw_graphic(
         &mut self,
         shader: &Shader,
-        shape: &Shape,
+        shape: &mut Group,
         graphic: &Graphic,
     ) {
         self.draw.bind_graphic(&*graphic.0);
         self.draw(shader, shape);
     }
 
-    /// Draw a shape.
-    pub fn draw(&mut self, shader: &Shader, shape: &Shape) {
+    /// Draw a group.
+    pub fn draw(&mut self, shader: &Shader, group: &mut Group) {
         self.draw.draw(
             &*shader.0,
-            &**match shader.1 {
-                Either::Builder(_) => panic!("Not built yet!"),
-                Either::VertList(ref a) => a,
-            },
-            &*shape.0,
+            &mut *group.0,
         );
     }
 
@@ -553,24 +385,16 @@ impl Window {
     fn draw_toolbar(
         &mut self,
         shader: &Shader,
-        shape: &Shape,
+        shape: &mut Group,
         graphic: &Graphic,
     ) {
         self.draw.bind_graphic(&*graphic.0);
-        self.draw.texture_coords(
-            &*shader.0,
-            (std::u32::MAX, [0f32, 0f32], [1f32, 1f32]),
-        );
         self.draw.toolbar(
             self.nwin.dimensions().0,
             self.nwin.dimensions().1,
             self.toolbar_height,
             &*shader.0,
-            &**match shader.1 {
-                Either::Builder(_) => panic!("Not built yet!"),
-                Either::VertList(ref a) => a,
-            },
-            &*shape.0,
+            &mut *shape.0,
         );
     }
 
@@ -578,15 +402,6 @@ impl Window {
     pub fn toolbar(&mut self, callback: fn(&mut [u8], u16)) {
         self.toolbar_graphic.0.update(&mut |a, b| callback(a, b));
         self.toolbar_callback = callback;
-    }
-
-    /// Build a shader.
-    pub fn build(&mut self, shader: &mut Shader) {
-        if let Either::Builder(ref vertices) = shader.1 {
-            shader.1 = Either::VertList(self.draw.vertices_new(vertices))
-        } else {
-            panic!("Already built!");
-        }
     }
 
     /// If a key is being held down.
