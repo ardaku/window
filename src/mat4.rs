@@ -79,14 +79,16 @@ impl Transform {
         let sx2 = x2 * scalar;
 
         #[cfg_attr(rustfmt, rustfmt_skip)]
-        Self {
+        let a = Self {
             mat: [
                 [1.0 - yy2 - zz2, xy2 + sz2, xz2 - sy2, 0.0],
                 [xy2 - sz2, 1.0 - xx2 - zz2, yz2 + sx2, 0.0],
                 [xz2 + sy2, yz2 - sx2, 1.0 - xx2 - yy2, 0.0],
                 [0.0, 0.0, 0.0, 1.0],
             ]
-        }
+        };
+
+        self * a
     }
 
     /// Create a perspective matrix.
