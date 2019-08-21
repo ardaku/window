@@ -406,7 +406,7 @@ unsafe extern "C" fn pointer_handle_button(
         0x110 /*BTN_LEFT*/ => {
             // pressed.
             if state != 0 {
-                if (*c).pointer_xy.1 < (*window).toolbar_height as f32 {
+                if (*c).pointer_xy.1 < f32::from((*window).toolbar_height) {
                     wl_proxy_marshal(
                         (*c).toplevel,
                         5, /*ZXDG_TOPLEVEL_V6_MOVE*/
@@ -581,7 +581,7 @@ unsafe extern "C" fn output_mode(
     let data = get(&mut *(*data).nwin);
 
     // Convert from frames per 1000 seconds to seconds per frame.
-    let refresh = (refresh as f64 * 0.001).recip();
+    let refresh = (f64::from(refresh) * 0.001).recip();
     // Convert seconds to nanoseconds.
     (*data).refresh_rate = (refresh * 1_000_000_000.0) as u64;
 }
@@ -595,7 +595,7 @@ unsafe extern "C" fn output_done(
 unsafe extern "C" fn output_scale(
     _data: *mut crate::Window,
     _wl_output: *mut c_void,
-    factor: i32, // Pixel doubling
+    _factor: i32, // Pixel doubling
 ) {
 }
 

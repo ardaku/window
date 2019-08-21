@@ -50,11 +50,7 @@ impl<'a> ShapeBuilder<'a> {
             } else {
                 0
             }
-            + if self.shader.0.graphic() {
-                2
-            } else {
-                0
-            };
+            + if self.shader.0.graphic() { 2 } else { 0 };
         let mut index = 0;
         // Loop through vertices.
         'v: loop {
@@ -64,7 +60,11 @@ impl<'a> ShapeBuilder<'a> {
             }
             // Read vertex position.
             let vertex = if dimensions == 2 {
-                [self.temp_vertices[index], self.temp_vertices[index + 1], 0.0]
+                [
+                    self.temp_vertices[index],
+                    self.temp_vertices[index + 1],
+                    0.0,
+                ]
             } else {
                 [
                     self.temp_vertices[index],
@@ -93,7 +93,7 @@ impl<'a> ShapeBuilder<'a> {
 
                 // Test to see if vertex already exists.
                 let mut equal = true;
-                'b: for k in 0..dimensions {
+                'b: for (k, _) in vertex.iter().enumerate().take(dimensions) {
                     if !nearly_equal(vertex[k], self.vertices[jndex + k]) {
                         equal = false;
                         break 'b;
@@ -120,19 +120,25 @@ impl<'a> ShapeBuilder<'a> {
         self
     }
 
+    /// Finish building the shape.
     pub fn finish(self) -> Shape {
         let dimensions = if self.shader.0.depth().is_some() {
             3
         } else {
             2
         };
-        let components = if self.shader.0.gradient() { if self.shader.0.blending() { 4 } else { 3 } } else { 0 };
-        let stride = dimensions + components
-        + if self.shader.0.graphic() {
-            2
+        let components = if self.shader.0.gradient() {
+            if self.shader.0.blending() {
+                4
+            } else {
+                3
+            }
         } else {
             0
         };
+        let stride = dimensions
+            + components
+            + if self.shader.0.graphic() { 2 } else { 0 };
 
         Shape {
             indices: self.indices,

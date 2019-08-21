@@ -92,11 +92,7 @@ trait Draw {
     /// Create a shape.
     fn group_new(&mut self) -> Box<dyn Ngroup>;
     /// Draw a shape.
-    fn draw(
-        &mut self,
-        shader: &dyn Nshader,
-        shape: &mut dyn Ngroup,
-    );
+    fn draw(&mut self, shader: &dyn Nshader, shape: &mut dyn Ngroup);
     /// Upload graphic.
     fn graphic(
         &mut self,
@@ -136,10 +132,15 @@ trait Ngroup {
     fn bind(&mut self);
     fn id(&self) -> u32;
     fn push(&mut self, shape: &crate::Shape, transform: &crate::Transform);
-    fn push_tex(&mut self, shape: &crate::Shape, transform: &crate::Transform, tex_coords: (u32, [f32; 2], [f32; 2]));
+    fn push_tex(
+        &mut self,
+        shape: &crate::Shape,
+        transform: &crate::Transform,
+        tex_coords: ([f32; 2], [f32; 2]),
+    );
 }
 
-/// A group.  Groups 
+/// A group.  Groups
 pub struct Group(Box<dyn Ngroup>);
 
 impl Group {
@@ -149,7 +150,12 @@ impl Group {
     }
 
     /// Push a shape into the group.
-    pub fn push_tex(&mut self, shape: &crate::Shape, transform: &crate::Transform, tex_coords: (u32, [f32; 2], [f32; 2])) {
+    pub fn push_tex(
+        &mut self,
+        shape: &crate::Shape,
+        transform: &crate::Transform,
+        tex_coords: ([f32; 2], [f32; 2]),
+    ) {
         self.0.push_tex(shape, transform, tex_coords);
     }
 }
@@ -375,10 +381,7 @@ impl Window {
 
     /// Draw a group.
     pub fn draw(&mut self, shader: &Shader, group: &mut Group) {
-        self.draw.draw(
-            &*shader.0,
-            &mut *group.0,
-        );
+        self.draw.draw(&*shader.0, &mut *group.0);
     }
 
     /// Draw the toolbar.
@@ -412,7 +415,7 @@ impl Window {
     /// Get the aspect ratio: `window_height / window_width`.
     pub fn aspect(&self) -> f32 {
         let (w, h) = self.nwin.dimensions();
-        let (w, h) = (w as f32, h as f32);
+        let (w, h) = (f32::from(w), f32::from(h));
 
         h / w
     }

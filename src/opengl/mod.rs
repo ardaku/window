@@ -4,8 +4,8 @@ use super::Draw;
 use super::DrawHandle;
 use super::Window;
 use crate::Ngraphic;
-use crate::Nshader;
 use crate::Ngroup;
+use crate::Nshader;
 
 mod platform;
 
@@ -126,8 +126,6 @@ extern "C" {
         transpose: u8,
         value: *const c_void,
     ) -> ();
-    fn glUniform1i(location: i32, v0: i32) -> ();
-    fn glUniform2f(location: i32, v0: f32, v1: f32) -> ();
     fn glUniform4f(location: i32, v0: f32, v1: f32, v2: f32, v3: f32) -> ();
     fn glClearColor(red: f32, green: f32, blue: f32, alpha: f32) -> ();
     fn glClear(mask: u32) -> ();
@@ -151,7 +149,6 @@ extern "C" {
     ) -> ();
     fn glGenBuffers(n: i32, buffers: *mut u32) -> ();
     fn glBindBuffer(target: u32, buffer: u32) -> ();
-    fn glBindBufferBase(target: u32, index: u32, buffer: u32) -> ();
     fn glBufferData(
         target: u32,
         size: isize,
@@ -337,26 +334,43 @@ impl Ngroup for Group {
     fn bind(&mut self) {
         if self.dirty_data {
             if self.dirty_vertex_size {
-                vbo_resize::<f32>(GL_ARRAY_BUFFER, self.vertex_buf, &self.vertices);
+                vbo_resize::<f32>(
+                    GL_ARRAY_BUFFER,
+                    self.vertex_buf,
+                    &self.vertices,
+                );
                 self.dirty_vertex_size = false;
             } else {
-                vbo_set::<f32>(GL_ARRAY_BUFFER, self.vertex_buf, 0, self.vertices.len(), &self.vertices);
+                vbo_set::<f32>(
+                    GL_ARRAY_BUFFER,
+                    self.vertex_buf,
+                    0,
+                    self.vertices.len(),
+                    &self.vertices,
+                );
             }
             if self.dirty_index_size {
-                vbo_resize::<u32>(GL_ELEMENT_ARRAY_BUFFER, self.index_buf, &self.indices);
+                vbo_resize::<u32>(
+                    GL_ELEMENT_ARRAY_BUFFER,
+                    self.index_buf,
+                    &self.indices,
+                );
                 self.dirty_index_size = false;
             } else {
-                vbo_set::<u32>(GL_ELEMENT_ARRAY_BUFFER, self.index_buf, 0, self.indices.len(), &self.indices);
+                vbo_set::<u32>(
+                    GL_ELEMENT_ARRAY_BUFFER,
+                    self.index_buf,
+                    0,
+                    self.indices.len(),
+                    &self.indices,
+                );
             }
             self.dirty_data = false;
         }
 
         debug_assert_ne!(self.index_buf, 0);
         unsafe {
-            glBindBuffer(
-                GL_ELEMENT_ARRAY_BUFFER,
-                self.index_buf,
-            );
+            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, self.index_buf);
             gl_assert!("glBindBuffer#Element");
         }
         debug_assert_ne!(self.vertex_buf, 0);
@@ -371,10 +385,15 @@ impl Ngroup for Group {
     }
 
     fn push(&mut self, shape: &crate::Shape, transform: &crate::Transform) {
-        self.push_tex(shape, transform, (std::u32::MAX, [0.0, 0.0], [1.0, 1.0]))
+        self.push_tex(shape, transform, ([0.0, 0.0], [1.0, 1.0]))
     }
 
-    fn push_tex(&mut self, shape: &crate::Shape, transform: &crate::Transform, tex_coords: (u32, [f32; 2], [f32; 2])) {
+    fn push_tex(
+        &mut self,
+        shape: &crate::Shape,
+        transform: &crate::Transform,
+        tex_coords: ([f32; 2], [f32; 2]),
+    ) {
         let vertex_offset = self.vertices.len() as u32 / shape.stride;
         let initial_vertex_cap = self.vertices.capacity();
         let initial_index_cap = self.indices.capacity();
@@ -382,17 +401,19 @@ impl Ngroup for Group {
         for index in shape.indices.iter() {
             self.indices.push(index + vertex_offset);
         }
-        assert_eq!(0, shape.vertices.len() as u32 % shape.stride);
         for i in 0..(shape.vertices.len() / shape.stride as usize) {
-            assert_eq!(0, self.vertices.len() as u32 % shape.stride);
-
             let offset = i * shape.stride as usize;
 
-            let vector = *transform * if shape.dimensions == 3 {
-                [shape.vertices[offset + 0], shape.vertices[offset + 1], shape.vertices[offset + 2]]
-            } else {
-                [shape.vertices[offset + 0], shape.vertices[offset + 1], 0.0]
-            };
+            let vector = *transform
+                * if shape.dimensions == 3 {
+                    [
+                        shape.vertices[offset],
+                        shape.vertices[offset + 1],
+                        shape.vertices[offset + 2],
+                    ]
+                } else {
+                    [shape.vertices[offset], shape.vertices[offset + 1], 0.0]
+                };
 
             self.vertices.push(vector[0]);
             self.vertices.push(vector[1]);
@@ -402,8 +423,16 @@ impl Ngroup for Group {
 
             // Check to see if there is extra texture coordinate data.
             if shape.dimensions + shape.components + 2 == shape.stride {
-                self.vertices.push(shape.vertices[offset + shape.dimensions as usize] * tex_coords.2[0] + tex_coords.1[0]);
-                self.vertices.push(shape.vertices[offset + shape.dimensions as usize + 1] * tex_coords.2[1] + tex_coords.1[1]);
+                self.vertices.push(
+                    shape.vertices[offset + shape.dimensions as usize]
+                        * tex_coords.1[0]
+                        + tex_coords.0[0],
+                );
+                self.vertices.push(
+                    shape.vertices[offset + shape.dimensions as usize + 1]
+                        * tex_coords.1[1]
+                        + tex_coords.0[1],
+                );
             }
 
             for i in (shape.stride - shape.components)..shape.stride {
@@ -545,7 +574,6 @@ pub struct OpenGL {
     depth: bool,
     blending: bool,
     shader: u32,
-    tex_coords_id: (u32, [f32; 2], [f32; 2]),
     shape_id: u32,
     vaa_col: bool,
     vaa_tex: bool,
@@ -647,10 +675,10 @@ impl Draw for OpenGL {
         toolbar_height: u16,
         shader: &dyn Nshader,
         shape: &mut dyn Ngroup,
-    ) -> () {
-        let w = w as i32;
-        let h = h as i32;
-        let toolbar_height = toolbar_height as i32;
+    ) {
+        let w = i32::from(w);
+        let h = i32::from(h);
+        let toolbar_height = i32::from(toolbar_height);
         unsafe {
             glViewport(0, h - toolbar_height, w, toolbar_height);
             self.draw(shader, shape);
@@ -688,11 +716,7 @@ impl Draw for OpenGL {
         }
     }
 
-    fn draw(
-        &mut self,
-        shader: &dyn Nshader,
-        shape: &mut dyn Ngroup,
-    ) {
+    fn draw(&mut self, shader: &dyn Nshader, shape: &mut dyn Ngroup) {
         if self.bind_shader(shader) {
             if !self.vaa_col && shader.gradient() {
                 unsafe { glEnableVertexAttribArray(GL_ATTRIB_COL) }
@@ -807,8 +831,6 @@ impl Draw for OpenGL {
             }
         } // END IF
 
-        assert_eq!(shape.len() % 3, 0);
-
         unsafe {
             glDrawElements(
                 0x0004, /*GL_TRIANGLES*/
@@ -839,23 +861,6 @@ impl Draw for OpenGL {
             self.graphic = graphic.id();
         }
     }
-
-/*    fn texture_coords(
-        &mut self,
-        shader: &dyn Nshader,
-        coords: (u32, [f32; 2], [f32; 2]),
-    ) {
-        if shader.graphic() {
-            if coords.0 != self.tex_coords_id.0 {
-                self.bind_shader(shader);
-                unsafe {
-                    glUniform2f(a, coords.1[0], coords.1[1]);
-                    glUniform2f(b, coords.2[0], coords.2[1]);
-                }
-                self.tex_coords_id = coords;
-            }
-        }
-    }*/
 
     fn camera(&mut self, shader: &dyn Nshader, cam: crate::Transform) {
         if let Some(a) = shader.depth() {
@@ -915,7 +920,7 @@ fn vbo_resize<T>(target: u32, vbo: u32, data: &Vec<T>) {
             target,
             (data.capacity() * std::mem::size_of::<T>()) as isize,
             (*data).as_ptr() as *const _,
-            0x88E8 /*GL_DYNAMIC_DRAW*/,
+            0x88E8, /*GL_DYNAMIC_DRAW*/
         );
         gl_assert!("glBufferData");
     }
@@ -1015,12 +1020,6 @@ fn create_program(builder: crate::ShaderBuilder) -> Shader {
         panic!("Error: linking:\n{}", log);
     }
 
-    let graphic = if builder.graphic {
-        true
-    } else {
-        false
-    };
-
     let depth = if builder.depth {
         let camera = unsafe {
             glGetUniformLocation(
@@ -1050,6 +1049,8 @@ fn create_program(builder: crate::ShaderBuilder) -> Shader {
     } else {
         None
     };
+
+    let graphic = builder.graphic;
 
     Shader {
         program,
@@ -1187,7 +1188,6 @@ pub(super) fn new(window: &mut Window) -> Option<Box<dyn Draw>> {
         depth: false,
         blending: false,
         shader: 0,
-        tex_coords_id: (std::u32::MAX, [0.0, 0.0], [1.0, 1.0]),
         shape_id: std::u32::MAX,
         vaa_col: false,
         vaa_tex: false,
