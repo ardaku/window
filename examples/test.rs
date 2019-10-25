@@ -49,7 +49,7 @@ fn main() {
     ));
 
     pub fn run(nanos: u64) {
-        let context = __CALA_CONTEXT.with(|c| {
+        let _context = __CALA_CONTEXT.with(|c| {
             c.borrow_mut().timed.add(nanos);
 
             let float: f32 = c.borrow_mut().timed.into();

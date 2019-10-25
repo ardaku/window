@@ -19,6 +19,7 @@ extern "C" {
     static wl_seat_interface: WlInterface;
     static wl_shm_interface: WlInterface;
     static wl_pointer_interface: WlInterface;
+    static wl_output_interface: WlInterface;
     static wl_keyboard_interface: WlInterface;
     #[allow(unused)] // TODO
     static wl_touch_interface: WlInterface;
@@ -405,7 +406,7 @@ unsafe extern "C" fn pointer_handle_button(
         0x110 /*BTN_LEFT*/ => {
             // pressed.
             if state != 0 {
-                if (*c).pointer_xy.1 < (*window).toolbar_height as f32 {
+                if (*c).pointer_xy.1 < f32::from((*window).toolbar_height) {
                     wl_proxy_marshal(
                         (*c).toplevel,
                         5, /*ZXDG_TOPLEVEL_V6_MOVE*/
@@ -456,12 +457,19 @@ unsafe extern "C" fn redraw_wl(
     };
     assert!((*wayland).callback == callback);
     (*wayland).callback = std::ptr::null_mut();
-    let diff_nanos = u64::from(diff_millis) * 1_000_000;
+    let orig_nanos = u64::from(diff_millis) * 1_000_000;
     (*wayland).last_millis = millis;
+
+    let temp_nanos = orig_nanos + (*wayland).refresh_rate / 2;
+    let diff_nanos = temp_nanos - (temp_nanos % (*wayland).refresh_rate);
 
     // Redraw on the screen.
     (*c).draw.begin_draw();
-    (*c).draw_toolbar(&(*c).toolbar_shader, &(*c).toolbar_shape, &(*c).toolbar_graphic);
+    (*c).draw_toolbar(
+        &(*c).toolbar_shader,
+        &mut (*c).toolbar_shape,
+        &(*c).toolbar_graphic,
+    );
 
     ((*c).redraw)(diff_nanos);
 
@@ -495,8 +503,14 @@ unsafe extern "C" fn configure_callback(
     let width = (*c).window_width;
     let height = (*window).toolbar_height;
     let pixels = vec![255; height as usize * width as usize * 4];
-    (*window).toolbar_graphic.0.resize(pixels.as_slice(), width as usize);
-    (*window).toolbar_graphic.0.update(&mut |a, b| ((*window).toolbar_callback)(a, b));
+    (*window)
+        .toolbar_graphic
+        .0
+        .resize(pixels.as_slice(), width as usize);
+    (*window)
+        .toolbar_graphic
+        .0
+        .update(&mut |a, b| ((*window).toolbar_callback)(a, b));
 
     if (*c).callback.is_null() {
         redraw_wl(window, std::ptr::null_mut(), time);
@@ -514,6 +528,13 @@ unsafe extern "C" fn handle_xdg_shell_ping(
 
     wl_proxy_marshal(shell, 3 /*ZXDG_SHELL_V6_PONG*/, serial);
 }
+
+static mut OUTPUT_LISTENER: [*mut c_void; 4] = [
+    output_geometry as *mut _,
+    output_mode as *mut _,
+    output_done as *mut _,
+    output_scale as *mut _,
+];
 
 static mut FRAME_LISTENER: [*mut c_void; 1] = [redraw_wl as *mut _];
 
@@ -534,6 +555,49 @@ static mut POINTER_LISTENER: [*mut c_void; 9] = [
     std::ptr::null_mut(),
     std::ptr::null_mut(),
 ];
+
+unsafe extern "C" fn output_geometry(
+    _data: *mut crate::Window,
+    _wl_output: *mut c_void,
+    _x: i32,               // X position of window.
+    _y: i32,               // Y position of window.
+    _physical_width: i32,  // Width in millimeters.
+    _physical_height: i32, // Height in millimeters.
+    _subpixel: i32,        // subpixel orientation.
+    _make: *const c_void,  // Text of make.
+    _model: *const c_void, // Text of model.
+    _transform: i32,
+) {
+}
+
+unsafe extern "C" fn output_mode(
+    data: *mut crate::Window,
+    _wl_output: *mut c_void,
+    _flags: u32,
+    _width: i32,  // Monitor width (in pixels)
+    _height: i32, // Monitor height (in pixels)
+    refresh: i32,
+) {
+    let data = get(&mut *(*data).nwin);
+
+    // Convert from frames per 1000 seconds to seconds per frame.
+    let refresh = (f64::from(refresh) * 0.001).recip();
+    // Convert seconds to nanoseconds.
+    (*data).refresh_rate = (refresh * 1_000_000_000.0) as u64;
+}
+
+unsafe extern "C" fn output_done(
+    _data: *mut crate::Window,
+    _wl_output: *mut c_void,
+) {
+}
+
+unsafe extern "C" fn output_scale(
+    _data: *mut crate::Window,
+    _wl_output: *mut c_void,
+    _factor: i32, // Pixel doubling
+) {
+}
 
 unsafe extern "C" fn keyboard_handle_keymap(
     _window: *mut crate::Window,
@@ -733,7 +797,11 @@ unsafe extern "C" fn keyboard_handle_key(
             119 => Break,
             125 => System,
             127 => Menu,
-            143 => /*Function Key should be ignored*/ ExtraClick,
+            143 =>
+            /*Function Key should be ignored*/
+            {
+                ExtraClick
+            }
             163 => FastForward,
             164 => PausePlay,
             165 => Rewind,
@@ -745,7 +813,10 @@ unsafe extern "C" fn keyboard_handle_key(
             224 => BrightnessDown,
             225 => BrightnessUp,
             247 => AirplaneMode,
-            e => { eprintln!("Error: Unknown key combination: {}", e); ExtraClick },
+            e => {
+                eprintln!("Error: Unknown key combination: {}", e);
+                ExtraClick
+            }
         } as i8;
 
         if !offset.is_negative() {
@@ -847,7 +918,6 @@ unsafe extern "C" fn registry_handle_global(
     interface: *const c_void, // text
     _version: u32,
 ) {
-    //    let c = (*window).nwin_c as *mut WaylandWindow;
     let c = get(&mut *(*window).nwin);
 
     if strcmp(interface, b"wl_compositor\0" as *const _ as *const _) == 0 {
@@ -920,6 +990,22 @@ unsafe extern "C" fn registry_handle_global(
         if (*c).default_cursor.is_null() {
             panic!("unable to load default left pointer");
         }
+    } else if strcmp(interface, b"wl_output\0" as *const _ as *const _) == 0 {
+        let output = wl_proxy_marshal_constructor_versioned(
+            registry,
+            0, /*WL_REGISTRY_BIND*/
+            &wl_output_interface,
+            1,
+            name,
+            wl_output_interface.name,
+            1,
+            std::ptr::null_mut(),
+        );
+        wl_proxy_add_listener(
+            output,
+            OUTPUT_LISTENER.as_ptr(),
+            window as *mut _ as *mut _,
+        );
     }
 }
 
@@ -988,8 +1074,14 @@ unsafe extern "C" fn toplevel_configure(
         let width = (*c).window_width;
         let height = (*window).toolbar_height;
         let pixels = vec![255; height as usize * width as usize * 4];
-        (*window).toolbar_graphic.0.resize(pixels.as_slice(), width as usize);
-        (*window).toolbar_graphic.0.update(&mut |a, b| ((*window).toolbar_callback)(a, b));
+        (*window)
+            .toolbar_graphic
+            .0
+            .resize(pixels.as_slice(), width as usize);
+        (*window)
+            .toolbar_graphic
+            .0
+            .update(&mut |a, b| ((*window).toolbar_callback)(a, b));
     }
 }
 
@@ -1010,7 +1102,8 @@ pub(super) static mut REGISTRY_LISTENER: [*mut c_void; 2] = [
     registry_handle_global_remove as *mut _,
 ];
 
-static mut SURFACE_LISTENER: [*mut c_void; 1] = [surface_configure as *mut _];
+static mut SHELL_SURFACE_LISTENER: [*mut c_void; 1] =
+    [surface_configure as *mut _];
 
 static mut TOPLEVEL_LISTENER: [*mut c_void; 2] =
     [toplevel_configure as *mut _, toplevel_close as *mut _];
@@ -1035,6 +1128,8 @@ pub struct WaylandWindow {
     // Millisecond counter on last frame.
     last_millis: u32,
     start_time: u32,
+    // Monitor refresh rate (nanoseconds).
+    refresh_rate: u64,
 
     // Input Information.
     pointer_xy: (f32, f32), // mouse or touch
@@ -1128,7 +1223,7 @@ impl Nwin for WaylandWindow {
         ret != -1 && self.running != 0 // TODO: running should be bool.
     }
 
-    fn dimensions(&mut self) -> (u16, u16) {
+    fn dimensions(&self) -> (u16, u16) {
         (self.window_width as u16, self.window_height as u16)
     }
 
@@ -1167,6 +1262,7 @@ pub(super) fn new(name: &str, window: &mut crate::Window) -> Option<()> {
 
                 last_millis: 0,
                 start_time: 0,
+                refresh_rate: 0,
 
                 pointer_xy: (0.0, 0.0),
 
@@ -1245,7 +1341,7 @@ pub(super) fn new(name: &str, window: &mut crate::Window) -> Option<()> {
 
         wl_proxy_add_listener(
             (*nwin).shell_surface,
-            SURFACE_LISTENER.as_ptr(),
+            SHELL_SURFACE_LISTENER.as_ptr(),
             window as *mut _ as *mut _,
         );
     }
