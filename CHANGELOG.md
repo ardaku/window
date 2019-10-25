@@ -6,6 +6,22 @@ and this project adheres to [Semantic Versioning](https://code.plopgrizzly.com/s
 
 ## [Unreleased]
 
+## [0.3.0] - 2019-10-24
+### Added
+- Tint & Blending
+- `aspect()` for getting aspect ratio
+
+### Fixed
+- Warnings for not using `dyn` keyword
+- Jittery rendering
+- Transformation bug where rotations would only be able to be applied to
+  the identity matrix.
+
+### Changed
+- Optimized OpenGL hot loop.
+- Started using index buffer objects.
+- Instances are now replaced with groups
+
 ## [0.2.0] - 2019-08-02
 ### Added
 - Toolbar support.
