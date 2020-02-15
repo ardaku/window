@@ -6,6 +6,11 @@ and this project adheres to [Semantic Versioning](https://code.plopgrizzly.com/s
 
 ## [Unreleased]
 
+## [0.3.1] - 2020-02-14
+### Fixed
+- Not compiling on most recent version of Rust (const/static issues)
+- Stop using mem::zeroed for &dyn
+
 ## [0.3.0] - 2019-10-24
 ### Added
 - Tint & Blending

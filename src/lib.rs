@@ -7,8 +7,8 @@
 
 #![warn(missing_docs)]
 #![doc(
-    html_logo_url = "https://jeronlau.plopgrizzly.com/cala/icon.svg",
-    html_favicon_url = "https://jeronlau.plopgrizzly.com/cala/icon.svg"
+    html_logo_url = "https://libcala.github.io/logo.svg",
+    html_favicon_url = "https://libcala.github.io/icon.svg"
 )]
 
 use std::ffi::c_void;
@@ -240,7 +240,7 @@ impl Window {
         /* Declare Variables */
         /*********************/
 
-        let mut window = Box::new(unsafe { std::mem::zeroed() });
+        let mut window = Box::new(std::mem::MaybeUninit::<Self>::zeroed());
 
         /*********************/
         /* Create The Window */
@@ -250,8 +250,8 @@ impl Window {
 
         // Try to initialize Wayland first.
         #[cfg(unix)]
-        {
-            win = win.or_else(|| wayland::new(name, &mut window));
+        unsafe {
+            win = win.or_else(|| wayland::new(name, &mut *window.as_mut_ptr()));
         }
 
         // Hopefully we found one of the backends.
@@ -266,14 +266,14 @@ impl Window {
         let mut draw = None;
 
         // Try to initialize OpenGL(ES).
-        {
-            draw = draw.or_else(|| opengl::new(&mut window));
+        unsafe {
+            draw = draw.or_else(|| opengl::new(&mut *window.as_mut_ptr()));
         }
 
         // Hopefully we found one of the backends.
         unsafe {
             std::ptr::write(
-                &mut window.draw,
+                &mut (*window.as_mut_ptr()).draw,
                 draw.or_else(|| {
                     panic!("Couldn't find a graphics API.");
                 })
@@ -285,38 +285,38 @@ impl Window {
         /* Connect Window & Drawing */
         /****************************/
 
-        window.nwin.connect(&mut *window.draw);
+        unsafe { (*window.as_mut_ptr()).nwin.connect(&mut *(*window.as_mut_ptr()).draw) };
 
         /*******************/
         /* Set Redraw Loop */
         /*******************/
 
         unsafe {
-            std::ptr::write(&mut window.redraw, run);
+            std::ptr::write(&mut (*window.as_mut_ptr()).redraw, run);
         }
 
         /**********************/
         /* Initialize Toolbar */
         /**********************/
 
-        window.toolbar_height = 48;
+        unsafe { (*window.as_mut_ptr()).toolbar_height = 48; }
 
-        let (toolbar_shader, toolbar_shape) = (toolbar)(&mut window);
-        let width = window.nwin.dimensions().0;
-        let height = window.toolbar_height;
-        let pixels = vec![255; (width * window.toolbar_height) as usize * 4];
-        let toolbar_graphic =
-            window.graphic(pixels.as_slice(), width as usize, height as usize);
+        let (toolbar_shader, toolbar_shape) = unsafe { (toolbar)(&mut *window.as_mut_ptr()) };
+        let width = unsafe { (*window.as_mut_ptr()).nwin.dimensions().0 };
+        let height = unsafe { (*window.as_mut_ptr()).toolbar_height };
+        let pixels = unsafe { vec![255; (width * (*window.as_mut_ptr()).toolbar_height) as usize * 4] };
+        let toolbar_graphic = unsafe {
+            (*window.as_mut_ptr()).graphic(pixels.as_slice(), width as usize, height as usize) };
         fn toolbar_callback(_: &mut [u8], _: u16) {}
 
         unsafe {
-            std::ptr::write(&mut window.toolbar_shader, toolbar_shader);
-            std::ptr::write(&mut window.toolbar_shape, toolbar_shape);
-            std::ptr::write(&mut window.toolbar_graphic, toolbar_graphic);
-            std::ptr::write(&mut window.toolbar_callback, toolbar_callback);
+            std::ptr::write(&mut (*window.as_mut_ptr()).toolbar_shader, toolbar_shader);
+            std::ptr::write(&mut (*window.as_mut_ptr()).toolbar_shape, toolbar_shape);
+            std::ptr::write(&mut (*window.as_mut_ptr()).toolbar_graphic, toolbar_graphic);
+            std::ptr::write(&mut (*window.as_mut_ptr()).toolbar_callback, toolbar_callback);
         }
 
-        window
+        unsafe { std::mem::transmute(window) }
     }
 
     /// Run the next frame in the window.
