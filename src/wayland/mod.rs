@@ -88,7 +88,7 @@ fn get(value: *mut dyn Nwin) -> *mut WaylandWindow {
 
 static mut ZXDG_SURFACE_V6_INTERFACE: WlInterface = WlInterface {
     /** Interface name */
-    name: b"zxdg_surface_v6\0".as_ptr() as *const _,
+    name: b"zxdg_surface_v6\0".as_ptr().cast(),
     /** Interface version */
     version: 1,
     /** Number of methods (requests) */
@@ -96,28 +96,28 @@ static mut ZXDG_SURFACE_V6_INTERFACE: WlInterface = WlInterface {
     /** Method (request) signatures */
     methods: [
         WlMessage {
-            name: b"destroy\0".as_ptr() as *const _,
-            signature: b"\0".as_ptr() as *const _,
+            name: b"destroy\0".as_ptr().cast(),
+            signature: b"\0".as_ptr().cast(),
             wl_interface: std::ptr::null(),
         },
         WlMessage {
-            name: b"get_toplevel\0".as_ptr() as *const _,
-            signature: b"n\0".as_ptr() as *const _,
+            name: b"get_toplevel\0".as_ptr().cast(),
+            signature: b"n\0".as_ptr().cast(),
             wl_interface: unsafe { &(&wl_surface_interface as *const _) },
         },
         WlMessage {
-            name: b"get_popup\0".as_ptr() as *const _,
-            signature: b"noo\0".as_ptr() as *const _,
-            wl_interface: unsafe { &(&ZXDG_TOPLEVEL_V6_INTERFACE as *const _) },
+            name: b"get_popup\0".as_ptr().cast(),
+            signature: b"noo\0".as_ptr().cast(),
+            wl_interface: &(&ZXDG_TOPLEVEL_V6_INTERFACE as *const _),
         },
         WlMessage {
-            name: b"set_window_geometry\0".as_ptr() as *const _,
-            signature: b"iiii\0".as_ptr() as *const _,
+            name: b"set_window_geometry\0".as_ptr().cast(),
+            signature: b"iiii\0".as_ptr().cast(),
             wl_interface: std::ptr::null(),
         },
         WlMessage {
-            name: b"ack_configure\0".as_ptr() as *const _,
-            signature: b"u\0".as_ptr() as *const _,
+            name: b"ack_configure\0".as_ptr().cast(),
+            signature: b"u\0".as_ptr().cast(),
             wl_interface: std::ptr::null(),
         },
     ]
@@ -126,16 +126,16 @@ static mut ZXDG_SURFACE_V6_INTERFACE: WlInterface = WlInterface {
     event_count: 1,
     /** Event signatures */
     events: [WlMessage {
-        name: b"configure\0".as_ptr() as *const _,
-        signature: b"u\0".as_ptr() as *const _,
+        name: b"configure\0".as_ptr().cast(),
+        signature: b"u\0".as_ptr().cast(),
         wl_interface: std::ptr::null(),
     }]
     .as_ptr(), // *wl_message
 };
 
-static mut ZXDG_TOPLEVEL_V6_INTERFACE: WlInterface = WlInterface {
+const ZXDG_TOPLEVEL_V6_INTERFACE: WlInterface = WlInterface {
     /** Interface name */
-    name: b"zxdg_toplevel_v6\0".as_ptr() as *const _,
+    name: b"zxdg_toplevel_v6\0".as_ptr().cast(),
     /** Interface version */
     version: 1,
     /** Number of methods (requests) */
@@ -143,73 +143,73 @@ static mut ZXDG_TOPLEVEL_V6_INTERFACE: WlInterface = WlInterface {
     /** Method (request) signatures */
     methods: [
         WlMessage {
-            name: b"destroy\0".as_ptr() as *const _,
-            signature: b"\0".as_ptr() as *const _,
+            name: b"destroy\0".as_ptr().cast(),
+            signature: b"\0".as_ptr().cast(),
             wl_interface: std::ptr::null(),
         },
         WlMessage {
-            name: b"set_parent\0".as_ptr() as *const _,
-            signature: b"?o\0".as_ptr() as *const _,
+            name: b"set_parent\0".as_ptr().cast(),
+            signature: b"?o\0".as_ptr().cast(),
             wl_interface: std::ptr::null(),
         },
         WlMessage {
-            name: b"set_title\0".as_ptr() as *const _,
-            signature: b"s\0".as_ptr() as *const _,
+            name: b"set_title\0".as_ptr().cast(),
+            signature: b"s\0".as_ptr().cast(),
             wl_interface: std::ptr::null(),
         },
         WlMessage {
-            name: b"set_app_id\0".as_ptr() as *const _,
-            signature: b"s\0".as_ptr() as *const _,
+            name: b"set_app_id\0".as_ptr().cast(),
+            signature: b"s\0".as_ptr().cast(),
             wl_interface: std::ptr::null(),
         },
         WlMessage {
-            name: b"show_window_menu\0".as_ptr() as *const _,
-            signature: b"ouii\0".as_ptr() as *const _,
+            name: b"show_window_menu\0".as_ptr().cast(),
+            signature: b"ouii\0".as_ptr().cast(),
             wl_interface: std::ptr::null(),
         },
         WlMessage {
-            name: b"move\0".as_ptr() as *const _,
-            signature: b"ou\0".as_ptr() as *const _,
+            name: b"move\0".as_ptr().cast(),
+            signature: b"ou\0".as_ptr().cast(),
             wl_interface: std::ptr::null(),
         },
         WlMessage {
-            name: b"resize\0".as_ptr() as *const _,
-            signature: b"ouu\0".as_ptr() as *const _,
+            name: b"resize\0".as_ptr().cast(),
+            signature: b"ouu\0".as_ptr().cast(),
             wl_interface: std::ptr::null(),
         },
         WlMessage {
-            name: b"set_max_size\0".as_ptr() as *const _,
-            signature: b"ii\0".as_ptr() as *const _,
+            name: b"set_max_size\0".as_ptr().cast(),
+            signature: b"ii\0".as_ptr().cast(),
             wl_interface: std::ptr::null(),
         },
         WlMessage {
-            name: b"set_min_size\0".as_ptr() as *const _,
-            signature: b"ii\0".as_ptr() as *const _,
+            name: b"set_min_size\0".as_ptr().cast(),
+            signature: b"ii\0".as_ptr().cast(),
             wl_interface: std::ptr::null(),
         },
         WlMessage {
-            name: b"set_maximized\0".as_ptr() as *const _,
-            signature: b"\0".as_ptr() as *const _,
+            name: b"set_maximized\0".as_ptr().cast(),
+            signature: b"\0".as_ptr().cast(),
             wl_interface: std::ptr::null(),
         },
         WlMessage {
-            name: b"unset_maximized\0".as_ptr() as *const _,
-            signature: b"\0".as_ptr() as *const _,
+            name: b"unset_maximized\0".as_ptr().cast(),
+            signature: b"\0".as_ptr().cast(),
             wl_interface: std::ptr::null(),
         },
         WlMessage {
-            name: b"set_fullscreen\0".as_ptr() as *const _,
-            signature: b"?o\0".as_ptr() as *const _,
+            name: b"set_fullscreen\0".as_ptr().cast(),
+            signature: b"?o\0".as_ptr().cast(),
             wl_interface: std::ptr::null(),
         },
         WlMessage {
-            name: b"unset_fullscreen\0".as_ptr() as *const _,
-            signature: b"\0".as_ptr() as *const _,
+            name: b"unset_fullscreen\0".as_ptr().cast(),
+            signature: b"\0".as_ptr().cast(),
             wl_interface: std::ptr::null(),
         },
         WlMessage {
-            name: b"set_minimized\0".as_ptr() as *const _,
-            signature: b"\0".as_ptr() as *const _,
+            name: b"set_minimized\0".as_ptr().cast(),
+            signature: b"\0".as_ptr().cast(),
             wl_interface: std::ptr::null(),
         },
     ]
@@ -219,13 +219,13 @@ static mut ZXDG_TOPLEVEL_V6_INTERFACE: WlInterface = WlInterface {
     /** Event signatures */
     events: [
         WlMessage {
-            name: b"configure\0".as_ptr() as *const _,
-            signature: b"iia\0".as_ptr() as *const _,
+            name: b"configure\0".as_ptr().cast(),
+            signature: b"iia\0".as_ptr().cast(),
             wl_interface: std::ptr::null(),
         },
         WlMessage {
-            name: b"close\0".as_ptr() as *const _,
-            signature: b"\0".as_ptr() as *const _,
+            name: b"close\0".as_ptr().cast(),
+            signature: b"\0".as_ptr().cast(),
             wl_interface: std::ptr::null(),
         },
     ]
@@ -234,7 +234,7 @@ static mut ZXDG_TOPLEVEL_V6_INTERFACE: WlInterface = WlInterface {
 
 static mut ZXDG_SHELL_V6_INTERFACE: WlInterface = WlInterface {
     /** Interface name */
-    name: b"zxdg_shell_v6\0".as_ptr() as *const _,
+    name: b"zxdg_shell_v6\0".as_ptr().cast(),
     /** Interface version */
     version: 1,
     /** Number of methods (requests) */
@@ -242,23 +242,23 @@ static mut ZXDG_SHELL_V6_INTERFACE: WlInterface = WlInterface {
     /** Method (request) signatures */
     methods: [
         WlMessage {
-            name: b"destroy\0".as_ptr() as *const _,
-            signature: b"\0".as_ptr() as *const _,
+            name: b"destroy\0".as_ptr().cast(),
+            signature: b"\0".as_ptr().cast(),
             wl_interface: std::ptr::null(),
         },
         WlMessage {
-            name: b"create_positioner\0".as_ptr() as *const _,
-            signature: b"n\0".as_ptr() as *const _,
+            name: b"create_positioner\0".as_ptr().cast(),
+            signature: b"n\0".as_ptr().cast(),
             wl_interface: unsafe { &(&wl_surface_interface as *const _) },
         },
         WlMessage {
-            name: b"get_xdg_surface\0".as_ptr() as *const _,
-            signature: b"no\0".as_ptr() as *const _,
-            wl_interface: unsafe { &(&ZXDG_TOPLEVEL_V6_INTERFACE as *const _) },
+            name: b"get_xdg_surface\0".as_ptr().cast(),
+            signature: b"no\0".as_ptr().cast(),
+            wl_interface: &(&ZXDG_TOPLEVEL_V6_INTERFACE as *const _),
         },
         WlMessage {
-            name: b"pong\0".as_ptr() as *const _,
-            signature: b"u\0".as_ptr() as *const _,
+            name: b"pong\0".as_ptr().cast(),
+            signature: b"u\0".as_ptr().cast(),
             wl_interface: std::ptr::null(),
         },
     ]
@@ -267,8 +267,8 @@ static mut ZXDG_SHELL_V6_INTERFACE: WlInterface = WlInterface {
     event_count: 1,
     /** Event signatures */
     events: [WlMessage {
-        name: b"ping\0".as_ptr() as *const _,
-        signature: b"u\0".as_ptr() as *const _,
+        name: b"ping\0".as_ptr().cast(),
+        signature: b"u\0".as_ptr().cast(),
         wl_interface: std::ptr::null(),
     }]
     .as_ptr(), // *wl_message
@@ -1376,17 +1376,9 @@ pub(super) fn new(name: &str, window: &mut crate::Window) -> Option<()> {
         }
 
         // Set Window Title.
-        wl_proxy_marshal(
-            (*nwin).toplevel,
-            2,
-            window_title.as_ptr() as *const _,
-        );
+        wl_proxy_marshal((*nwin).toplevel, 2, window_title.as_ptr().cast());
         // Set App Title.
-        wl_proxy_marshal(
-            (*nwin).toplevel,
-            3,
-            window_title.as_ptr() as *const _,
-        );
+        wl_proxy_marshal((*nwin).toplevel, 3, window_title.as_ptr().cast());
     }
 
     // Maximize window.
