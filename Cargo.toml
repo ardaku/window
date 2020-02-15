@@ -8,11 +8,11 @@
 
 [package]
 name = "window"
-version = "0.3.0"
+version = "0.3.1"
 authors = ["Jeron Aldaron Lau <jeronlau@plopgrizzly.com>"]
 edition = "2018"
 
-license = "MIT / BSL-1.0"
+license = "MIT OR BSL-1.0"
 description = "Minimal Rust code for creating a window, automatically choosing a backend window manager and graphics API."
 documentation = "https://docs.rs/window"
 homepage = "https://libcala.github.io/window/"
