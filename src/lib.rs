@@ -35,6 +35,8 @@ pub use self::keycodes::*;
 pub use self::mat4::*;
 pub use self::shape::*;
 
+use std::pin::Pin;
+
 /// Native Window Handle.
 enum NwinHandle {
     /// Wayland window handle.
@@ -218,15 +220,15 @@ pub struct ShaderBuilder {
 
 /// A window on the monitor.
 pub struct Window {
-    toolbar_graphic: Graphic,
-    toolbar_shader: Shader,
-    toolbar_shape: Group,
-    toolbar_callback: fn(&mut [u8], u16),
-    /// Height of the toolbar.
-    pub toolbar_height: u16,
+    // toolbar_graphic: Graphic,
+    // toolbar_shader: Shader,
+    // toolbar_shape: Group,
+    // toolbar_callback: fn(&mut [u8], u16),
+    // /// Height of the toolbar.
+    // pub toolbar_height: u16,
     draw: Box<dyn Draw>,
-    nwin: Box<dyn Nwin>,
-    redraw: fn(nanos: u64) -> (),
+    nwin: Pin<Box<dyn Nwin>>,
+    // redraw: fn(nanos: u64) -> (),
 }
 
 impl Window {
@@ -235,71 +237,36 @@ impl Window {
         name: &str,
         run: fn(nanos: u64) -> (),
         toolbar: fn(&mut Self) -> (Shader, Group),
-    ) -> Box<Self> {
-        /*********************/
-        /* Declare Variables */
-        /*********************/
-
-        let mut window = Box::new(std::mem::MaybeUninit::<Self>::zeroed());
-
+    ) -> Self {
         /*********************/
         /* Create The Window */
         /*********************/
 
-        let mut win = None;
-
-        // Try to initialize Wayland first.
-        #[cfg(unix)]
-        unsafe {
-            win = win.or_else(|| wayland::new(name, &mut *window.as_mut_ptr()));
-        }
-
-        // Hopefully we found one of the backends.
-        win.or_else(|| {
-            panic!("Couldn't find a window manager.");
-        });
+        // Hopefully find a backend.
+        let nwin = None
+            .or_else(|| wayland::Wayland::new(name))
+            .expect("Couldn't find a window manager.");
 
         /**********************/
         /* Initialize Drawing */
         /**********************/
 
-        let mut draw = None;
-
         // Try to initialize OpenGL(ES).
-        unsafe {
-            draw = draw.or_else(|| opengl::new(&mut *window.as_mut_ptr()));
-        }
-
-        // Hopefully we found one of the backends.
-        unsafe {
-            std::ptr::write(
-                &mut (*window.as_mut_ptr()).draw,
-                draw.or_else(|| {
-                    panic!("Couldn't find a graphics API.");
-                })
-                .unwrap(),
-            );
-        }
+        let draw = None
+            .or_else(|| opengl::OpenGL::new(&mut nwin))
+            .expect("Couldn't find a GPU library.");
 
         /****************************/
         /* Connect Window & Drawing */
         /****************************/
 
-        unsafe { (*window.as_mut_ptr()).nwin.connect(&mut *(*window.as_mut_ptr()).draw) };
-
-        /*******************/
-        /* Set Redraw Loop */
-        /*******************/
-
-        unsafe {
-            std::ptr::write(&mut (*window.as_mut_ptr()).redraw, run);
-        }
+        nwin.connect(&mut draw);
 
         /**********************/
         /* Initialize Toolbar */
         /**********************/
 
-        unsafe { (*window.as_mut_ptr()).toolbar_height = 48; }
+        /* unsafe { (*window.as_mut_ptr()).toolbar_height = 48; }
 
         let (toolbar_shader, toolbar_shape) = unsafe { (toolbar)(&mut *window.as_mut_ptr()) };
         let width = unsafe { (*window.as_mut_ptr()).nwin.dimensions().0 };
@@ -316,7 +283,11 @@ impl Window {
             std::ptr::write(&mut (*window.as_mut_ptr()).toolbar_callback, toolbar_callback);
         }
 
-        unsafe { std::mem::transmute(window) }
+        unsafe { std::mem::transmute(window) }*/
+        
+        Window {
+            nwin, draw
+        }
     }
 
     /// Run the next frame in the window.
@@ -358,7 +329,7 @@ impl Window {
         graphic.0.update(closure);
     }
 
-    /// Set camera coordiantes for a shader.
+    /// Set camera coordinates for a shader.
     pub fn camera(&mut self, shader: &Shader, cam: Transform) {
         self.draw.camera(&*shader.0, cam)
     }
@@ -403,8 +374,8 @@ impl Window {
 
     /// Update toolbar graphic.
     pub fn toolbar(&mut self, callback: fn(&mut [u8], u16)) {
-        self.toolbar_graphic.0.update(&mut |a, b| callback(a, b));
-        self.toolbar_callback = callback;
+        // self.toolbar_graphic.0.update(&mut |a, b| callback(a, b));
+        // self.toolbar_callback = callback;
     }
 
     /// If a key is being held down.
