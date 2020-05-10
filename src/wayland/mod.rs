@@ -781,28 +781,31 @@ static XDG_SURFACE_LISTENER: ZxdgSurfaceListener = ZxdgSurfaceListener {
 
 // Wrapper around Wayland Library
 struct WaylandClient {
-    wl_proxy_marshal: extern "C" fn(p: *mut WlProxy, opcode: u32, ...) -> (),
-    wl_proxy_destroy: extern "C" fn(proxy: *mut WlProxy) -> (),
-    wl_display_connect: extern "C" fn(name: *const c_char) -> *mut WlDisplay,
-    wl_proxy_marshal_constructor: extern "C" fn(
+    wl_proxy_marshal:
+        unsafe extern "C" fn(p: *mut WlProxy, opcode: u32, ...) -> (),
+    wl_proxy_destroy: unsafe extern "C" fn(proxy: *mut WlProxy) -> (),
+    wl_display_connect:
+        unsafe extern "C" fn(name: *const c_char) -> *mut WlDisplay,
+    wl_proxy_marshal_constructor: unsafe extern "C" fn(
         proxy: *mut WlProxy,
         opcode: u32,
         interface: *const WlInterface,
         ...
     ) -> *mut WlProxy,
-    wl_proxy_add_listener: extern "C" fn(
+    wl_proxy_add_listener: unsafe extern "C" fn(
         proxy: *mut WlProxy,
         *const extern "C" fn() -> (),
         data: *mut c_void,
     ) -> c_int,
-    wl_display_dispatch: extern "C" fn(display: *mut WlDisplay) -> c_int,
-    wl_proxy_marshal_constructor_versioned: extern "C" fn(
-        proxy: *mut WlProxy,
-        opcode: u32,
-        interface: *const WlInterface,
-        version: u32,
-        ...
-    ) -> *mut WlProxy,
+    wl_display_dispatch: unsafe extern "C" fn(display: *mut WlDisplay) -> c_int,
+    wl_proxy_marshal_constructor_versioned:
+        unsafe extern "C" fn(
+            proxy: *mut WlProxy,
+            opcode: u32,
+            interface: *const WlInterface,
+            version: u32,
+            ...
+        ) -> *mut WlProxy,
     // Static globals
     wl_registry_interface: *const WlInterface,
     wl_compositor_interface: *const WlInterface,
@@ -1249,19 +1252,20 @@ impl WaylandClient {
 }
 
 struct WaylandEGL {
-    wl_egl_window_create: extern "C" fn(
+    wl_egl_window_create: unsafe extern "C" fn(
         surface: *mut WlSurface,
         width: c_int,
         height: c_int,
     ) -> *mut WlEglWindow,
-    wl_egl_window_resize: extern "C" fn(
+    wl_egl_window_resize: unsafe extern "C" fn(
         egl_window: *mut WlEglWindow,
         width: c_int,
         height: c_int,
         dx: c_int,
         dy: c_int,
     ) -> (),
-    wl_egl_window_destroy: extern "C" fn(egl_window: *mut WlEglWindow) -> (),
+    wl_egl_window_destroy:
+        unsafe extern "C" fn(egl_window: *mut WlEglWindow) -> (),
 }
 
 impl WaylandEGL {
@@ -1289,15 +1293,19 @@ impl WaylandEGL {
 }
 
 struct WaylandCursor {
-    wl_cursor_image_get_buffer: fn(image: *mut WlCursorImage) -> *mut WlBuffer,
-    wl_cursor_theme_destroy: fn(theme: *mut WlCursorTheme) -> (),
-    wl_cursor_theme_load: fn(
+    wl_cursor_image_get_buffer:
+        unsafe extern "C" fn(image: *mut WlCursorImage) -> *mut WlBuffer,
+    wl_cursor_theme_destroy:
+        unsafe extern "C" fn(theme: *mut WlCursorTheme) -> (),
+    wl_cursor_theme_load: unsafe extern "C" fn(
         name: *const c_char,
         size: c_int,
         shm: *mut WlShm,
     ) -> *mut WlCursorTheme,
-    wl_cursor_theme_get_cursor:
-        fn(theme: *mut WlCursorTheme, name: *const c_char) -> *mut WlCursor,
+    wl_cursor_theme_get_cursor: unsafe extern "C" fn(
+        theme: *mut WlCursorTheme,
+        name: *const c_char,
+    ) -> *mut WlCursor,
 }
 
 impl WaylandCursor {
@@ -1498,7 +1506,8 @@ impl crate::Nwin for Wayland {
     }
 
     fn run(&mut self) -> bool {
-        let ret = (self.client.wl_display_dispatch)(self.display.as_ptr());
+        let ret =
+            unsafe { (self.client.wl_display_dispatch)(self.display.as_ptr()) };
 
         ret != -1 && self.running
     }
