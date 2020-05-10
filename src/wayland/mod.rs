@@ -732,9 +732,6 @@ struct WlShm(c_void);
 const NIL: *mut c_void = null_mut();
 
 // Listeners (Need to have static lifetime)
-static CALLBACK_LISTENER: WlCallbackListener = WlCallbackListener {
-    done: Some(configure_callback),
-};
 static FRAME_LISTENER: WlCallbackListener = WlCallbackListener {
     done: Some(redraw_wl),
 };
@@ -1481,7 +1478,7 @@ impl Wayland {
             // Window Callbacks
             wayland.client.callback_add_listener(
                 callback,
-                &CALLBACK_LISTENER,
+                &FRAME_LISTENER,
                 window.cast(),
             );
 
@@ -1737,22 +1734,6 @@ extern "C" fn toplevel_close(
     }
 }
 
-extern "C" fn configure_callback(
-    data: *mut c_void,
-    callback: *mut WlCallback,
-    time: u32,
-) {
-    let window: *mut Wayland = data.cast();
-
-    unsafe {
-        (*window).client.callback_destroy(callback);
-
-        if (*window).callback.is_null() {
-            redraw_wl(data, std::ptr::null_mut(), time);
-        }
-    }
-}
-
 extern "C" fn output_geometry(
     _data: *mut c_void,
     _wl_output: *mut WlOutput,
@@ -1915,7 +1896,7 @@ extern "C" fn keyboard_handle_key(
 
             (*window).client.callback_add_listener(
                 callback,
-                &CALLBACK_LISTENER,
+                &FRAME_LISTENER,
                 window.cast(),
             );
         } else {
@@ -2184,8 +2165,8 @@ extern "C" fn redraw_wl(
 
     unsafe {
     let diff_millis = if !callback.is_null() {
-        ((*wayland).client.wl_proxy_destroy)(callback.cast());
-        
+        (*wayland).client.callback_destroy(callback);
+
         dbg!(millis);
         
 /*        if (*wayland).start_time == 0 {
@@ -2198,7 +2179,7 @@ extern "C" fn redraw_wl(
     } else {
 //        0u32
     };
-    assert!((*wayland).callback == callback);
+    // assert!((*wayland).callback == callback);
     (*wayland).callback = std::ptr::null_mut();
     /*let orig_nanos = u64::from(diff_millis) * 1_000_000;
     (*wayland).last_millis = millis;

@@ -793,6 +793,7 @@ impl Draw for OpenGL {
     }
 
     fn finish_draw(&mut self) {
+        println!("FINISHING_DRAW");
         if self.vaa_col {
             unsafe { glDisableVertexAttribArray(GL_ATTRIB_COL) }
             gl_assert!("glDisableVertexAttribArray#0");
@@ -808,6 +809,7 @@ impl Draw for OpenGL {
         unsafe {
             eglSwapBuffers(self.display, self.surface);
         }
+        println!("FINISED_DRAW");
     }
 
     fn draw(&mut self, shader: &dyn Nshader, shape: &mut dyn Ngroup) {
