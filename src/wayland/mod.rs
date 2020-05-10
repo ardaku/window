@@ -15,10 +15,10 @@ fn dlopen(name: &str) -> Option<NonNull<DlObj>> {
     let name = CStr::from_bytes_with_nul(name.as_bytes())
         .expect("Missing Null Byte!");
     extern "C" {
-        fn dlmopen(ns: c_long, name: *const c_char, flags: c_int) -> *mut DlObj;
+        fn dlopen(name: *const c_char, flags: c_int) -> *mut DlObj;
     }
     unsafe {
-        NonNull::new(dlmopen(-1 /*NEW*/, name.as_ptr(), 0x00002 /*NOW*/))
+        NonNull::new(dlopen(name.as_ptr(), 0x00002 /*NOW*/))
     }
 }
 
@@ -166,10 +166,6 @@ static mut ZXDG_TOPLEVEL_V6_INTERFACE: WlInterface = WlInterface {
     events: unsafe { ZXDG_TOPLEVEL_V6_INTERFACE_EVENTS.as_ptr() },
 };
 
-static mut ZXDG_SURFACE_V6_SURFACE_INTERFACE: [*const WlInterface; 1] = [
-    null()
-];
-
 static mut ZXDG_TOPLEVEL_V6_INTERFACE1: [*const WlInterface; 1] = [
     unsafe { &ZXDG_TOPLEVEL_V6_INTERFACE }
 ];
@@ -183,7 +179,7 @@ static mut ZXDG_SURFACE_V6_INTERFACE_METHODS: [WlMessage; 5] = [
     WlMessage {
         name: b"get_toplevel\0".as_ptr().cast(),
         signature: b"n\0".as_ptr().cast(),
-        wl_interface: unsafe { ZXDG_SURFACE_V6_SURFACE_INTERFACE.as_ptr() },
+        wl_interface: unsafe { WL_SURFACE_INTERFACE.as_ptr() },
     },
     WlMessage {
         name: b"get_popup\0".as_ptr().cast(),
@@ -253,6 +249,10 @@ static mut ZXDG_SHELL_V6_INTERFACE_METHODS: [WlMessage; 4] = [
         wl_interface: std::ptr::null(),
     },
 ];
+
+static ZXDG_SHELL_INTERFACE_NAME: &[u8] = b"zxdg_shell_v6\0";
+static ZXDG_SHELL_INTERFACE_DESTROY: &[u8] = b"destroy\0";
+static ZXDG_SHELL_INTERFACE_CREATE_POSITIONER: &[u8] = b"create_positioner\0";
 
 static mut ZXDG_SHELL_V6_INTERFACE: WlInterface = WlInterface {
     /** Interface name */
@@ -352,65 +352,65 @@ enum WlSeatCapability {
 
 #[repr(C)]
 struct WlRegistryListener {
-    global: extern fn(data: *mut c_void, wl_registry: *mut WlRegistry, name: u32, interface: *const c_char, version: u32) -> (),
-    global_remove: extern fn(data: *mut c_void, wl_registry: *mut WlRegistry, name: u32),
+    global: Option<extern fn(data: *mut c_void, wl_registry: *mut WlRegistry, name: u32, interface: *const c_char, version: u32) -> ()>,
+    global_remove: Option<extern fn(data: *mut c_void, wl_registry: *mut WlRegistry, name: u32)>,
 }
 
 #[repr(C)]
 struct WlCallbackListener {
-    done: extern fn(data: *mut c_void, callback: *mut WlCallback, callback_data: u32) -> (),
+    done: Option<extern fn(data: *mut c_void, callback: *mut WlCallback, callback_data: u32) -> ()>,
 }
 
 #[repr(C)]
 struct WlOutputListener {
-    geometry: extern fn(data: *mut c_void, output: *mut WlOutput, x: i32, y: i32, physical_width: i32, physical_height: i32, subpixel: i32, make: *const c_char, model: *const c_char, transform: i32) -> (),
-    mode: extern fn(data: *mut c_void, output: *mut WlOutput, flags: u32, width: i32, height: i32, refresh: i32) -> (),
-    done: extern fn(data: *mut c_void, output: *mut WlOutput) -> (),
-    scale: extern fn(data: *mut c_void, output: *mut WlOutput, factor: i32) -> (),
+    geometry: Option<extern fn(data: *mut c_void, output: *mut WlOutput, x: i32, y: i32, physical_width: i32, physical_height: i32, subpixel: i32, make: *const c_char, model: *const c_char, transform: i32) -> ()>,
+    mode: Option<extern fn(data: *mut c_void, output: *mut WlOutput, flags: u32, width: i32, height: i32, refresh: i32) -> ()>,
+    done: Option<extern fn(data: *mut c_void, output: *mut WlOutput) -> ()>,
+    scale: Option<extern fn(data: *mut c_void, output: *mut WlOutput, factor: i32) -> ()>,
 }
 
 #[repr(C)]
 struct WlSeatListener {
-    capabilities: extern fn(data: *mut c_void, seat: *mut WlSeat, capabilites: u32) -> (),
-    name: extern fn(data: *mut c_void, seat: *mut WlSeat, name: *const c_char) -> (),
+    capabilities: Option<extern fn(data: *mut c_void, seat: *mut WlSeat, capabilites: u32) -> ()>,
+    name: Option<extern fn(data: *mut c_void, seat: *mut WlSeat, name: *const c_char) -> ()>,
 }
 
 #[repr(C)]
 struct WlKeyboardListener {
     // Keyboard mapping description.
-    keymap: extern fn(data: *mut c_void, keyboard: *mut WlKeyboard, format: u32, fd: i32, size: u32) -> (),
+    keymap: Option<extern fn(data: *mut c_void, keyboard: *mut WlKeyboard, format: u32, fd: i32, size: u32) -> ()>,
     // Keyboard Focus Entered.
-    enter: extern fn(data: *mut c_void, keyboard: *mut WlKeyboard, serial: u32, surface: *mut WlSurface, keys: *mut WlArray) -> (),
+    enter: Option<extern fn(data: *mut c_void, keyboard: *mut WlKeyboard, serial: u32, surface: *mut WlSurface, keys: *mut WlArray) -> ()>,
     // Keyboard Focus Exited.
-    leave: extern fn(data: *mut c_void, keyboard: *mut WlKeyboard, serial: u32, surface: *mut WlSurface) -> (),
+    leave: Option<extern fn(data: *mut c_void, keyboard: *mut WlKeyboard, serial: u32, surface: *mut WlSurface) -> ()>,
     // Key press or release.
-    key: extern fn(data: *mut c_void, keyboard: *mut WlKeyboard, serial: u32, time: u32, key: u32, state: u32) -> (),
+    key: Option<extern fn(data: *mut c_void, keyboard: *mut WlKeyboard, serial: u32, time: u32, key: u32, state: u32) -> ()>,
     // Modifier / Group state changed.
-    modifiers: extern fn(data: *mut c_void, keyboard: *mut WlKeyboard, serial: u32, mods_depressed: u32, mods_latched: u32, mods_locked: u32, group: u32) -> (),
+    modifiers: Option<extern fn(data: *mut c_void, keyboard: *mut WlKeyboard, serial: u32, mods_depressed: u32, mods_latched: u32, mods_locked: u32, group: u32) -> ()>,
     // Repeat rate & delay settings changed.
-    repeat_info: extern fn(data: *mut c_void, keyboard: *mut WlKeyboard, rate: i32, delay: i32) -> (),
+    repeat_info: Option<extern fn(data: *mut c_void, keyboard: *mut WlKeyboard, rate: i32, delay: i32) -> ()>,
 }
 
 #[repr(C)]
 struct WlPointerListener {
     // Pointer focus enter
-    enter: extern fn(data: *mut c_void, pointer: *mut WlPointer, serial: u32, surface: *mut WlSurface, surface_x: i32, surface_y: i32) -> (),
+    enter: Option<extern fn(data: *mut c_void, pointer: *mut WlPointer, serial: u32, surface: *mut WlSurface, surface_x: i32, surface_y: i32) -> ()>,
     // Pointer focus leave
-    leave: extern fn(data: *mut c_void, pointer: *mut WlPointer, serial: u32, surface: *mut WlSurface) -> (),
+    leave: Option<extern fn(data: *mut c_void, pointer: *mut WlPointer, serial: u32, surface: *mut WlSurface) -> ()>,
     // Pointer motion
-    motion: extern fn(data: *mut c_void, pointer: *mut WlPointer, time: u32, surface_x: i32, surface_y: i32) -> (),
+    motion: Option<extern fn(data: *mut c_void, pointer: *mut WlPointer, time: u32, surface_x: i32, surface_y: i32) -> ()>,
     // Pointer button
-    button: extern fn(data: *mut c_void, pointer: *mut WlPointer, serial: u32, time: u32, button: u32, state: u32) -> (),
+    button: Option<extern fn(data: *mut c_void, pointer: *mut WlPointer, serial: u32, time: u32, button: u32, state: u32) -> ()>,
     // Axis Event
-    axis: extern fn(data: *mut c_void, pointer: *mut WlPointer, time: u32, axis: u32, value: i32) -> (),
+    axis: Option<extern fn(data: *mut c_void, pointer: *mut WlPointer, time: u32, axis: u32, value: i32) -> ()>,
     // Pointer Frame Complete (Now process events).
-    frame: extern fn(data: *mut c_void, pointer: *mut WlPointer) -> (),
+    frame: Option<extern fn(data: *mut c_void, pointer: *mut WlPointer) -> ()>,
     // What type of device sent axis event?
-    axis_source: extern fn(data: *mut c_void, pointer: *mut WlPointer, axis_source: u32) -> (),
+    axis_source: Option<extern fn(data: *mut c_void, pointer: *mut WlPointer, axis_source: u32) -> ()>,
     // Stop axis event
-    axis_stop: extern fn(data: *mut c_void, pointer: *mut WlPointer, time: u32, axis: u32) -> (),
+    axis_stop: Option<extern fn(data: *mut c_void, pointer: *mut WlPointer, time: u32, axis: u32) -> ()>,
     // Discrete step axis
-    axis_discrete: extern fn(data: *mut c_void, pointer: *mut WlPointer, axis: u32, discrete: i32) -> (),
+    axis_discrete: Option<extern fn(data: *mut c_void, pointer: *mut WlPointer, axis: u32, discrete: i32) -> ()>,
 }
 
 #[repr(C)]
@@ -465,18 +465,18 @@ struct ZxdgShell(c_void);
 
 #[repr(C)]
 struct ZxdgSurfaceListener {
-    configure: extern fn(data: *mut c_void, surface: *mut ZxdgSurface, serial: u32) -> (),
+    configure: Option<extern fn(data: *mut c_void, surface: *mut ZxdgSurface, serial: u32) -> ()>,
 }
 
 #[repr(C)]
 struct ZxdgToplevelListener {
-    configure: extern fn(data: *mut c_void, toplevel: *mut ZxdgToplevel, width: i32, height: i32, states: *mut WlArray) -> (),
-    close: extern fn(data: *mut c_void, toplevel: *mut ZxdgToplevel) -> (),
+    configure: Option<extern fn(data: *mut c_void, toplevel: *mut ZxdgToplevel, width: i32, height: i32, states: *mut WlArray) -> ()>,
+    close: Option<extern fn(data: *mut c_void, toplevel: *mut ZxdgToplevel) -> ()>,
 }
 
 #[repr(C)]
 struct ZxdgShellListener {
-    ping: extern fn(data: *mut c_void, xdg_shell: *mut ZxdgShell, serial: u32) -> (),
+    ping: Option<extern fn(data: *mut c_void, xdg_shell: *mut ZxdgShell, serial: u32) -> ()>,
 }
 
 /* From include/wayland-egl-core.h */
@@ -494,6 +494,56 @@ struct WlBuffer(c_void);
 struct WlShm(c_void);
 
 /* ************************************************************************** */
+
+const NIL: *mut c_void = null_mut();
+
+// Listeners (Need to have static lifetime)
+static CALLBACK_LISTENER: WlCallbackListener = WlCallbackListener {
+    done: Some(configure_callback),
+};
+static KEYBOARD_LISTENER: WlKeyboardListener = WlKeyboardListener {
+    keymap: Some(keyboard_handle_keymap),
+    enter: Some(keyboard_handle_enter),
+    leave: Some(keyboard_handle_leave),
+    key: Some(keyboard_handle_key),
+    modifiers: Some(keyboard_handle_modifiers),
+    repeat_info: None,
+};
+static POINTER_LISTENER: WlPointerListener = WlPointerListener {
+    enter: Some(pointer_handle_enter),
+    leave: Some(pointer_handle_leave),
+    motion: Some(pointer_handle_motion),
+    button: Some(pointer_handle_button),
+    axis: Some(pointer_handle_axis),
+    frame: None,
+    axis_source: None,
+    axis_stop: None,
+    axis_discrete: None,
+};
+static OUTPUT_LISTENER: WlOutputListener = WlOutputListener {
+    geometry: Some(output_geometry),
+    mode: Some(output_mode),
+    done: Some(output_done),
+    scale: Some(output_scale),
+};
+static SEAT_LISTENER: WlSeatListener = WlSeatListener {
+    capabilities: Some(seat_handle_capabilities),
+    name: None,
+};
+static REGISTRY_LISTENER: WlRegistryListener = WlRegistryListener {
+    global: Some(registry_global),
+    global_remove: Some(registry_global_remove),
+};
+static XDG_SHELL_LISTENER: ZxdgShellListener = ZxdgShellListener {
+    ping: Some(handle_xdg_shell_ping),
+};
+static XDG_TOPLEVEL_LISTENER: ZxdgToplevelListener = ZxdgToplevelListener {
+    configure: Some(toplevel_configure),
+    close: Some(toplevel_close),
+};
+static XDG_SURFACE_LISTENER: ZxdgSurfaceListener = ZxdgSurfaceListener {
+    configure: Some(surface_configure)
+};
 
 // Wrapper around Wayland Library
 struct WaylandClient {
@@ -524,7 +574,6 @@ impl WaylandClient {
         // Initialize ZXDG_V6 static globals.
         let wl_surface_interface = dlsym(so, "wl_surface_interface\0")?.cast().as_ptr();
         unsafe {
-            ZXDG_SURFACE_V6_SURFACE_INTERFACE[0] = wl_surface_interface;
             WL_SURFACE_INTERFACE[0] = wl_surface_interface;
         }
 
@@ -844,8 +893,6 @@ impl Wayland {
         let egl = WaylandEGL::new()?;
         let cursor = WaylandCursor::new()?;
 
-        std::process::exit(0);
-
         unsafe {
         // Create window.
         let display = client.connect().ok_or("Failed to find client")?;
@@ -864,7 +911,7 @@ impl Wayland {
             window_width: 640,
             window_height: 360,
             refresh_rate: 0,
-            running: false,
+            running: true,
             is_restored: false,
             fullscreen: false,
             configured: false,
@@ -878,13 +925,10 @@ impl Wayland {
         // Wayland window as pointer
         let window: *mut Wayland = &mut *wayland;
         // Initialization With Callback
-        let registry_listener = WlRegistryListener {
-            global: registry_global,
-            global_remove: registry_global_remove,
-        };
-        wayland.client.registry_add_listener(registry, &registry_listener,
+        wayland.client.registry_add_listener(registry, &REGISTRY_LISTENER,
             window.cast()
         );
+        println!("boi");
         (wayland.client.wl_display_dispatch)(display.as_ptr());
         // Create surfaces
         wayland.surface = wayland.client.compositor_create_surface(wayland.compositor);
@@ -892,20 +936,13 @@ impl Wayland {
         // Create shell_surface
         wayland.shell_surface = wayland.client.zxdg_shell_v6_get_xdg_surface(wayland.shell, wayland.surface);
         // Add listener to shell_surface
-        let zxdg_surface_listener = ZxdgSurfaceListener {
-            configure: surface_configure
-        };
-        wayland.client.zxdg_surface_v6_add_listener(wayland.shell_surface, &zxdg_surface_listener,
+        wayland.client.zxdg_surface_v6_add_listener(wayland.shell_surface, &XDG_SURFACE_LISTENER,
             window.cast()
         );
         // Create toplevel
         wayland.toplevel = wayland.client.zxdg_surface_v6_get_toplevel(wayland.shell_surface);
         // Add toplevel listener
-        let zxdg_toplevel_listener = ZxdgToplevelListener {
-            configure: toplevel_configure,
-            close: toplevel_close,
-        };
-        wayland.client.zxdg_toplevel_v6_add_listener(wayland.toplevel, &zxdg_toplevel_listener, 
+        wayland.client.zxdg_toplevel_v6_add_listener(wayland.toplevel, &XDG_TOPLEVEL_LISTENER, 
             window.cast()
         );
         // Set Window & App Title
@@ -917,10 +954,7 @@ impl Wayland {
         // Show Window
         let callback = wayland.client.display_sync(wayland.display.as_ptr());
         // Window Callbacks
-        let callback_listener = WlCallbackListener {
-            done: configure_callback,
-        };
-        wayland.client.callback_add_listener(callback, &callback_listener, window.cast());
+        wayland.client.callback_add_listener(callback, &CALLBACK_LISTENER, window.cast());
 
         Ok(wayland)
     }}
@@ -965,10 +999,6 @@ impl crate::Nwin for Wayland {
     }
 }
 
-static ZXDG_SHELL_INTERFACE_NAME: &[u8] = b"zxdg_shell_v6\0";
-static ZXDG_SHELL_INTERFACE_DESTROY: &[u8] = b"destroy\0";
-static ZXDG_SHELL_INTERFACE_CREATE_POSITIONER: &[u8] = b"create_positioner\0";
-
 extern fn registry_global(
     window: *mut c_void,
     registry: *mut WlRegistry,
@@ -988,32 +1018,30 @@ extern fn registry_global(
         }
         "zxdg_shell_v6" => {
             (*window).shell = (*window).client.registry_bind(registry, name, &ZXDG_SHELL_V6_INTERFACE, 1).cast();
-
-            let xdg_shell_listener = ZxdgShellListener {
-                ping: handle_xdg_shell_ping
-            };
-
-            (*window).client.zxdg_shell_v6_add_listener((*window).shell, &xdg_shell_listener, window.cast());
+            (*window).client.zxdg_shell_v6_add_listener((*window).shell, &XDG_SHELL_LISTENER, window.cast());
         }
         "wl_seat" => {
             (*window).seat = (*window).client.registry_bind(registry, name, (*window).client.wl_seat_interface, 1).cast();
 
             let nil: *mut c_void = null_mut();
-            let seat_listener = WlSeatListener {
-                capabilities: seat_handle_capabilities,
-                name: transmute(nil),
-            };
 
-            (*window).client.seat_add_listener((*window).seat, &seat_listener, window.cast());
+            (*window).client.seat_add_listener((*window).seat, &SEAT_LISTENER, window.cast());
         }
         "wl_shm" => {
+            dbg!("SHM Binding Registry");
             (*window).shm = (*window).client.registry_bind(registry, name, (*window).client.wl_shm_interface, 1).cast();
+            dbg!("SHM Bounded Registry");
 
             (*window).cursor_theme =
                 ((*window).cursor.wl_cursor_theme_load)(null_mut(), 16, (*window).shm);
+                
+            dbg!("Loaded Cursor Theme");
+                
             if (*window).cursor_theme.is_null() {
                 eprintln!("unable to load default theme");
             }
+            
+            dbg!("Get CURSOR");
             
             static LEFT_PTR: &[u8] = b"left_ptr\0";
             
@@ -1024,18 +1052,13 @@ extern fn registry_global(
             if (*window).default_cursor.is_null() {
                 panic!("unable to load default left pointer");
             }
+            
+            dbg!("Got CURSOR");
         }
         "wl_output" => {
             let output = (*window).client.registry_bind(registry, name, (*window).client.wl_output_interface, 1).cast();
 
-            let output_listener = WlOutputListener {
-                geometry: output_geometry,
-                mode: output_mode,
-                done: output_done,
-                scale: output_scale,
-            };
-
-            (*window).client.output_add_listener(output, &output_listener, window.cast());
+            (*window).client.output_add_listener(output, &OUTPUT_LISTENER, window.cast());
         }
         _ => {}
     }
@@ -1192,20 +1215,7 @@ extern fn seat_handle_capabilities(
     if has_pointer && (*window).pointer.is_null() {
         (*window).pointer = (*window).client.seat_get_pointer(seat);
 
-        let nil: *mut c_void = null_mut();
-        let pointer_listener = WlPointerListener {
-            enter: pointer_handle_enter,
-            leave: pointer_handle_leave,
-            motion: pointer_handle_motion,
-            button: pointer_handle_button,
-            axis: pointer_handle_axis,
-            frame: transmute(nil),
-            axis_source: transmute(nil),
-            axis_stop: transmute(nil),
-            axis_discrete: transmute(nil),
-        };
-        
-        (*window).client.pointer_add_listener((*window).pointer, &pointer_listener, window.cast());
+        (*window).client.pointer_add_listener((*window).pointer, &POINTER_LISTENER, window.cast());
     } else if !has_pointer && !(*window).pointer.is_null() {
         ((*window).client.wl_proxy_destroy)((*window).pointer.cast());
         (*window).pointer = std::ptr::null_mut();
@@ -1217,16 +1227,8 @@ extern fn seat_handle_capabilities(
         (*window).keyboard = (*window).client.seat_get_keyboard(seat);
         
         let nil: *mut c_void = null_mut();
-        let keyboard_listener = WlKeyboardListener {
-            keymap: keyboard_handle_keymap,
-            enter: keyboard_handle_enter,
-            leave: keyboard_handle_leave,
-            key: keyboard_handle_key,
-            modifiers: keyboard_handle_modifiers,
-            repeat_info: transmute(nil),
-        };
-        
-        (*window).client.keyboard_add_listener((*window).keyboard, &keyboard_listener, window.cast());
+
+        (*window).client.keyboard_add_listener((*window).keyboard, &KEYBOARD_LISTENER, window.cast());
     } else if !has_keyboard && !(*window).keyboard.is_null() {
         ((*window).client.wl_proxy_destroy)((*window).keyboard.cast());
         (*window).keyboard = std::ptr::null_mut();
@@ -1309,10 +1311,7 @@ extern fn keyboard_handle_key(
 
         let callback = (*window).client.display_sync((*window).display.as_ptr());
 
-        let callback_listener = WlCallbackListener {
-            done: configure_callback,
-        };
-        (*window).client.callback_add_listener(callback, &callback_listener, window.cast());
+        (*window).client.callback_add_listener(callback, &CALLBACK_LISTENER, window.cast());
     } else {
         use crate::Key::*;
 
