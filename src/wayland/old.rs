@@ -42,63 +42,6 @@ fn get(value: *mut dyn Nwin) -> *mut WaylandWindow {
     value[0] as *mut _ as *mut _
 }
 
-unsafe extern "C" fn redraw_wl(
-    c: *mut crate::Window,
-    callback: *mut c_void,
-    millis: u32,
-) {
-    let wayland = get(&mut *(*c).nwin);
-
-    let diff_millis = if !callback.is_null() {
-        wl_proxy_destroy(callback);
-        if (*wayland).start_time == 0 {
-            (*wayland).start_time = millis;
-            0u32
-        } else {
-            // TODO: overflowing subtract.
-            millis - (*wayland).last_millis
-        }
-    } else {
-        0u32
-    };
-    assert!((*wayland).callback == callback);
-    (*wayland).callback = std::ptr::null_mut();
-    let orig_nanos = u64::from(diff_millis) * 1_000_000;
-    (*wayland).last_millis = millis;
-
-    let temp_nanos = orig_nanos + (*wayland).refresh_rate / 2;
-    let diff_nanos = temp_nanos - (temp_nanos % (*wayland).refresh_rate);
-
-    // Redraw on the screen.
-    (*c).draw.begin_draw();
-    (*c).draw_toolbar(
-        &(*c).toolbar_shader,
-        &mut (*c).toolbar_shape,
-        &(*c).toolbar_graphic,
-    );
-
-    ((*c).redraw)(diff_nanos);
-
-    // Get ready for next frame.
-    (*wayland).callback = wl_proxy_marshal_constructor(
-        (*wayland).surface,
-        3, /*WL_SURFACE_FRAME*/
-        &wl_callback_interface,
-        std::ptr::null_mut(),
-    );
-
-    wl_proxy_add_listener(
-        (*wayland).callback,
-        FRAME_LISTENER.as_ptr(),
-        c as *mut _ as *mut _,
-    );
-
-    // Redraw on the screen.
-    (*c).draw.finish_draw();
-}
-
-static mut FRAME_LISTENER: [*mut c_void; 1] = [redraw_wl as *mut _];
-
 #[repr(C)]
 pub struct WaylandWindow {
     // Is program still running?

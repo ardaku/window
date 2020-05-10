@@ -67,7 +67,7 @@ trait Nwin {
     /// Get a pointer that refers to this window for interfacing.
     fn handle(&self) -> NwinHandle;
     /// Connect window to the drawing context.
-    fn connect(&mut self, draw: &mut dyn Draw);
+    fn connect(&mut self, draw: &mut Box<dyn Draw>);
     /// Get the next frame.  Return false on quit.
     fn run(&mut self) -> bool;
     /// Get the window width & height.
@@ -258,7 +258,7 @@ impl Window {
         /* Connect Window & Drawing */
         /****************************/
 
-        nwin.connect(&mut *draw);
+        nwin.connect(&mut draw);
 
         /**********************/
         /* Initialize Toolbar */

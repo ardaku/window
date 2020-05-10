@@ -735,6 +735,9 @@ const NIL: *mut c_void = null_mut();
 static CALLBACK_LISTENER: WlCallbackListener = WlCallbackListener {
     done: Some(configure_callback),
 };
+static FRAME_LISTENER: WlCallbackListener = WlCallbackListener {
+    done: Some(redraw_wl),
+};
 static KEYBOARD_LISTENER: WlKeyboardListener = WlKeyboardListener {
     keymap: Some(keyboard_handle_keymap),
     enter: Some(keyboard_handle_enter),
@@ -955,12 +958,11 @@ impl WaylandClient {
         &self,
         display: *mut WlDisplay,
     ) -> *mut WlRegistry {
-        let nil: *mut c_void = null_mut();
         (self.wl_proxy_marshal_constructor)(
             display.cast(),
             1, /*WL_DISPLAY_GET_REGISTRY*/
             self.wl_registry_interface,
-            nil,
+            NIL,
         )
         .cast()
     }
@@ -978,23 +980,21 @@ impl WaylandClient {
         &self,
         compositor: *mut WlCompositor,
     ) -> *mut WlSurface {
-        let nil: *mut c_void = null_mut();
         (self.wl_proxy_marshal_constructor)(
             compositor.cast(),
             0, /*WL_COMPOSITOR_CREATE_SURFACE*/
             self.wl_surface_interface,
-            nil,
+            NIL,
         )
         .cast()
     }
     #[inline(always)]
     unsafe fn display_sync(&self, display: *mut WlDisplay) -> *mut WlCallback {
-        let nil: *mut c_void = null_mut();
         (self.wl_proxy_marshal_constructor)(
             display.cast(),
             0, /*WL_DISPLAY_SYNC*/
             self.wl_callback_interface,
-            nil,
+            NIL,
         )
         .cast()
     }
@@ -1060,7 +1060,6 @@ impl WaylandClient {
         interface: *const WlInterface,
         version: u32,
     ) -> *mut c_void {
-        let nil: *mut c_void = null_mut();
         (self.wl_proxy_marshal_constructor_versioned)(
             registry.cast(),
             0, /*WL_REGISTRY_BIND*/
@@ -1069,7 +1068,7 @@ impl WaylandClient {
             name,
             (*interface).name,
             version,
-            nil,
+            NIL,
         )
         .cast()
     }
@@ -1079,36 +1078,42 @@ impl WaylandClient {
     }
     #[inline(always)]
     unsafe fn seat_get_pointer(&self, seat: *mut WlSeat) -> *mut WlPointer {
-        let nil: *mut c_void = null_mut();
         (self.wl_proxy_marshal_constructor)(
             seat.cast(),
             0, /*WL_SEAT_GET_POINTER*/
             self.wl_pointer_interface,
-            nil,
+            NIL,
         )
         .cast()
     }
     #[inline(always)]
     unsafe fn seat_get_keyboard(&self, seat: *mut WlSeat) -> *mut WlKeyboard {
-        let nil: *mut c_void = null_mut();
         (self.wl_proxy_marshal_constructor)(
             seat.cast(),
             1, /*WL_SEAT_GET_KEYBOARD*/
             self.wl_keyboard_interface,
-            nil,
+            NIL,
         )
         .cast()
     }
     #[inline(always)]
     unsafe fn seat_get_touch(&self, seat: *mut WlSeat) -> *mut WlTouch {
-        let nil: *mut c_void = null_mut();
         (self.wl_proxy_marshal_constructor)(
             seat.cast(),
             2, /*WL_SEAT_GET_TOUCH*/
             self.wl_touch_interface,
-            nil,
+            NIL,
         )
         .cast()
+    }
+    #[inline(always)]
+    unsafe fn surface_frame(&self, surface: *mut WlSurface) -> *mut WlCallback {
+        (self.wl_proxy_marshal_constructor)(
+            surface.cast(),
+            3, /*WL_SURFACE_FRAME*/
+            self.wl_callback_interface,
+            NIL,
+        ).cast()
     }
     // From include/protocol/xdg-shell-unstable-v6-client-protocol.h
     #[inline(always)]
@@ -1117,12 +1122,11 @@ impl WaylandClient {
         shell: *mut ZxdgShell,
         surface: *mut WlSurface,
     ) -> *mut ZxdgSurface {
-        let nil: *mut c_void = null_mut();
         (self.wl_proxy_marshal_constructor)(
             shell.cast(),
             2, /*ZXDG_SHELL_V6_GET_XDG_SURFACE*/
             &ZXDG_SURFACE_V6_INTERFACE,
-            nil,
+            NIL,
             surface,
         )
         .cast()
@@ -1132,12 +1136,11 @@ impl WaylandClient {
         &self,
         surface: *mut ZxdgSurface,
     ) -> *mut ZxdgToplevel {
-        let nil: *mut c_void = null_mut();
         (self.wl_proxy_marshal_constructor)(
             surface.cast(),
             1, /*ZXDG_SURFACE_V6_GET_TOPLEVEL*/
             &ZXDG_TOPLEVEL_V6_INTERFACE,
-            nil,
+            NIL,
         )
         .cast()
     }
@@ -1207,11 +1210,10 @@ impl WaylandClient {
         &self,
         toplevel: *mut ZxdgToplevel,
     ) {
-        let nil: *mut c_void = null_mut();
         (self.wl_proxy_marshal)(
             toplevel.cast(),
             11, /*ZXDG_TOPLEVEL_V6_SET_FULLSCREEN*/
-            nil,
+            NIL,
         );
     }
     #[inline(always)]
@@ -1338,6 +1340,9 @@ impl WaylandCursor {
 
 // Wrapper around Wayland Libraries
 pub(super) struct Wayland {
+    // Draw
+    draw: Option<NonNull<dyn crate::Draw>>,
+
     // Shared Objects
     client: WaylandClient,
     egl: WaylandEGL,
@@ -1346,6 +1351,7 @@ pub(super) struct Wayland {
     // Client
     display: NonNull<WlDisplay>,
     registry: *mut WlRegistry,
+    callback: *mut WlCallback,
     compositor: *mut WlCompositor,
     surface: *mut WlSurface,
     cursor_surface: *mut WlSurface,
@@ -1387,11 +1393,13 @@ impl Wayland {
             let display = client.connect().ok_or("Failed to find client")?;
             let registry = client.display_get_registry(display.as_ptr());
             let mut wayland = Box::new(Wayland {
+                draw: None,
                 client,
                 egl,
                 cursor,
                 display,
                 registry,
+                callback: null_mut(),
                 compositor: null_mut(),
                 surface: null_mut(),
                 cursor_surface: null_mut(),
@@ -1487,8 +1495,9 @@ impl crate::Nwin for Wayland {
         crate::NwinHandle::Wayland(self.display.as_ptr().cast())
     }
 
-    fn connect(&mut self, draw: &mut dyn crate::Draw) {
-        dbg!("Connecting 1…");
+    fn connect(&mut self, draw: &mut Box<dyn crate::Draw>) {
+        self.draw = NonNull::new(Box::into_raw(unsafe { std::mem::transmute_copy(draw) }));
+
         match draw.handle() {
             crate::DrawHandle::Gl(_c) => {
                 self.egl_window = unsafe {
@@ -1569,8 +1578,6 @@ extern "C" fn registry_global(
                         1,
                     )
                     .cast();
-
-                let nil: *mut c_void = null_mut();
 
                 (*window).client.seat_add_listener(
                     (*window).seat,
@@ -1731,19 +1738,19 @@ extern "C" fn toplevel_close(
 }
 
 extern "C" fn configure_callback(
-    window: *mut c_void,
+    data: *mut c_void,
     callback: *mut WlCallback,
     time: u32,
 ) {
-    let window: *mut Wayland = window.cast();
+    let window: *mut Wayland = data.cast();
 
     unsafe {
         (*window).client.callback_destroy(callback);
-    }
 
-    // if (*window).callback.is_null() {
-    //     redraw_wl(window, std::ptr::null_mut(), time);
-    // }
+        if (*window).callback.is_null() {
+            redraw_wl(data, std::ptr::null_mut(), time);
+        }
+    }
 }
 
 extern "C" fn output_geometry(
@@ -1814,9 +1821,6 @@ extern "C" fn seat_handle_capabilities(
         let has_keyboard = (caps & WlSeatCapability::Keyboard as u32) != 0;
         if has_keyboard && (*window).keyboard.is_null() {
             (*window).keyboard = (*window).client.seat_get_keyboard(seat);
-
-            let nil: *mut c_void = null_mut();
-
             (*window).client.keyboard_add_listener(
                 (*window).keyboard,
                 &KEYBOARD_LISTENER,
@@ -2169,4 +2173,63 @@ extern "C" fn pointer_handle_axis(
     _axis: u32,
     _value: i32,
 ) {
+}
+
+extern "C" fn redraw_wl(
+    data: *mut c_void,
+    callback: *mut WlCallback,
+    millis: u32,
+) {
+    let wayland: *mut Wayland = data.cast();
+
+    unsafe {
+    let diff_millis = if !callback.is_null() {
+        ((*wayland).client.wl_proxy_destroy)(callback.cast());
+        
+        dbg!(millis);
+        
+/*        if (*wayland).start_time == 0 {
+            (*wayland).start_time = millis;
+            0u32
+        } else {
+            // TODO: overflowing subtract.
+            millis - (*wayland).last_millis
+        }*/
+    } else {
+//        0u32
+    };
+    assert!((*wayland).callback == callback);
+    (*wayland).callback = std::ptr::null_mut();
+    /*let orig_nanos = u64::from(diff_millis) * 1_000_000;
+    (*wayland).last_millis = millis;
+
+    let temp_nanos = orig_nanos + (*wayland).refresh_rate / 2;
+    let diff_nanos = temp_nanos - (temp_nanos % (*wayland).refresh_rate);*/
+
+    // Redraw on the screen.
+    dbg!((*wayland).draw);
+    (*(*wayland).draw.unwrap().as_ptr()).begin_draw();
+    /*(*c).draw_toolbar(
+        &(*c).toolbar_shader,
+        &mut (*c).toolbar_shape,
+        &(*c).toolbar_graphic,
+    );*/
+
+    // Draw user-defined objects.
+
+    // ((*c).redraw)(diff_nanos);
+
+    // Get ready for next frame.
+    
+    dbg!((*wayland).callback);
+    
+    (*wayland).callback = (*wayland).client.surface_frame((*wayland).surface);
+
+    dbg!((*wayland).callback);
+
+    (*wayland).client.callback_add_listener((*wayland).callback, &FRAME_LISTENER, data);
+
+    // Redraw on the screen.
+    (*(*wayland).draw.unwrap().as_ptr()).finish_draw();
+    }
 }
