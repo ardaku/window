@@ -1,9 +1,9 @@
 use std::{
-    str,
     ffi::{CStr, CString},
-    ptr::{NonNull, null, null_mut},
-    os::raw::{c_char, c_int, c_uint, c_void, c_long},
     mem::transmute,
+    os::raw::{c_char, c_int, c_long, c_uint, c_void},
+    ptr::{null, null_mut, NonNull},
+    str,
 };
 
 /* * Dynamic Loading Into Separate Namespace * */
@@ -12,8 +12,8 @@ use std::{
 struct DlObj(c_void);
 
 fn dlopen(name: &str) -> Option<NonNull<DlObj>> {
-    let name = CStr::from_bytes_with_nul(name.as_bytes())
-        .expect("Missing Null Byte!");
+    let name =
+        CStr::from_bytes_with_nul(name.as_bytes()).expect("Missing Null Byte!");
     extern "C" {
         fn dlopen(name: *const c_char, flags: c_int) -> *mut DlObj;
     }
@@ -23,14 +23,13 @@ fn dlopen(name: &str) -> Option<NonNull<DlObj>> {
 }
 
 fn dlsym(handle: NonNull<DlObj>, nam: &str) -> Result<NonNull<c_void>, String> {
-    let name = CStr::from_bytes_with_nul(nam.as_bytes())
-        .expect("Missing Null Byte!");
+    let name =
+        CStr::from_bytes_with_nul(nam.as_bytes()).expect("Missing Null Byte!");
     extern "C" {
         fn dlsym(dlobj: *mut DlObj, symbol: *const c_char) -> *mut c_void;
     }
-    unsafe {
-        NonNull::new(dlsym(handle.as_ptr(), name.as_ptr()))
-    }.ok_or(format!("Couldn't load symbol \'{}\"", nam))
+    unsafe { NonNull::new(dlsym(handle.as_ptr(), name.as_ptr())) }
+        .ok_or(format!("Couldn't load symbol \'{}\"", nam))
 }
 
 /* */
@@ -44,7 +43,8 @@ static ZXDG_TOPLEVEL_V6_INTERFACE_SET_TITLE: &[u8] = b"set_title\0";
 static ZXDG_TOPLEVEL_V6_INTERFACE_SET_TITLE_SIG: &[u8] = b"s\0";
 static ZXDG_TOPLEVEL_V6_INTERFACE_SET_APP_ID: &[u8] = b"set_app_id\0";
 static ZXDG_TOPLEVEL_V6_INTERFACE_SET_APP_ID_SIG: &[u8] = b"s\0";
-static ZXDG_TOPLEVEL_V6_INTERFACE_SHOW_WINDOW_MENU: &[u8] = b"show_window_menu\0";
+static ZXDG_TOPLEVEL_V6_INTERFACE_SHOW_WINDOW_MENU: &[u8] =
+    b"show_window_menu\0";
 static ZXDG_TOPLEVEL_V6_INTERFACE_SHOW_WINDOW_MENU_SIG: &[u8] = b"ouii\0";
 static ZXDG_TOPLEVEL_V6_INTERFACE_MOVE: &[u8] = b"move\0";
 static ZXDG_TOPLEVEL_V6_INTERFACE_MOVE_SIG: &[u8] = b"ou\0";
@@ -60,7 +60,8 @@ static ZXDG_TOPLEVEL_V6_INTERFACE_UNSET_MAXIMIZED: &[u8] = b"unset_maximized\0";
 static ZXDG_TOPLEVEL_V6_INTERFACE_UNSET_MAXIMIZED_SIG: &[u8] = b"\0";
 static ZXDG_TOPLEVEL_V6_INTERFACE_SET_FULLSCREEN: &[u8] = b"set_fullscreen\0";
 static ZXDG_TOPLEVEL_V6_INTERFACE_SET_FULLSCREEN_SIG: &[u8] = b"?o\0";
-static ZXDG_TOPLEVEL_V6_INTERFACE_UNSET_FULLSCREEN: &[u8] = b"unset_fullscreen\0";
+static ZXDG_TOPLEVEL_V6_INTERFACE_UNSET_FULLSCREEN: &[u8] =
+    b"unset_fullscreen\0";
 static ZXDG_TOPLEVEL_V6_INTERFACE_UNSET_FULLSCREEN_SIG: &[u8] = b"\0";
 static ZXDG_TOPLEVEL_V6_INTERFACE_SET_MINIMIZED: &[u8] = b"set_minimized\0";
 static ZXDG_TOPLEVEL_V6_INTERFACE_SET_MINIMIZED_SIG: &[u8] = b"\0";
@@ -88,7 +89,9 @@ static mut ZXDG_TOPLEVEL_V6_INTERFACE_METHODS: [WlMessage; 14] = [
     },
     WlMessage {
         name: ZXDG_TOPLEVEL_V6_INTERFACE_SHOW_WINDOW_MENU.as_ptr().cast(),
-        signature: ZXDG_TOPLEVEL_V6_INTERFACE_SHOW_WINDOW_MENU_SIG.as_ptr().cast(),
+        signature: ZXDG_TOPLEVEL_V6_INTERFACE_SHOW_WINDOW_MENU_SIG
+            .as_ptr()
+            .cast(),
         wl_interface: std::ptr::null(),
     },
     WlMessage {
@@ -118,17 +121,23 @@ static mut ZXDG_TOPLEVEL_V6_INTERFACE_METHODS: [WlMessage; 14] = [
     },
     WlMessage {
         name: ZXDG_TOPLEVEL_V6_INTERFACE_UNSET_MAXIMIZED.as_ptr().cast(),
-        signature: ZXDG_TOPLEVEL_V6_INTERFACE_UNSET_MAXIMIZED_SIG.as_ptr().cast(),
+        signature: ZXDG_TOPLEVEL_V6_INTERFACE_UNSET_MAXIMIZED_SIG
+            .as_ptr()
+            .cast(),
         wl_interface: std::ptr::null(),
     },
     WlMessage {
         name: ZXDG_TOPLEVEL_V6_INTERFACE_SET_FULLSCREEN.as_ptr().cast(),
-        signature: ZXDG_TOPLEVEL_V6_INTERFACE_SET_FULLSCREEN_SIG.as_ptr().cast(),
+        signature: ZXDG_TOPLEVEL_V6_INTERFACE_SET_FULLSCREEN_SIG
+            .as_ptr()
+            .cast(),
         wl_interface: std::ptr::null(),
     },
     WlMessage {
         name: ZXDG_TOPLEVEL_V6_INTERFACE_UNSET_FULLSCREEN.as_ptr().cast(),
-        signature: ZXDG_TOPLEVEL_V6_INTERFACE_UNSET_FULLSCREEN_SIG.as_ptr().cast(),
+        signature: ZXDG_TOPLEVEL_V6_INTERFACE_UNSET_FULLSCREEN_SIG
+            .as_ptr()
+            .cast(),
         wl_interface: std::ptr::null(),
     },
     WlMessage {
@@ -166,9 +175,8 @@ static mut ZXDG_TOPLEVEL_V6_INTERFACE: WlInterface = WlInterface {
     events: unsafe { ZXDG_TOPLEVEL_V6_INTERFACE_EVENTS.as_ptr() },
 };
 
-static mut ZXDG_TOPLEVEL_V6_INTERFACE1: [*const WlInterface; 1] = [
-    unsafe { &ZXDG_TOPLEVEL_V6_INTERFACE }
-];
+static mut ZXDG_TOPLEVEL_V6_INTERFACE1: [*const WlInterface; 1] =
+    [unsafe { &ZXDG_TOPLEVEL_V6_INTERFACE }];
 
 static mut ZXDG_SURFACE_V6_INTERFACE_METHODS: [WlMessage; 5] = [
     WlMessage {
@@ -223,9 +231,7 @@ static mut SHELL_INTERFACE_CREATE_POSITIONER_SIG: &[u8] = b"n\0";
 static mut SHELL_INTERFACE_GET_SURFACE_SIG: &[u8] = b"no\0";
 static mut ZXDG_SHELL_INTERFACE_GET_SURFACE: &[u8] = b"get_xdg_surface\0";
 
-static mut WL_SURFACE_INTERFACE: [*const WlInterface; 1] = [
-    null()
-];
+static mut WL_SURFACE_INTERFACE: [*const WlInterface; 1] = [null()];
 
 static mut ZXDG_SHELL_V6_INTERFACE_METHODS: [WlMessage; 4] = [
     WlMessage {
@@ -235,7 +241,9 @@ static mut ZXDG_SHELL_V6_INTERFACE_METHODS: [WlMessage; 4] = [
     },
     WlMessage {
         name: ZXDG_SHELL_INTERFACE_CREATE_POSITIONER.as_ptr().cast(),
-        signature: unsafe { SHELL_INTERFACE_CREATE_POSITIONER_SIG.as_ptr().cast() },
+        signature: unsafe {
+            SHELL_INTERFACE_CREATE_POSITIONER_SIG.as_ptr().cast()
+        },
         wl_interface: unsafe { WL_SURFACE_INTERFACE.as_ptr() },
     },
     WlMessage {
@@ -352,83 +360,287 @@ enum WlSeatCapability {
 
 #[repr(C)]
 struct WlRegistryListener {
-    global: Option<extern fn(data: *mut c_void, wl_registry: *mut WlRegistry, name: u32, interface: *const c_char, version: u32) -> ()>,
-    global_remove: Option<extern fn(data: *mut c_void, wl_registry: *mut WlRegistry, name: u32)>,
+    global: Option<
+        extern "C" fn(
+            data: *mut c_void,
+            wl_registry: *mut WlRegistry,
+            name: u32,
+            interface: *const c_char,
+            version: u32,
+        ) -> (),
+    >,
+    global_remove: Option<
+        extern "C" fn(
+            data: *mut c_void,
+            wl_registry: *mut WlRegistry,
+            name: u32,
+        ),
+    >,
 }
 
 #[repr(C)]
 struct WlCallbackListener {
-    done: Option<extern fn(data: *mut c_void, callback: *mut WlCallback, callback_data: u32) -> ()>,
+    done: Option<
+        extern "C" fn(
+            data: *mut c_void,
+            callback: *mut WlCallback,
+            callback_data: u32,
+        ) -> (),
+    >,
 }
 
 #[repr(C)]
 struct WlOutputListener {
-    geometry: Option<extern fn(data: *mut c_void, output: *mut WlOutput, x: i32, y: i32, physical_width: i32, physical_height: i32, subpixel: i32, make: *const c_char, model: *const c_char, transform: i32) -> ()>,
-    mode: Option<extern fn(data: *mut c_void, output: *mut WlOutput, flags: u32, width: i32, height: i32, refresh: i32) -> ()>,
-    done: Option<extern fn(data: *mut c_void, output: *mut WlOutput) -> ()>,
-    scale: Option<extern fn(data: *mut c_void, output: *mut WlOutput, factor: i32) -> ()>,
+    geometry: Option<
+        extern "C" fn(
+            data: *mut c_void,
+            output: *mut WlOutput,
+            x: i32,
+            y: i32,
+            physical_width: i32,
+            physical_height: i32,
+            subpixel: i32,
+            make: *const c_char,
+            model: *const c_char,
+            transform: i32,
+        ) -> (),
+    >,
+    mode: Option<
+        extern "C" fn(
+            data: *mut c_void,
+            output: *mut WlOutput,
+            flags: u32,
+            width: i32,
+            height: i32,
+            refresh: i32,
+        ) -> (),
+    >,
+    done: Option<extern "C" fn(data: *mut c_void, output: *mut WlOutput) -> ()>,
+    scale: Option<
+        extern "C" fn(
+            data: *mut c_void,
+            output: *mut WlOutput,
+            factor: i32,
+        ) -> (),
+    >,
 }
 
 #[repr(C)]
 struct WlSeatListener {
-    capabilities: Option<extern fn(data: *mut c_void, seat: *mut WlSeat, capabilites: u32) -> ()>,
-    name: Option<extern fn(data: *mut c_void, seat: *mut WlSeat, name: *const c_char) -> ()>,
+    capabilities: Option<
+        extern "C" fn(
+            data: *mut c_void,
+            seat: *mut WlSeat,
+            capabilites: u32,
+        ) -> (),
+    >,
+    name: Option<
+        extern "C" fn(
+            data: *mut c_void,
+            seat: *mut WlSeat,
+            name: *const c_char,
+        ) -> (),
+    >,
 }
 
 #[repr(C)]
 struct WlKeyboardListener {
     // Keyboard mapping description.
-    keymap: Option<extern fn(data: *mut c_void, keyboard: *mut WlKeyboard, format: u32, fd: i32, size: u32) -> ()>,
+    keymap: Option<
+        extern "C" fn(
+            data: *mut c_void,
+            keyboard: *mut WlKeyboard,
+            format: u32,
+            fd: i32,
+            size: u32,
+        ) -> (),
+    >,
     // Keyboard Focus Entered.
-    enter: Option<extern fn(data: *mut c_void, keyboard: *mut WlKeyboard, serial: u32, surface: *mut WlSurface, keys: *mut WlArray) -> ()>,
+    enter: Option<
+        extern "C" fn(
+            data: *mut c_void,
+            keyboard: *mut WlKeyboard,
+            serial: u32,
+            surface: *mut WlSurface,
+            keys: *mut WlArray,
+        ) -> (),
+    >,
     // Keyboard Focus Exited.
-    leave: Option<extern fn(data: *mut c_void, keyboard: *mut WlKeyboard, serial: u32, surface: *mut WlSurface) -> ()>,
+    leave: Option<
+        extern "C" fn(
+            data: *mut c_void,
+            keyboard: *mut WlKeyboard,
+            serial: u32,
+            surface: *mut WlSurface,
+        ) -> (),
+    >,
     // Key press or release.
-    key: Option<extern fn(data: *mut c_void, keyboard: *mut WlKeyboard, serial: u32, time: u32, key: u32, state: u32) -> ()>,
+    key: Option<
+        extern "C" fn(
+            data: *mut c_void,
+            keyboard: *mut WlKeyboard,
+            serial: u32,
+            time: u32,
+            key: u32,
+            state: u32,
+        ) -> (),
+    >,
     // Modifier / Group state changed.
-    modifiers: Option<extern fn(data: *mut c_void, keyboard: *mut WlKeyboard, serial: u32, mods_depressed: u32, mods_latched: u32, mods_locked: u32, group: u32) -> ()>,
+    modifiers: Option<
+        extern "C" fn(
+            data: *mut c_void,
+            keyboard: *mut WlKeyboard,
+            serial: u32,
+            mods_depressed: u32,
+            mods_latched: u32,
+            mods_locked: u32,
+            group: u32,
+        ) -> (),
+    >,
     // Repeat rate & delay settings changed.
-    repeat_info: Option<extern fn(data: *mut c_void, keyboard: *mut WlKeyboard, rate: i32, delay: i32) -> ()>,
+    repeat_info: Option<
+        extern "C" fn(
+            data: *mut c_void,
+            keyboard: *mut WlKeyboard,
+            rate: i32,
+            delay: i32,
+        ) -> (),
+    >,
 }
 
 #[repr(C)]
 struct WlPointerListener {
     // Pointer focus enter
-    enter: Option<extern fn(data: *mut c_void, pointer: *mut WlPointer, serial: u32, surface: *mut WlSurface, surface_x: i32, surface_y: i32) -> ()>,
+    enter: Option<
+        extern "C" fn(
+            data: *mut c_void,
+            pointer: *mut WlPointer,
+            serial: u32,
+            surface: *mut WlSurface,
+            surface_x: i32,
+            surface_y: i32,
+        ) -> (),
+    >,
     // Pointer focus leave
-    leave: Option<extern fn(data: *mut c_void, pointer: *mut WlPointer, serial: u32, surface: *mut WlSurface) -> ()>,
+    leave: Option<
+        extern "C" fn(
+            data: *mut c_void,
+            pointer: *mut WlPointer,
+            serial: u32,
+            surface: *mut WlSurface,
+        ) -> (),
+    >,
     // Pointer motion
-    motion: Option<extern fn(data: *mut c_void, pointer: *mut WlPointer, time: u32, surface_x: i32, surface_y: i32) -> ()>,
+    motion: Option<
+        extern "C" fn(
+            data: *mut c_void,
+            pointer: *mut WlPointer,
+            time: u32,
+            surface_x: i32,
+            surface_y: i32,
+        ) -> (),
+    >,
     // Pointer button
-    button: Option<extern fn(data: *mut c_void, pointer: *mut WlPointer, serial: u32, time: u32, button: u32, state: u32) -> ()>,
+    button: Option<
+        extern "C" fn(
+            data: *mut c_void,
+            pointer: *mut WlPointer,
+            serial: u32,
+            time: u32,
+            button: u32,
+            state: u32,
+        ) -> (),
+    >,
     // Axis Event
-    axis: Option<extern fn(data: *mut c_void, pointer: *mut WlPointer, time: u32, axis: u32, value: i32) -> ()>,
+    axis: Option<
+        extern "C" fn(
+            data: *mut c_void,
+            pointer: *mut WlPointer,
+            time: u32,
+            axis: u32,
+            value: i32,
+        ) -> (),
+    >,
     // Pointer Frame Complete (Now process events).
-    frame: Option<extern fn(data: *mut c_void, pointer: *mut WlPointer) -> ()>,
+    frame:
+        Option<extern "C" fn(data: *mut c_void, pointer: *mut WlPointer) -> ()>,
     // What type of device sent axis event?
-    axis_source: Option<extern fn(data: *mut c_void, pointer: *mut WlPointer, axis_source: u32) -> ()>,
+    axis_source: Option<
+        extern "C" fn(
+            data: *mut c_void,
+            pointer: *mut WlPointer,
+            axis_source: u32,
+        ) -> (),
+    >,
     // Stop axis event
-    axis_stop: Option<extern fn(data: *mut c_void, pointer: *mut WlPointer, time: u32, axis: u32) -> ()>,
+    axis_stop: Option<
+        extern "C" fn(
+            data: *mut c_void,
+            pointer: *mut WlPointer,
+            time: u32,
+            axis: u32,
+        ) -> (),
+    >,
     // Discrete step axis
-    axis_discrete: Option<extern fn(data: *mut c_void, pointer: *mut WlPointer, axis: u32, discrete: i32) -> ()>,
+    axis_discrete: Option<
+        extern "C" fn(
+            data: *mut c_void,
+            pointer: *mut WlPointer,
+            axis: u32,
+            discrete: i32,
+        ) -> (),
+    >,
 }
 
 #[repr(C)]
 struct WlTouchListener {
     // Touch down event at beginning of touch sequence.
-    down: extern fn(data: *mut c_void, touch: *mut WlTouch, serial: u32, time: u32, surface: *mut WlSurface, id: i32, x: i32, y: i32) -> (),
+    down: extern "C" fn(
+        data: *mut c_void,
+        touch: *mut WlTouch,
+        serial: u32,
+        time: u32,
+        surface: *mut WlSurface,
+        id: i32,
+        x: i32,
+        y: i32,
+    ) -> (),
     // End of a touch event sequence.
-    up: extern fn(data: *mut c_void, touch: *mut WlTouch, serial: u32, time: u32, id: i32) -> (),
+    up: extern "C" fn(
+        data: *mut c_void,
+        touch: *mut WlTouch,
+        serial: u32,
+        time: u32,
+        id: i32,
+    ) -> (),
     // Update of touch point coordinates.
-    motion: extern fn(data: *mut c_void, touch: *mut WlTouch, time: u32, id: i32, x: i32, y: i32) -> (),
+    motion: extern "C" fn(
+        data: *mut c_void,
+        touch: *mut WlTouch,
+        time: u32,
+        id: i32,
+        x: i32,
+        y: i32,
+    ) -> (),
     // End of touch frame event.
-    frame: extern fn(data: *mut c_void, touch: *mut WlTouch) -> (),
+    frame: extern "C" fn(data: *mut c_void, touch: *mut WlTouch) -> (),
     // Global gesture, don't process touch stream anymore.
-    cancel: extern fn(data: *mut c_void, touch: *mut WlTouch) -> (),
+    cancel: extern "C" fn(data: *mut c_void, touch: *mut WlTouch) -> (),
     // Touch event changed shape (ellipse).
-    shape: extern fn(data: *mut c_void, touch: *mut WlTouch, id: i32, major: i32, minor: i32) -> (),
+    shape: extern "C" fn(
+        data: *mut c_void,
+        touch: *mut WlTouch,
+        id: i32,
+        major: i32,
+        minor: i32,
+    ) -> (),
     // Update orientation of touch point
-    orientation: extern fn(data: *mut c_void, touch: *mut WlTouch, id: i32, orientation: i32) -> (),
+    orientation: extern "C" fn(
+        data: *mut c_void,
+        touch: *mut WlTouch,
+        id: i32,
+        orientation: i32,
+    ) -> (),
 }
 
 /* * From wayland-cursor.h  * */
@@ -465,18 +677,40 @@ struct ZxdgShell(c_void);
 
 #[repr(C)]
 struct ZxdgSurfaceListener {
-    configure: Option<extern fn(data: *mut c_void, surface: *mut ZxdgSurface, serial: u32) -> ()>,
+    configure: Option<
+        extern "C" fn(
+            data: *mut c_void,
+            surface: *mut ZxdgSurface,
+            serial: u32,
+        ) -> (),
+    >,
 }
 
 #[repr(C)]
 struct ZxdgToplevelListener {
-    configure: Option<extern fn(data: *mut c_void, toplevel: *mut ZxdgToplevel, width: i32, height: i32, states: *mut WlArray) -> ()>,
-    close: Option<extern fn(data: *mut c_void, toplevel: *mut ZxdgToplevel) -> ()>,
+    configure: Option<
+        extern "C" fn(
+            data: *mut c_void,
+            toplevel: *mut ZxdgToplevel,
+            width: i32,
+            height: i32,
+            states: *mut WlArray,
+        ) -> (),
+    >,
+    close: Option<
+        extern "C" fn(data: *mut c_void, toplevel: *mut ZxdgToplevel) -> (),
+    >,
 }
 
 #[repr(C)]
 struct ZxdgShellListener {
-    ping: Option<extern fn(data: *mut c_void, xdg_shell: *mut ZxdgShell, serial: u32) -> ()>,
+    ping: Option<
+        extern "C" fn(
+            data: *mut c_void,
+            xdg_shell: *mut ZxdgShell,
+            serial: u32,
+        ) -> (),
+    >,
 }
 
 /* From include/wayland-egl-core.h */
@@ -542,18 +776,33 @@ static XDG_TOPLEVEL_LISTENER: ZxdgToplevelListener = ZxdgToplevelListener {
     close: Some(toplevel_close),
 };
 static XDG_SURFACE_LISTENER: ZxdgSurfaceListener = ZxdgSurfaceListener {
-    configure: Some(surface_configure)
+    configure: Some(surface_configure),
 };
 
 // Wrapper around Wayland Library
 struct WaylandClient {
-    wl_proxy_marshal: extern fn(p: *mut WlProxy, opcode: u32, ...) -> (),
-    wl_proxy_destroy: extern fn(proxy: *mut WlProxy) -> (),
-    wl_display_connect: extern fn(name: *const c_char) -> *mut WlDisplay,
-    wl_proxy_marshal_constructor: extern fn(proxy: *mut WlProxy, opcode: u32, interface: *const WlInterface, ...) -> *mut WlProxy,
-    wl_proxy_add_listener: extern fn(proxy: *mut WlProxy, *const extern fn() -> (), data: *mut c_void) -> c_int,
-    wl_display_dispatch: extern fn(display: *mut WlDisplay) -> c_int,
-    wl_proxy_marshal_constructor_versioned: extern fn(proxy: *mut WlProxy, opcode: u32, interface: *const WlInterface, version: u32, ...) -> *mut WlProxy,
+    wl_proxy_marshal: extern "C" fn(p: *mut WlProxy, opcode: u32, ...) -> (),
+    wl_proxy_destroy: extern "C" fn(proxy: *mut WlProxy) -> (),
+    wl_display_connect: extern "C" fn(name: *const c_char) -> *mut WlDisplay,
+    wl_proxy_marshal_constructor: extern "C" fn(
+        proxy: *mut WlProxy,
+        opcode: u32,
+        interface: *const WlInterface,
+        ...
+    ) -> *mut WlProxy,
+    wl_proxy_add_listener: extern "C" fn(
+        proxy: *mut WlProxy,
+        *const extern "C" fn() -> (),
+        data: *mut c_void,
+    ) -> c_int,
+    wl_display_dispatch: extern "C" fn(display: *mut WlDisplay) -> c_int,
+    wl_proxy_marshal_constructor_versioned: extern "C" fn(
+        proxy: *mut WlProxy,
+        opcode: u32,
+        interface: *const WlInterface,
+        version: u32,
+        ...
+    ) -> *mut WlProxy,
     // Static globals
     wl_registry_interface: *const WlInterface,
     wl_compositor_interface: *const WlInterface,
@@ -569,34 +818,74 @@ struct WaylandClient {
 
 impl WaylandClient {
     fn new() -> Result<Self, String> {
-        let so = dlopen("libwayland-client.so.0\0").ok_or("Failed to find wayland-client shared object".to_string())?;
+        let so = dlopen("libwayland-client.so.0\0")
+            .ok_or("Failed to find wayland-client shared object".to_string())?;
 
         // Initialize ZXDG_V6 static globals.
-        let wl_surface_interface = dlsym(so, "wl_surface_interface\0")?.cast().as_ptr();
+        let wl_surface_interface =
+            dlsym(so, "wl_surface_interface\0")?.cast().as_ptr();
         unsafe {
             WL_SURFACE_INTERFACE[0] = wl_surface_interface;
         }
 
-        Ok(unsafe { WaylandClient {
-            wl_proxy_marshal: transmute(dlsym(so, "wl_proxy_marshal\0")?),
-            wl_proxy_destroy: transmute(dlsym(so, "wl_proxy_destroy\0")?),
-            wl_display_connect: transmute(dlsym(so, "wl_display_connect\0")?),
-            wl_proxy_marshal_constructor: transmute(dlsym(so, "wl_proxy_marshal_constructor\0")?),
-            wl_proxy_add_listener: transmute(dlsym(so, "wl_proxy_add_listener\0")?),
-            wl_display_dispatch: transmute(dlsym(so, "wl_display_dispatch\0")?),
-            wl_proxy_marshal_constructor_versioned: transmute(dlsym(so, "wl_proxy_marshal_constructor_versioned\0")?),
-            // Static globals
-            wl_registry_interface: dlsym(so, "wl_registry_interface\0")?.cast().as_ptr(),
-            wl_compositor_interface: dlsym(so, "wl_compositor_interface\0")?.cast().as_ptr(),
-            wl_seat_interface: dlsym(so, "wl_seat_interface\0")?.cast().as_ptr(),
-            wl_shm_interface: dlsym(so, "wl_shm_interface\0")?.cast().as_ptr(),
-            wl_pointer_interface: dlsym(so, "wl_pointer_interface\0")?.cast().as_ptr(),
-            wl_output_interface: dlsym(so, "wl_output_interface\0")?.cast().as_ptr(),
-            wl_keyboard_interface: dlsym(so, "wl_keyboard_interface\0")?.cast().as_ptr(),
-            wl_touch_interface: dlsym(so, "wl_touch_interface\0")?.cast().as_ptr(),
-            wl_callback_interface: dlsym(so, "wl_callback_interface\0")?.cast().as_ptr(),
-            wl_surface_interface,
-        } })
+        Ok(unsafe {
+            WaylandClient {
+                wl_proxy_marshal: transmute(dlsym(so, "wl_proxy_marshal\0")?),
+                wl_proxy_destroy: transmute(dlsym(so, "wl_proxy_destroy\0")?),
+                wl_display_connect: transmute(dlsym(
+                    so,
+                    "wl_display_connect\0",
+                )?),
+                wl_proxy_marshal_constructor: transmute(dlsym(
+                    so,
+                    "wl_proxy_marshal_constructor\0",
+                )?),
+                wl_proxy_add_listener: transmute(dlsym(
+                    so,
+                    "wl_proxy_add_listener\0",
+                )?),
+                wl_display_dispatch: transmute(dlsym(
+                    so,
+                    "wl_display_dispatch\0",
+                )?),
+                wl_proxy_marshal_constructor_versioned: transmute(dlsym(
+                    so,
+                    "wl_proxy_marshal_constructor_versioned\0",
+                )?),
+                // Static globals
+                wl_registry_interface: dlsym(so, "wl_registry_interface\0")?
+                    .cast()
+                    .as_ptr(),
+                wl_compositor_interface: dlsym(
+                    so,
+                    "wl_compositor_interface\0",
+                )?
+                .cast()
+                .as_ptr(),
+                wl_seat_interface: dlsym(so, "wl_seat_interface\0")?
+                    .cast()
+                    .as_ptr(),
+                wl_shm_interface: dlsym(so, "wl_shm_interface\0")?
+                    .cast()
+                    .as_ptr(),
+                wl_pointer_interface: dlsym(so, "wl_pointer_interface\0")?
+                    .cast()
+                    .as_ptr(),
+                wl_output_interface: dlsym(so, "wl_output_interface\0")?
+                    .cast()
+                    .as_ptr(),
+                wl_keyboard_interface: dlsym(so, "wl_keyboard_interface\0")?
+                    .cast()
+                    .as_ptr(),
+                wl_touch_interface: dlsym(so, "wl_touch_interface\0")?
+                    .cast()
+                    .as_ptr(),
+                wl_callback_interface: dlsym(so, "wl_callback_interface\0")?
+                    .cast()
+                    .as_ptr(),
+                wl_surface_interface,
+            }
+        })
     }
 
     // Inline Functions From include/wayland-client-protocol.h
@@ -606,7 +895,13 @@ impl WaylandClient {
         (self.wl_proxy_destroy)(surface.cast());
     }
     #[inline(always)]
-    unsafe fn pointer_set_cursor(&self, pointer: *mut WlPointer, cursor_surface: *mut WlSurface, image: *mut WlCursorImage, serial: u32) {
+    unsafe fn pointer_set_cursor(
+        &self,
+        pointer: *mut WlPointer,
+        cursor_surface: *mut WlSurface,
+        image: *mut WlCursorImage,
+        serial: u32,
+    ) {
         (self.wl_proxy_marshal)(
             pointer.cast(),
             0, /*WL_POINTER_SET_CURSOR*/
@@ -617,7 +912,11 @@ impl WaylandClient {
         );
     }
     #[inline(always)]
-    unsafe fn surface_attach(&self, cursor_surface: *mut WlSurface, buffer: *mut WlBuffer) {
+    unsafe fn surface_attach(
+        &self,
+        cursor_surface: *mut WlSurface,
+        buffer: *mut WlBuffer,
+    ) {
         (self.wl_proxy_marshal)(
             cursor_surface.cast(),
             1, /*WL_SURFACE_ATTACH*/
@@ -627,74 +926,149 @@ impl WaylandClient {
         );
     }
     #[inline(always)]
-    unsafe fn surface_damage(&self, cursor_surface: *mut WlSurface, image: *mut WlCursorImage) {
+    unsafe fn surface_damage(
+        &self,
+        cursor_surface: *mut WlSurface,
+        image: *mut WlCursorImage,
+    ) {
         (self.wl_proxy_marshal)(
             cursor_surface.cast(),
             2, /*WL_SURFACE_DAMAGE*/
             0,
             0,
             (*image).width,
-            (*image).height
+            (*image).height,
         );
     }
     #[inline(always)]
     unsafe fn surface_commit(&self, cursor_surface: *mut WlSurface) {
-        (self.wl_proxy_marshal)(cursor_surface.cast(), 6 /*WL_SURFACE_COMMIT*/);
+        (self.wl_proxy_marshal)(
+            cursor_surface.cast(),
+            6, /*WL_SURFACE_COMMIT*/
+        );
     }
     #[inline(always)]
-    unsafe fn display_get_registry(&self, display: *mut WlDisplay) -> *mut WlRegistry {
+    unsafe fn display_get_registry(
+        &self,
+        display: *mut WlDisplay,
+    ) -> *mut WlRegistry {
         let nil: *mut c_void = null_mut();
         (self.wl_proxy_marshal_constructor)(
             display.cast(),
-            1 /*WL_DISPLAY_GET_REGISTRY*/,
+            1, /*WL_DISPLAY_GET_REGISTRY*/
             self.wl_registry_interface,
             nil,
-        ).cast()
+        )
+        .cast()
     }
     #[inline(always)]
-    unsafe fn registry_add_listener(&self, registry: *mut WlRegistry, listener: *const WlRegistryListener, data: *mut c_void) -> c_int {
+    unsafe fn registry_add_listener(
+        &self,
+        registry: *mut WlRegistry,
+        listener: *const WlRegistryListener,
+        data: *mut c_void,
+    ) -> c_int {
         (self.wl_proxy_add_listener)(registry.cast(), listener.cast(), data)
     }
     #[inline(always)]
-    unsafe fn compositor_create_surface(&self, compositor: *mut WlCompositor)
-        -> *mut WlSurface
-    {
+    unsafe fn compositor_create_surface(
+        &self,
+        compositor: *mut WlCompositor,
+    ) -> *mut WlSurface {
         let nil: *mut c_void = null_mut();
-        (self.wl_proxy_marshal_constructor)(compositor.cast(), 0 /*WL_COMPOSITOR_CREATE_SURFACE*/, self.wl_surface_interface, nil).cast()
+        (self.wl_proxy_marshal_constructor)(
+            compositor.cast(),
+            0, /*WL_COMPOSITOR_CREATE_SURFACE*/
+            self.wl_surface_interface,
+            nil,
+        )
+        .cast()
     }
     #[inline(always)]
     unsafe fn display_sync(&self, display: *mut WlDisplay) -> *mut WlCallback {
         let nil: *mut c_void = null_mut();
-        (self.wl_proxy_marshal_constructor)(display.cast(), 0 /*WL_DISPLAY_SYNC*/, self.wl_callback_interface, nil).cast()
+        (self.wl_proxy_marshal_constructor)(
+            display.cast(),
+            0, /*WL_DISPLAY_SYNC*/
+            self.wl_callback_interface,
+            nil,
+        )
+        .cast()
     }
     #[inline(always)]
-    unsafe fn callback_add_listener(&self, callback: *mut WlCallback, listener: *const WlCallbackListener, data: *mut c_void) -> c_int {
+    unsafe fn callback_add_listener(
+        &self,
+        callback: *mut WlCallback,
+        listener: *const WlCallbackListener,
+        data: *mut c_void,
+    ) -> c_int {
         (self.wl_proxy_add_listener)(callback.cast(), listener.cast(), data)
     }
     #[inline(always)]
-    unsafe fn output_add_listener(&self, output: *mut WlOutput, listener: *const WlOutputListener, data: *mut c_void) -> c_int {
+    unsafe fn output_add_listener(
+        &self,
+        output: *mut WlOutput,
+        listener: *const WlOutputListener,
+        data: *mut c_void,
+    ) -> c_int {
         (self.wl_proxy_add_listener)(output.cast(), listener.cast(), data)
     }
     #[inline(always)]
-    unsafe fn seat_add_listener(&self, seat: *mut WlSeat, listener: *const WlSeatListener, data: *mut c_void) -> c_int {
+    unsafe fn seat_add_listener(
+        &self,
+        seat: *mut WlSeat,
+        listener: *const WlSeatListener,
+        data: *mut c_void,
+    ) -> c_int {
         (self.wl_proxy_add_listener)(seat.cast(), listener.cast(), data)
     }
     #[inline(always)]
-    unsafe fn pointer_add_listener(&self, pointer: *mut WlPointer, listener: *const WlPointerListener, data: *mut c_void) -> c_int {
+    unsafe fn pointer_add_listener(
+        &self,
+        pointer: *mut WlPointer,
+        listener: *const WlPointerListener,
+        data: *mut c_void,
+    ) -> c_int {
         (self.wl_proxy_add_listener)(pointer.cast(), listener.cast(), data)
     }
     #[inline(always)]
-    unsafe fn keyboard_add_listener(&self, keyboard: *mut WlKeyboard, listener: *const WlKeyboardListener, data: *mut c_void) -> c_int {
+    unsafe fn keyboard_add_listener(
+        &self,
+        keyboard: *mut WlKeyboard,
+        listener: *const WlKeyboardListener,
+        data: *mut c_void,
+    ) -> c_int {
         (self.wl_proxy_add_listener)(keyboard.cast(), listener.cast(), data)
     }
     #[inline(always)]
-    unsafe fn touch_add_listener(&self, touch: *mut WlTouch, listener: *const WlTouchListener, data: *mut c_void) -> c_int {
+    unsafe fn touch_add_listener(
+        &self,
+        touch: *mut WlTouch,
+        listener: *const WlTouchListener,
+        data: *mut c_void,
+    ) -> c_int {
         (self.wl_proxy_add_listener)(touch.cast(), listener.cast(), data)
     }
     #[inline(always)]
-    unsafe fn registry_bind(&self, registry: *mut WlRegistry, name: u32, interface: *const WlInterface, version: u32) -> *mut c_void {
+    unsafe fn registry_bind(
+        &self,
+        registry: *mut WlRegistry,
+        name: u32,
+        interface: *const WlInterface,
+        version: u32,
+    ) -> *mut c_void {
         let nil: *mut c_void = null_mut();
-        (self.wl_proxy_marshal_constructor_versioned)(registry.cast(), 0 /*WL_REGISTRY_BIND*/, interface, version, name, (*interface).name, version, nil).cast()
+        (self.wl_proxy_marshal_constructor_versioned)(
+            registry.cast(),
+            0, /*WL_REGISTRY_BIND*/
+            interface,
+            version,
+            name,
+            (*interface).name,
+            version,
+            nil,
+        )
+        .cast()
     }
     #[inline(always)]
     unsafe fn callback_destroy(&self, callback: *mut WlCallback) {
@@ -703,80 +1077,169 @@ impl WaylandClient {
     #[inline(always)]
     unsafe fn seat_get_pointer(&self, seat: *mut WlSeat) -> *mut WlPointer {
         let nil: *mut c_void = null_mut();
-        (self.wl_proxy_marshal_constructor)(seat.cast(), 0 /*WL_SEAT_GET_POINTER*/, self.wl_pointer_interface, nil).cast()
+        (self.wl_proxy_marshal_constructor)(
+            seat.cast(),
+            0, /*WL_SEAT_GET_POINTER*/
+            self.wl_pointer_interface,
+            nil,
+        )
+        .cast()
     }
     #[inline(always)]
     unsafe fn seat_get_keyboard(&self, seat: *mut WlSeat) -> *mut WlKeyboard {
         let nil: *mut c_void = null_mut();
-        (self.wl_proxy_marshal_constructor)(seat.cast(), 1 /*WL_SEAT_GET_KEYBOARD*/, self.wl_keyboard_interface, nil).cast()
+        (self.wl_proxy_marshal_constructor)(
+            seat.cast(),
+            1, /*WL_SEAT_GET_KEYBOARD*/
+            self.wl_keyboard_interface,
+            nil,
+        )
+        .cast()
     }
     #[inline(always)]
     unsafe fn seat_get_touch(&self, seat: *mut WlSeat) -> *mut WlTouch {
         let nil: *mut c_void = null_mut();
-        (self.wl_proxy_marshal_constructor)(seat.cast(), 2 /*WL_SEAT_GET_TOUCH*/, self.wl_touch_interface, nil).cast()
+        (self.wl_proxy_marshal_constructor)(
+            seat.cast(),
+            2, /*WL_SEAT_GET_TOUCH*/
+            self.wl_touch_interface,
+            nil,
+        )
+        .cast()
     }
     // From include/protocol/xdg-shell-unstable-v6-client-protocol.h
     #[inline(always)]
-    unsafe fn zxdg_shell_v6_get_xdg_surface(&self, shell: *mut ZxdgShell, surface: *mut WlSurface) -> *mut ZxdgSurface {
+    unsafe fn zxdg_shell_v6_get_xdg_surface(
+        &self,
+        shell: *mut ZxdgShell,
+        surface: *mut WlSurface,
+    ) -> *mut ZxdgSurface {
         let nil: *mut c_void = null_mut();
         (self.wl_proxy_marshal_constructor)(
             shell.cast(),
-            2 /*ZXDG_SHELL_V6_GET_XDG_SURFACE*/,
+            2, /*ZXDG_SHELL_V6_GET_XDG_SURFACE*/
             &ZXDG_SURFACE_V6_INTERFACE,
             nil,
             surface,
-        ).cast()
+        )
+        .cast()
     }
     #[inline(always)]
-    unsafe fn zxdg_surface_v6_get_toplevel(&self, surface: *mut ZxdgSurface) -> *mut ZxdgToplevel {
+    unsafe fn zxdg_surface_v6_get_toplevel(
+        &self,
+        surface: *mut ZxdgSurface,
+    ) -> *mut ZxdgToplevel {
         let nil: *mut c_void = null_mut();
         (self.wl_proxy_marshal_constructor)(
             surface.cast(),
-            1 /*ZXDG_SURFACE_V6_GET_TOPLEVEL*/,
+            1, /*ZXDG_SURFACE_V6_GET_TOPLEVEL*/
             &ZXDG_TOPLEVEL_V6_INTERFACE,
             nil,
-        ).cast()
+        )
+        .cast()
     }
     #[inline(always)]
-    unsafe fn zxdg_surface_v6_add_listener(&self, surface: *mut ZxdgSurface, listener: *const ZxdgSurfaceListener, data: *mut c_void) -> c_int {
+    unsafe fn zxdg_surface_v6_add_listener(
+        &self,
+        surface: *mut ZxdgSurface,
+        listener: *const ZxdgSurfaceListener,
+        data: *mut c_void,
+    ) -> c_int {
         (self.wl_proxy_add_listener)(surface.cast(), listener.cast(), data)
     }
     #[inline(always)]
-    unsafe fn zxdg_toplevel_v6_add_listener(&self, toplevel: *mut ZxdgToplevel, listener: *const ZxdgToplevelListener, data: *mut c_void) -> c_int {
+    unsafe fn zxdg_toplevel_v6_add_listener(
+        &self,
+        toplevel: *mut ZxdgToplevel,
+        listener: *const ZxdgToplevelListener,
+        data: *mut c_void,
+    ) -> c_int {
         (self.wl_proxy_add_listener)(toplevel.cast(), listener.cast(), data)
     }
     #[inline(always)]
-    unsafe fn zxdg_shell_v6_add_listener(&self, shell: *mut ZxdgShell, listener: *const ZxdgShellListener, data: *mut c_void) -> c_int {
+    unsafe fn zxdg_shell_v6_add_listener(
+        &self,
+        shell: *mut ZxdgShell,
+        listener: *const ZxdgShellListener,
+        data: *mut c_void,
+    ) -> c_int {
         (self.wl_proxy_add_listener)(shell.cast(), listener.cast(), data)
     }
     #[inline(always)]
-    unsafe fn zxdg_toplevel_v6_set_title(&self, toplevel: *mut ZxdgToplevel, title: *const c_char) -> () {
-        (self.wl_proxy_marshal)(toplevel.cast(), 2 /*ZXDG_TOPLEVEL_V6_SET_TITLE*/, title);
+    unsafe fn zxdg_toplevel_v6_set_title(
+        &self,
+        toplevel: *mut ZxdgToplevel,
+        title: *const c_char,
+    ) -> () {
+        (self.wl_proxy_marshal)(
+            toplevel.cast(),
+            2, /*ZXDG_TOPLEVEL_V6_SET_TITLE*/
+            title,
+        );
     }
     #[inline(always)]
-    unsafe fn zxdg_toplevel_v6_set_app_id(&self, toplevel: *mut ZxdgToplevel, title: *const c_char) -> () {
-        (self.wl_proxy_marshal)(toplevel.cast(), 3 /*ZXDG_TOPLEVEL_V6_SET_APP_ID*/, title);
+    unsafe fn zxdg_toplevel_v6_set_app_id(
+        &self,
+        toplevel: *mut ZxdgToplevel,
+        title: *const c_char,
+    ) -> () {
+        (self.wl_proxy_marshal)(
+            toplevel.cast(),
+            3, /*ZXDG_TOPLEVEL_V6_SET_APP_ID*/
+            title,
+        );
     }
     #[inline(always)]
-    unsafe fn zxdg_toplevel_v6_set_maximized(&self, toplevel: *mut ZxdgToplevel) {
-        (self.wl_proxy_marshal)(toplevel.cast(), 9 /*ZXDG_TOPLEVEL_V6_SET_MAXIMIZED*/);
+    unsafe fn zxdg_toplevel_v6_set_maximized(
+        &self,
+        toplevel: *mut ZxdgToplevel,
+    ) {
+        (self.wl_proxy_marshal)(
+            toplevel.cast(),
+            9, /*ZXDG_TOPLEVEL_V6_SET_MAXIMIZED*/
+        );
     }
     #[inline(always)]
-    unsafe fn zxdg_toplevel_v6_set_fullscreen(&self, toplevel: *mut ZxdgToplevel) {
+    unsafe fn zxdg_toplevel_v6_set_fullscreen(
+        &self,
+        toplevel: *mut ZxdgToplevel,
+    ) {
         let nil: *mut c_void = null_mut();
-        (self.wl_proxy_marshal)(toplevel.cast(), 11 /*ZXDG_TOPLEVEL_V6_SET_FULLSCREEN*/, nil);
+        (self.wl_proxy_marshal)(
+            toplevel.cast(),
+            11, /*ZXDG_TOPLEVEL_V6_SET_FULLSCREEN*/
+            nil,
+        );
     }
     #[inline(always)]
-    unsafe fn zxdg_toplevel_v6_unset_fullscreen(&self, toplevel: *mut ZxdgToplevel) {
-        (self.wl_proxy_marshal)(toplevel.cast(), 12 /*ZXDG_TOPLEVEL_V6_UNSET_FULLSCREEN*/);
+    unsafe fn zxdg_toplevel_v6_unset_fullscreen(
+        &self,
+        toplevel: *mut ZxdgToplevel,
+    ) {
+        (self.wl_proxy_marshal)(
+            toplevel.cast(),
+            12, /*ZXDG_TOPLEVEL_V6_UNSET_FULLSCREEN*/
+        );
     }
     #[inline(always)]
-    unsafe fn zxdg_surface_v6_ack_configure(&self, zxdg_surface_v6: *mut ZxdgSurface, serial: u32) {
-        (self.wl_proxy_marshal)(zxdg_surface_v6.cast(), 4 /* ZXDG_SURFACE_V6_ACK_CONFIGURE */, serial);
+    unsafe fn zxdg_surface_v6_ack_configure(
+        &self,
+        zxdg_surface_v6: *mut ZxdgSurface,
+        serial: u32,
+    ) {
+        (self.wl_proxy_marshal)(
+            zxdg_surface_v6.cast(),
+            4, /* ZXDG_SURFACE_V6_ACK_CONFIGURE */
+            serial,
+        );
     }
     #[inline(always)]
     unsafe fn zxdg_shell_v6_pong(&self, shell: *mut ZxdgShell, serial: u32) {
-        (self.wl_proxy_marshal)(shell.cast(), 3 /*ZXDG_SHELL_V6_PONG*/, serial);
+        (self.wl_proxy_marshal)(
+            shell.cast(),
+            3, /*ZXDG_SHELL_V6_PONG*/
+            serial,
+        );
     }
 
     #[inline(always)]
@@ -786,33 +1249,41 @@ impl WaylandClient {
 }
 
 struct WaylandEGL {
-    wl_egl_window_create: extern fn(
+    wl_egl_window_create: extern "C" fn(
         surface: *mut WlSurface,
         width: c_int,
         height: c_int,
     ) -> *mut WlEglWindow,
-    wl_egl_window_resize: extern fn(
+    wl_egl_window_resize: extern "C" fn(
         egl_window: *mut WlEglWindow,
         width: c_int,
         height: c_int,
         dx: c_int,
         dy: c_int,
     ) -> (),
-    wl_egl_window_destroy: extern fn(
-        egl_window: *mut WlEglWindow
-    ) -> (),
+    wl_egl_window_destroy: extern "C" fn(egl_window: *mut WlEglWindow) -> (),
 }
 
 impl WaylandEGL {
     fn new() -> Result<Self, String> {
-        let so = dlopen("libwayland-egl.so.1\0").ok_or("Failed to find wayland-egl shared object")?;
-    
+        let so = dlopen("libwayland-egl.so.1\0")
+            .ok_or("Failed to find wayland-egl shared object")?;
+
         unsafe {
-        Ok(WaylandEGL {
-            wl_egl_window_create: transmute(dlsym(so, "wl_egl_window_create\0")?),
-            wl_egl_window_resize: transmute(dlsym(so, "wl_egl_window_resize\0")?),
-            wl_egl_window_destroy: transmute(dlsym(so, "wl_egl_window_destroy\0")?),
-        })
+            Ok(WaylandEGL {
+                wl_egl_window_create: transmute(dlsym(
+                    so,
+                    "wl_egl_window_create\0",
+                )?),
+                wl_egl_window_resize: transmute(dlsym(
+                    so,
+                    "wl_egl_window_resize\0",
+                )?),
+                wl_egl_window_destroy: transmute(dlsym(
+                    so,
+                    "wl_egl_window_destroy\0",
+                )?),
+            })
         }
     }
 }
@@ -825,23 +1296,34 @@ struct WaylandCursor {
         size: c_int,
         shm: *mut WlShm,
     ) -> *mut WlCursorTheme,
-    wl_cursor_theme_get_cursor: fn(
-        theme: *mut WlCursorTheme,
-        name: *const c_char,
-    ) -> *mut WlCursor,
+    wl_cursor_theme_get_cursor:
+        fn(theme: *mut WlCursorTheme, name: *const c_char) -> *mut WlCursor,
 }
 
 impl WaylandCursor {
     fn new() -> Result<Self, String> {
-        let so = dlopen("libwayland-cursor.so.0\0").ok_or("Failed to find wayland-cursor shared object")?;
+        let so = dlopen("libwayland-cursor.so.0\0")
+            .ok_or("Failed to find wayland-cursor shared object")?;
 
         unsafe {
-        Ok(WaylandCursor {
-            wl_cursor_image_get_buffer: transmute(dlsym(so, "wl_cursor_image_get_buffer\0")?),
-            wl_cursor_theme_destroy: transmute(dlsym(so, "wl_cursor_theme_destroy\0")?),
-            wl_cursor_theme_load: transmute(dlsym(so, "wl_cursor_theme_load\0")?),
-            wl_cursor_theme_get_cursor: transmute(dlsym(so, "wl_cursor_theme_get_cursor\0")?),
-        })
+            Ok(WaylandCursor {
+                wl_cursor_image_get_buffer: transmute(dlsym(
+                    so,
+                    "wl_cursor_image_get_buffer\0",
+                )?),
+                wl_cursor_theme_destroy: transmute(dlsym(
+                    so,
+                    "wl_cursor_theme_destroy\0",
+                )?),
+                wl_cursor_theme_load: transmute(dlsym(
+                    so,
+                    "wl_cursor_theme_load\0",
+                )?),
+                wl_cursor_theme_get_cursor: transmute(dlsym(
+                    so,
+                    "wl_cursor_theme_get_cursor\0",
+                )?),
+            })
         }
     }
 }
@@ -852,7 +1334,7 @@ pub(super) struct Wayland {
     client: WaylandClient,
     egl: WaylandEGL,
     cursor: WaylandCursor,
-    
+
     // Client
     display: NonNull<WlDisplay>,
     registry: *mut WlRegistry,
@@ -877,10 +1359,9 @@ pub(super) struct Wayland {
     fullscreen: bool,
     configured: bool,
 
-    
     // EGL
     egl_window: *mut WlEglWindow,
-    
+
     // Cursor
     default_cursor: *mut WlCursor,
     cursor_theme: *mut WlCursorTheme,
@@ -894,70 +1375,103 @@ impl Wayland {
         let cursor = WaylandCursor::new()?;
 
         unsafe {
-        // Create window.
-        let display = client.connect().ok_or("Failed to find client")?;
-        let registry = client.display_get_registry(display.as_ptr());
-        let mut wayland = Box::new(Wayland {
-            client, egl, cursor, display, registry, compositor: null_mut(),
-            surface: null_mut(), cursor_surface: null_mut(),
-            seat: null_mut(),
-            pointer: null_mut(),
-            keyboard: null_mut(),
-            touch: null_mut(),
-            shell: null_mut(),
-            shell_surface: null_mut(), toplevel: null_mut(),
-            restore_width: 640,
-            restore_height: 360,
-            window_width: 640,
-            window_height: 360,
-            refresh_rate: 0,
-            running: true,
-            is_restored: false,
-            fullscreen: false,
-            configured: false,
+            // Create window.
+            let display = client.connect().ok_or("Failed to find client")?;
+            let registry = client.display_get_registry(display.as_ptr());
+            let mut wayland = Box::new(Wayland {
+                client,
+                egl,
+                cursor,
+                display,
+                registry,
+                compositor: null_mut(),
+                surface: null_mut(),
+                cursor_surface: null_mut(),
+                seat: null_mut(),
+                pointer: null_mut(),
+                keyboard: null_mut(),
+                touch: null_mut(),
+                shell: null_mut(),
+                shell_surface: null_mut(),
+                toplevel: null_mut(),
+                restore_width: 640,
+                restore_height: 360,
+                window_width: 640,
+                window_height: 360,
+                refresh_rate: 0,
+                running: true,
+                is_restored: false,
+                fullscreen: false,
+                configured: false,
 
-            egl_window: null_mut(),
-            
-            default_cursor: null_mut(),
-            cursor_theme: null_mut(),
-            shm: null_mut(),
-        });
-        // Wayland window as pointer
-        let window: *mut Wayland = &mut *wayland;
-        // Initialization With Callback
-        wayland.client.registry_add_listener(registry, &REGISTRY_LISTENER,
-            window.cast()
-        );
-        println!("boi");
-        (wayland.client.wl_display_dispatch)(display.as_ptr());
-        // Create surfaces
-        wayland.surface = wayland.client.compositor_create_surface(wayland.compositor);
-        wayland.cursor_surface = wayland.client.compositor_create_surface(wayland.compositor);
-        // Create shell_surface
-        wayland.shell_surface = wayland.client.zxdg_shell_v6_get_xdg_surface(wayland.shell, wayland.surface);
-        // Add listener to shell_surface
-        wayland.client.zxdg_surface_v6_add_listener(wayland.shell_surface, &XDG_SURFACE_LISTENER,
-            window.cast()
-        );
-        // Create toplevel
-        wayland.toplevel = wayland.client.zxdg_surface_v6_get_toplevel(wayland.shell_surface);
-        // Add toplevel listener
-        wayland.client.zxdg_toplevel_v6_add_listener(wayland.toplevel, &XDG_TOPLEVEL_LISTENER, 
-            window.cast()
-        );
-        // Set Window & App Title
-        let mut window_title = CString::new(name).unwrap();
-        wayland.client.zxdg_toplevel_v6_set_title(wayland.toplevel, window_title.as_ptr());
-        wayland.client.zxdg_toplevel_v6_set_app_id(wayland.toplevel, window_title.as_ptr());
-        // Maximize Window
-        wayland.client.zxdg_toplevel_v6_set_maximized(wayland.toplevel);
-        // Show Window
-        let callback = wayland.client.display_sync(wayland.display.as_ptr());
-        // Window Callbacks
-        wayland.client.callback_add_listener(callback, &CALLBACK_LISTENER, window.cast());
+                egl_window: null_mut(),
 
-        Ok(wayland)
-    }}
+                default_cursor: null_mut(),
+                cursor_theme: null_mut(),
+                shm: null_mut(),
+            });
+            // Wayland window as pointer
+            let window: *mut Wayland = &mut *wayland;
+            // Initialization With Callback
+            wayland.client.registry_add_listener(
+                registry,
+                &REGISTRY_LISTENER,
+                window.cast(),
+            );
+            println!("boi");
+            (wayland.client.wl_display_dispatch)(display.as_ptr());
+            // Create surfaces
+            wayland.surface =
+                wayland.client.compositor_create_surface(wayland.compositor);
+            wayland.cursor_surface =
+                wayland.client.compositor_create_surface(wayland.compositor);
+            // Create shell_surface
+            wayland.shell_surface = wayland
+                .client
+                .zxdg_shell_v6_get_xdg_surface(wayland.shell, wayland.surface);
+            // Add listener to shell_surface
+            wayland.client.zxdg_surface_v6_add_listener(
+                wayland.shell_surface,
+                &XDG_SURFACE_LISTENER,
+                window.cast(),
+            );
+            // Create toplevel
+            wayland.toplevel = wayland
+                .client
+                .zxdg_surface_v6_get_toplevel(wayland.shell_surface);
+            // Add toplevel listener
+            wayland.client.zxdg_toplevel_v6_add_listener(
+                wayland.toplevel,
+                &XDG_TOPLEVEL_LISTENER,
+                window.cast(),
+            );
+            // Set Window & App Title
+            let mut window_title = CString::new(name).unwrap();
+            wayland.client.zxdg_toplevel_v6_set_title(
+                wayland.toplevel,
+                window_title.as_ptr(),
+            );
+            wayland.client.zxdg_toplevel_v6_set_app_id(
+                wayland.toplevel,
+                window_title.as_ptr(),
+            );
+            // Maximize Window
+            wayland
+                .client
+                .zxdg_toplevel_v6_set_maximized(wayland.toplevel);
+            // Show Window
+            let callback =
+                wayland.client.display_sync(wayland.display.as_ptr());
+            // Window Callbacks
+            wayland.client.callback_add_listener(
+                callback,
+                &CALLBACK_LISTENER,
+                window.cast(),
+            );
+
+            Ok(wayland)
+        }
+    }
 }
 
 impl crate::Nwin for Wayland {
@@ -999,7 +1513,7 @@ impl crate::Nwin for Wayland {
     }
 }
 
-extern fn registry_global(
+extern "C" fn registry_global(
     window: *mut c_void,
     registry: *mut WlRegistry,
     name: u32,
@@ -1007,72 +1521,124 @@ extern fn registry_global(
     _version: u32,
 ) {
     let window: *mut Wayland = window.cast();
-    
+
     unsafe {
-    let interface = str::from_utf8(CStr::from_ptr(interface).to_bytes()).unwrap();
+        let interface =
+            str::from_utf8(CStr::from_ptr(interface).to_bytes()).unwrap();
 
-    dbg!(interface);
-    match interface {
-        "wl_compositor" => {
-            (*window).compositor = (*window).client.registry_bind(registry, name, (*window).client.wl_compositor_interface, 1).cast();
-        }
-        "zxdg_shell_v6" => {
-            (*window).shell = (*window).client.registry_bind(registry, name, &ZXDG_SHELL_V6_INTERFACE, 1).cast();
-            (*window).client.zxdg_shell_v6_add_listener((*window).shell, &XDG_SHELL_LISTENER, window.cast());
-        }
-        "wl_seat" => {
-            (*window).seat = (*window).client.registry_bind(registry, name, (*window).client.wl_seat_interface, 1).cast();
-
-            let nil: *mut c_void = null_mut();
-
-            (*window).client.seat_add_listener((*window).seat, &SEAT_LISTENER, window.cast());
-        }
-        "wl_shm" => {
-            dbg!("SHM Binding Registry");
-            (*window).shm = (*window).client.registry_bind(registry, name, (*window).client.wl_shm_interface, 1).cast();
-            dbg!("SHM Bounded Registry");
-
-            (*window).cursor_theme =
-                ((*window).cursor.wl_cursor_theme_load)(null_mut(), 16, (*window).shm);
-                
-            dbg!("Loaded Cursor Theme");
-                
-            if (*window).cursor_theme.is_null() {
-                eprintln!("unable to load default theme");
+        dbg!(interface);
+        match interface {
+            "wl_compositor" => {
+                (*window).compositor = (*window)
+                    .client
+                    .registry_bind(
+                        registry,
+                        name,
+                        (*window).client.wl_compositor_interface,
+                        1,
+                    )
+                    .cast();
             }
-            
-            dbg!("Get CURSOR");
-            
-            static LEFT_PTR: &[u8] = b"left_ptr\0";
-            
-            (*window).default_cursor = ((*window).cursor.wl_cursor_theme_get_cursor)(
-                (*window).cursor_theme,
-                CStr::from_bytes_with_nul(LEFT_PTR).unwrap().as_ptr(),
-            );
-            if (*window).default_cursor.is_null() {
-                panic!("unable to load default left pointer");
+            "zxdg_shell_v6" => {
+                (*window).shell = (*window)
+                    .client
+                    .registry_bind(registry, name, &ZXDG_SHELL_V6_INTERFACE, 1)
+                    .cast();
+                (*window).client.zxdg_shell_v6_add_listener(
+                    (*window).shell,
+                    &XDG_SHELL_LISTENER,
+                    window.cast(),
+                );
             }
-            
-            dbg!("Got CURSOR");
-        }
-        "wl_output" => {
-            let output = (*window).client.registry_bind(registry, name, (*window).client.wl_output_interface, 1).cast();
+            "wl_seat" => {
+                (*window).seat = (*window)
+                    .client
+                    .registry_bind(
+                        registry,
+                        name,
+                        (*window).client.wl_seat_interface,
+                        1,
+                    )
+                    .cast();
 
-            (*window).client.output_add_listener(output, &OUTPUT_LISTENER, window.cast());
+                let nil: *mut c_void = null_mut();
+
+                (*window).client.seat_add_listener(
+                    (*window).seat,
+                    &SEAT_LISTENER,
+                    window.cast(),
+                );
+            }
+            "wl_shm" => {
+                dbg!("SHM Binding Registry");
+                (*window).shm = (*window)
+                    .client
+                    .registry_bind(
+                        registry,
+                        name,
+                        (*window).client.wl_shm_interface,
+                        1,
+                    )
+                    .cast();
+                dbg!("SHM Bounded Registry");
+
+                (*window).cursor_theme = ((*window)
+                    .cursor
+                    .wl_cursor_theme_load)(
+                    null_mut(), 16, (*window).shm
+                );
+
+                dbg!("Loaded Cursor Theme");
+
+                if (*window).cursor_theme.is_null() {
+                    eprintln!("unable to load default theme");
+                }
+
+                dbg!("Get CURSOR");
+
+                static LEFT_PTR: &[u8] = b"left_ptr\0";
+
+                (*window).default_cursor =
+                    ((*window).cursor.wl_cursor_theme_get_cursor)(
+                        (*window).cursor_theme,
+                        CStr::from_bytes_with_nul(LEFT_PTR).unwrap().as_ptr(),
+                    );
+                if (*window).default_cursor.is_null() {
+                    panic!("unable to load default left pointer");
+                }
+
+                dbg!("Got CURSOR");
+            }
+            "wl_output" => {
+                let output = (*window)
+                    .client
+                    .registry_bind(
+                        registry,
+                        name,
+                        (*window).client.wl_output_interface,
+                        1,
+                    )
+                    .cast();
+
+                (*window).client.output_add_listener(
+                    output,
+                    &OUTPUT_LISTENER,
+                    window.cast(),
+                );
+            }
+            _ => {}
         }
-        _ => {}
-    }
     }
 }
 
-extern fn registry_global_remove(
+extern "C" fn registry_global_remove(
     _data: *mut c_void,
     _registry: *mut WlRegistry,
     _name: u32,
 ) {
 }
 
-extern fn surface_configure(
+extern "C" fn surface_configure(
     window: *mut c_void,
     zxdg_surface_v6: *mut ZxdgSurface,
     serial: u32,
@@ -1080,11 +1646,13 @@ extern fn surface_configure(
     let window: *mut Wayland = window.cast();
 
     unsafe {
-        (*window).client.zxdg_surface_v6_ack_configure(zxdg_surface_v6, serial);
+        (*window)
+            .client
+            .zxdg_surface_v6_ack_configure(zxdg_surface_v6, serial);
     }
 }
 
-extern fn toplevel_configure(
+extern "C" fn toplevel_configure(
     window: *mut c_void,
     _zxdg_toplevel_v6: *mut ZxdgToplevel,
     width: i32,
@@ -1094,43 +1662,55 @@ extern fn toplevel_configure(
     let window: *mut Wayland = window.cast();
 
     unsafe {
-    if !(*window).egl_window.is_null() && (*window).configured {
-        ((*window).egl.wl_egl_window_resize)((*window).egl_window, width, height, 0, 0);
-        (*window).configured = false;
-        (*window).window_width = width;
-        (*window).window_height = height;
-    } else {
-        if (*window).fullscreen {
-        } else if width != 0 && height != 0 {
-            if (*window).is_restored {
-                (*window).restore_width = (*window).window_width;
-                (*window).restore_height = (*window).window_height;
-            }
-            (*window).is_restored = false;
-            if !(*window).egl_window.is_null() {
-                ((*window).egl.wl_egl_window_resize)((*window).egl_window, width, height, 0, 0);
-            }
+        if !(*window).egl_window.is_null() && (*window).configured {
+            ((*window).egl.wl_egl_window_resize)(
+                (*window).egl_window,
+                width,
+                height,
+                0,
+                0,
+            );
+            (*window).configured = false;
             (*window).window_width = width;
             (*window).window_height = height;
         } else {
-            (*window).window_width = (*window).restore_width;
-            (*window).window_height = (*window).restore_height;
-            (*window).is_restored = true;
-            if !(*window).egl_window.is_null() {
-                ((*window).egl.wl_egl_window_resize)(
-                    (*window).egl_window,
-                    (*window).restore_width,
-                    (*window).restore_height,
-                    0,
-                    0,
-                );
+            if (*window).fullscreen {
+            } else if width != 0 && height != 0 {
+                if (*window).is_restored {
+                    (*window).restore_width = (*window).window_width;
+                    (*window).restore_height = (*window).window_height;
+                }
+                (*window).is_restored = false;
+                if !(*window).egl_window.is_null() {
+                    ((*window).egl.wl_egl_window_resize)(
+                        (*window).egl_window,
+                        width,
+                        height,
+                        0,
+                        0,
+                    );
+                }
+                (*window).window_width = width;
+                (*window).window_height = height;
+            } else {
+                (*window).window_width = (*window).restore_width;
+                (*window).window_height = (*window).restore_height;
+                (*window).is_restored = true;
+                if !(*window).egl_window.is_null() {
+                    ((*window).egl.wl_egl_window_resize)(
+                        (*window).egl_window,
+                        (*window).restore_width,
+                        (*window).restore_height,
+                        0,
+                        0,
+                    );
+                }
             }
         }
     }
-    }
 }
 
-extern fn toplevel_close(
+extern "C" fn toplevel_close(
     window: *mut c_void,
     _zxdg_toplevel_v6: *mut ZxdgToplevel,
 ) {
@@ -1141,7 +1721,7 @@ extern fn toplevel_close(
     }
 }
 
-extern fn configure_callback(
+extern "C" fn configure_callback(
     window: *mut c_void,
     callback: *mut WlCallback,
     time: u32,
@@ -1157,7 +1737,7 @@ extern fn configure_callback(
     // }
 }
 
-extern fn output_geometry(
+extern "C" fn output_geometry(
     _data: *mut c_void,
     _wl_output: *mut WlOutput,
     _x: i32,               // X position of window.
@@ -1171,7 +1751,7 @@ extern fn output_geometry(
 ) {
 }
 
-extern fn output_mode(
+extern "C" fn output_mode(
     data: *mut c_void,
     _wl_output: *mut WlOutput,
     _flags: u32,
@@ -1189,65 +1769,69 @@ extern fn output_mode(
     }
 }
 
-extern fn output_done(
-    _data: *mut c_void,
-    _wl_output: *mut WlOutput,
-) {
-}
+extern "C" fn output_done(_data: *mut c_void, _wl_output: *mut WlOutput) {}
 
-extern fn output_scale(
+extern "C" fn output_scale(
     _data: *mut c_void,
     _wl_output: *mut WlOutput,
     _factor: i32, // Pixel doubling
 ) {
 }
 
-extern fn seat_handle_capabilities(
+extern "C" fn seat_handle_capabilities(
     window: *mut c_void,
     seat: *mut WlSeat,
     caps: u32,
 ) {
     unsafe {
-    let window: *mut Wayland = window.cast();
+        let window: *mut Wayland = window.cast();
 
-    // Allow Pointer Events
-    let has_pointer = (caps & WlSeatCapability::Pointer as u32) != 0;
-    if has_pointer && (*window).pointer.is_null() {
-        (*window).pointer = (*window).client.seat_get_pointer(seat);
+        // Allow Pointer Events
+        let has_pointer = (caps & WlSeatCapability::Pointer as u32) != 0;
+        if has_pointer && (*window).pointer.is_null() {
+            (*window).pointer = (*window).client.seat_get_pointer(seat);
 
-        (*window).client.pointer_add_listener((*window).pointer, &POINTER_LISTENER, window.cast());
-    } else if !has_pointer && !(*window).pointer.is_null() {
-        ((*window).client.wl_proxy_destroy)((*window).pointer.cast());
-        (*window).pointer = std::ptr::null_mut();
-    }
+            (*window).client.pointer_add_listener(
+                (*window).pointer,
+                &POINTER_LISTENER,
+                window.cast(),
+            );
+        } else if !has_pointer && !(*window).pointer.is_null() {
+            ((*window).client.wl_proxy_destroy)((*window).pointer.cast());
+            (*window).pointer = std::ptr::null_mut();
+        }
 
-    // Allow Keyboard Events
-    let has_keyboard = (caps & WlSeatCapability::Keyboard as u32) != 0;
-    if has_keyboard && (*window).keyboard.is_null() {
-        (*window).keyboard = (*window).client.seat_get_keyboard(seat);
-        
-        let nil: *mut c_void = null_mut();
+        // Allow Keyboard Events
+        let has_keyboard = (caps & WlSeatCapability::Keyboard as u32) != 0;
+        if has_keyboard && (*window).keyboard.is_null() {
+            (*window).keyboard = (*window).client.seat_get_keyboard(seat);
 
-        (*window).client.keyboard_add_listener((*window).keyboard, &KEYBOARD_LISTENER, window.cast());
-    } else if !has_keyboard && !(*window).keyboard.is_null() {
-        ((*window).client.wl_proxy_destroy)((*window).keyboard.cast());
-        (*window).keyboard = std::ptr::null_mut();
-    }
+            let nil: *mut c_void = null_mut();
 
-    let has_touch = (caps & WlSeatCapability::Touch as u32) != 0;
-    if has_touch && (*window).touch.is_null() {
-        (*window).touch = (*window).client.seat_get_touch(seat);
-        
+            (*window).client.keyboard_add_listener(
+                (*window).keyboard,
+                &KEYBOARD_LISTENER,
+                window.cast(),
+            );
+        } else if !has_keyboard && !(*window).keyboard.is_null() {
+            ((*window).client.wl_proxy_destroy)((*window).keyboard.cast());
+            (*window).keyboard = std::ptr::null_mut();
+        }
+
+        let has_touch = (caps & WlSeatCapability::Touch as u32) != 0;
+        if has_touch && (*window).touch.is_null() {
+            (*window).touch = (*window).client.seat_get_touch(seat);
+
         // FIXME Allow Touch Events
         // (*window).client.touch_add_listener((*window).touch, &touch_listener, window.cast());
-    } else if !has_touch && !(*window).touch.is_null() {
-        ((*window).client.wl_proxy_destroy)((*window).touch.cast());
-        (*window).touch = std::ptr::null_mut();
-    }
+        } else if !has_touch && !(*window).touch.is_null() {
+            ((*window).client.wl_proxy_destroy)((*window).touch.cast());
+            (*window).touch = std::ptr::null_mut();
+        }
     }
 }
 
-extern fn handle_xdg_shell_ping(
+extern "C" fn handle_xdg_shell_ping(
     window: *mut c_void,
     shell: *mut ZxdgShell,
     serial: u32,
@@ -1259,7 +1843,7 @@ extern fn handle_xdg_shell_ping(
     }
 }
 
-extern fn keyboard_handle_keymap(
+extern "C" fn keyboard_handle_keymap(
     _window: *mut c_void,
     _keyboard: *mut WlKeyboard,
     _format: u32,
@@ -1268,7 +1852,7 @@ extern fn keyboard_handle_keymap(
 ) {
 }
 
-extern fn keyboard_handle_enter(
+extern "C" fn keyboard_handle_enter(
     _window: *mut c_void,
     _keyboard: *mut WlKeyboard,
     _serial: u32,
@@ -1277,7 +1861,7 @@ extern fn keyboard_handle_enter(
 ) {
 }
 
-extern fn keyboard_handle_leave(
+extern "C" fn keyboard_handle_leave(
     _window: *mut c_void,
     _keyboard: *mut WlKeyboard,
     _serial: u32,
@@ -1285,7 +1869,7 @@ extern fn keyboard_handle_leave(
 ) {
 }
 
-extern fn keyboard_handle_key(
+extern "C" fn keyboard_handle_key(
     window: *mut c_void,
     _keyboard: *mut WlKeyboard,
     _serial: u32,
@@ -1294,170 +1878,179 @@ extern fn keyboard_handle_key(
     state: u32,
 ) {
     unsafe {
-    let window: *mut Wayland = window.cast();
+        let window: *mut Wayland = window.cast();
 
-    if key == 1 /*KEY_ESC*/ && state != 0 {
-        (*window).running = false;
-    } else if key == 87 /*KEY_F11*/ && state != 0 {
-        (*window).configured = true;
+        if key == 1 /*KEY_ESC*/ && state != 0 {
+            (*window).running = false;
+        } else if key == 87 /*KEY_F11*/ && state != 0 {
+            (*window).configured = true;
 
-        if (*window).fullscreen {
-            (*window).client.zxdg_toplevel_v6_unset_fullscreen((*window).toplevel);
-            (*window).fullscreen = false;
-        } else {
-            (*window).client.zxdg_toplevel_v6_set_fullscreen((*window).toplevel);
-            (*window).fullscreen = true;
-        }
-
-        let callback = (*window).client.display_sync((*window).display.as_ptr());
-
-        (*window).client.callback_add_listener(callback, &CALLBACK_LISTENER, window.cast());
-    } else {
-        use crate::Key::*;
-
-        let offset = match key {
-            1 => Back,
-            2 => Num1,
-            3 => Num2,
-            4 => Num3,
-            5 => Num4,
-            6 => Num5,
-            7 => Num6,
-            8 => Num7,
-            9 => Num8,
-            10 => Num9,
-            11 => Num0,
-            12 => Minus,
-            13 => Equals,
-            14 => Backspace,
-            15 => Tab,
-            16 => Q,
-            17 => W,
-            18 => E,
-            19 => R,
-            20 => T,
-            21 => Y,
-            22 => U,
-            23 => I,
-            24 => O,
-            25 => P,
-            26 => SquareBracketOpen,
-            27 => SquareBracketClose,
-            28 => Enter,
-            29 => LeftCtrl,
-            30 => A,
-            31 => S,
-            32 => D,
-            33 => F,
-            34 => G,
-            35 => H,
-            36 => J,
-            37 => K,
-            38 => L,
-            39 => Semicolon,
-            40 => Quote,
-            41 => Backtick,
-            42 => LeftShift,
-            43 => Backslash,
-            44 => Z,
-            45 => X,
-            46 => C,
-            47 => V,
-            48 => B,
-            49 => N,
-            50 => M,
-            51 => Comma,
-            52 => Period,
-            53 => Slash,
-            54 => RightShift,
-            55 => NumpadMultiply,
-            56 => LeftAlt,
-            57 => Space,
-            58 => CapsLock,
-            59 => F1,
-            60 => F2,
-            61 => F3,
-            62 => F4,
-            63 => F5,
-            64 => F6,
-            65 => F7,
-            66 => F8,
-            67 => F9,
-            68 => F10,
-            69 => NumpadLock,
-            70 => ScrollLock,
-            71 => Numpad7,
-            72 => Numpad8,
-            73 => Numpad9,
-            74 => NumpadSubtract,
-            75 => Numpad4,
-            76 => Numpad5,
-            77 => Numpad6,
-            78 => NumpadAdd,
-            79 => Numpad1,
-            80 => Numpad2,
-            81 => Numpad3,
-            82 => Numpad0,
-            83 => NumpadDot,
-            87 => F11,
-            88 => F12,
-            96 => NumpadEnter,
-            97 => RightCtrl,
-            98 => NumpadDivide,
-            99 => PrintScreen,
-            100 => RightAlt,
-            102 => Home,
-            103 => Up,
-            104 => PageUp,
-            105 => Left,
-            106 => Right,
-            107 => End,
-            108 => Down,
-            109 => PageDown,
-            110 => Insert,
-            111 => Delete,
-            113 => Mute,
-            114 => VolumeDown,
-            115 => VolumeUp,
-            119 => Break,
-            125 => System,
-            127 => Menu,
-            143 =>
-            /*Function Key should be ignored*/
-            {
-                ExtraClick
-            }
-            163 => FastForward,
-            164 => PausePlay,
-            165 => Rewind,
-            166 => Stop,
-            190 => MicrophoneToggle,
-            192 => TrackpadOn,
-            193 => TrackpadOff,
-            212 => CameraToggle,
-            224 => BrightnessDown,
-            225 => BrightnessUp,
-            247 => AirplaneMode,
-            e => {
-                eprintln!("Error: Unknown key combination: {}", e);
-                ExtraClick
-            }
-        } as i8;
-
-        if !offset.is_negative() {
-            let bit = 1 << offset;
-
-            if state == 0 {
-                println!("Key release {:b}", bit);
+            if (*window).fullscreen {
+                (*window)
+                    .client
+                    .zxdg_toplevel_v6_unset_fullscreen((*window).toplevel);
+                (*window).fullscreen = false;
             } else {
-                println!("Key press {:b}", bit);
+                (*window)
+                    .client
+                    .zxdg_toplevel_v6_set_fullscreen((*window).toplevel);
+                (*window).fullscreen = true;
+            }
+
+            let callback =
+                (*window).client.display_sync((*window).display.as_ptr());
+
+            (*window).client.callback_add_listener(
+                callback,
+                &CALLBACK_LISTENER,
+                window.cast(),
+            );
+        } else {
+            use crate::Key::*;
+
+            let offset = match key {
+                1 => Back,
+                2 => Num1,
+                3 => Num2,
+                4 => Num3,
+                5 => Num4,
+                6 => Num5,
+                7 => Num6,
+                8 => Num7,
+                9 => Num8,
+                10 => Num9,
+                11 => Num0,
+                12 => Minus,
+                13 => Equals,
+                14 => Backspace,
+                15 => Tab,
+                16 => Q,
+                17 => W,
+                18 => E,
+                19 => R,
+                20 => T,
+                21 => Y,
+                22 => U,
+                23 => I,
+                24 => O,
+                25 => P,
+                26 => SquareBracketOpen,
+                27 => SquareBracketClose,
+                28 => Enter,
+                29 => LeftCtrl,
+                30 => A,
+                31 => S,
+                32 => D,
+                33 => F,
+                34 => G,
+                35 => H,
+                36 => J,
+                37 => K,
+                38 => L,
+                39 => Semicolon,
+                40 => Quote,
+                41 => Backtick,
+                42 => LeftShift,
+                43 => Backslash,
+                44 => Z,
+                45 => X,
+                46 => C,
+                47 => V,
+                48 => B,
+                49 => N,
+                50 => M,
+                51 => Comma,
+                52 => Period,
+                53 => Slash,
+                54 => RightShift,
+                55 => NumpadMultiply,
+                56 => LeftAlt,
+                57 => Space,
+                58 => CapsLock,
+                59 => F1,
+                60 => F2,
+                61 => F3,
+                62 => F4,
+                63 => F5,
+                64 => F6,
+                65 => F7,
+                66 => F8,
+                67 => F9,
+                68 => F10,
+                69 => NumpadLock,
+                70 => ScrollLock,
+                71 => Numpad7,
+                72 => Numpad8,
+                73 => Numpad9,
+                74 => NumpadSubtract,
+                75 => Numpad4,
+                76 => Numpad5,
+                77 => Numpad6,
+                78 => NumpadAdd,
+                79 => Numpad1,
+                80 => Numpad2,
+                81 => Numpad3,
+                82 => Numpad0,
+                83 => NumpadDot,
+                87 => F11,
+                88 => F12,
+                96 => NumpadEnter,
+                97 => RightCtrl,
+                98 => NumpadDivide,
+                99 => PrintScreen,
+                100 => RightAlt,
+                102 => Home,
+                103 => Up,
+                104 => PageUp,
+                105 => Left,
+                106 => Right,
+                107 => End,
+                108 => Down,
+                109 => PageDown,
+                110 => Insert,
+                111 => Delete,
+                113 => Mute,
+                114 => VolumeDown,
+                115 => VolumeUp,
+                119 => Break,
+                125 => System,
+                127 => Menu,
+                143 =>
+                /*Function Key should be ignored*/
+                {
+                    ExtraClick
+                }
+                163 => FastForward,
+                164 => PausePlay,
+                165 => Rewind,
+                166 => Stop,
+                190 => MicrophoneToggle,
+                192 => TrackpadOn,
+                193 => TrackpadOff,
+                212 => CameraToggle,
+                224 => BrightnessDown,
+                225 => BrightnessUp,
+                247 => AirplaneMode,
+                e => {
+                    eprintln!("Error: Unknown key combination: {}", e);
+                    ExtraClick
+                }
+            } as i8;
+
+            if !offset.is_negative() {
+                let bit = 1 << offset;
+
+                if state == 0 {
+                    println!("Key release {:b}", bit);
+                } else {
+                    println!("Key press {:b}", bit);
+                }
             }
         }
-    }
     }
 }
 
-extern fn keyboard_handle_modifiers(
+extern "C" fn keyboard_handle_modifiers(
     _window: *mut c_void,
     _keyboard: *mut WlKeyboard,
     _serial: u32,
@@ -1468,7 +2061,7 @@ extern fn keyboard_handle_modifiers(
 ) {
 }
 
-extern fn pointer_handle_enter(
+extern "C" fn pointer_handle_enter(
     window: *mut c_void,
     pointer: *mut WlPointer,
     serial: u32,
@@ -1486,14 +2079,23 @@ extern fn pointer_handle_enter(
             return;
         }
 
-        (*window).client.pointer_set_cursor(pointer, (*window).cursor_surface, image, serial);
-        (*window).client.surface_attach((*window).cursor_surface, buffer);
-        (*window).client.surface_damage((*window).cursor_surface, image);
+        (*window).client.pointer_set_cursor(
+            pointer,
+            (*window).cursor_surface,
+            image,
+            serial,
+        );
+        (*window)
+            .client
+            .surface_attach((*window).cursor_surface, buffer);
+        (*window)
+            .client
+            .surface_damage((*window).cursor_surface, image);
         (*window).client.surface_commit((*window).cursor_surface);
     }
 }
 
-extern fn pointer_handle_leave(
+extern "C" fn pointer_handle_leave(
     _window: *mut c_void,
     _pointer: *mut WlPointer,
     _serial: u32,
@@ -1501,7 +2103,7 @@ extern fn pointer_handle_leave(
 ) {
 }
 
-extern fn pointer_handle_motion(
+extern "C" fn pointer_handle_motion(
     window: *mut c_void,
     _pointer: *mut WlPointer,
     _time: u32,
@@ -1516,7 +2118,7 @@ extern fn pointer_handle_motion(
     println!("Pointer motion: {} {}", x, y);
 }
 
-extern fn pointer_handle_button(
+extern "C" fn pointer_handle_button(
     window: *mut c_void,
     _pointer: *mut WlPointer,
     serial: u32,
@@ -1551,7 +2153,7 @@ extern fn pointer_handle_button(
     }
 }
 
-extern fn pointer_handle_axis(
+extern "C" fn pointer_handle_axis(
     _window: *mut c_void,
     _pointer: *mut WlPointer,
     _time: u32,

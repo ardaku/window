@@ -616,13 +616,15 @@ impl OpenGL {
                 display,
                 [
                     /*EGL_SURFACE_TYPE:*/ 0x3033,
-                    /*EGL_WINDOW_BIT:*/ 0x04, /*EGL_RED_SIZE:*/ 0x3024,
-                    8, /*EGL_GREEN_SIZE:*/ 0x3023, 8,
+                    /*EGL_WINDOW_BIT:*/ 0x04,
+                    /*EGL_RED_SIZE:*/ 0x3024, 8,
+                    /*EGL_GREEN_SIZE:*/ 0x3023, 8,
                     /*EGL_BLUE_SIZE:*/ 0x3022, 8,
                     //                /*EGL_ALPHA_SIZE:*/ 0x3021, 8,
                     /*EGL_DEPTH_SIZE*/
                     0x3025, 24, /*EGL_RENDERABLE_TYPE:*/ 0x3040,
-                    /*EGL_OPENGL_ES2_BIT:*/ 0x0004, /*EGL_NONE:*/ 0x3038,
+                    /*EGL_OPENGL_ES2_BIT:*/ 0x0004,
+                    /*EGL_NONE:*/ 0x3038,
                 ]
                 .as_ptr(),
                 config.as_mut_ptr(),
@@ -690,7 +692,7 @@ impl Draw for OpenGL {
 
     fn connect(&mut self, connection: *mut c_void) {
         dbg!("Connecting 3…");
-        
+
         // Finish connecting EGL.
         self.surface = unsafe {
             eglCreateWindowSurface(
@@ -738,7 +740,7 @@ impl Draw for OpenGL {
 
         // Set default background for OpenGL.
         self.background(0.0, 0.0, 1.0);
-        
+
         dbg!("End OpenGL initialization");
     }
 

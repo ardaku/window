@@ -244,7 +244,7 @@ impl Window {
         let mut nwin = Err("No backends built!".to_string())
             .or_else(|_| wayland::Wayland::new(name))
             .expect("Couldn't find a window manager");
-            
+
         /**********************/
         /* Initialize Drawing */
         /**********************/
@@ -282,10 +282,8 @@ impl Window {
         }
 
         unsafe { std::mem::transmute(window) }*/
-        
-        Window {
-            nwin, draw
-        }
+
+        Window { nwin, draw }
     }
 
     /// Run the next frame in the window.
