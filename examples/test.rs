@@ -60,7 +60,7 @@ fn main() {
         });
     }
 
-    //    println!("{:?}", std::thread::current().name());
-    // let mut window = window::Window::new(run);
-    // while window.run() {}
+    println!("{:?}", std::thread::current().name());
+    let mut window = window::Window::new("My Window", run);
+    while window.run() {}
 }

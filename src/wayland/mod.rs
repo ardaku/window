@@ -4,7 +4,6 @@ use std::{
     ptr::{NonNull, null, null_mut},
     os::raw::{c_char, c_int, c_uint, c_void, c_long},
     mem::transmute,
-    pin::Pin,
 };
 
 /* * Dynamic Loading Into Separate Namespace * */
@@ -23,16 +22,257 @@ fn dlopen(name: &str) -> Option<NonNull<DlObj>> {
     }
 }
 
-fn dlsym(handle: NonNull<DlObj>, name: &str) -> Option<NonNull<c_void>> {
-    let name = CStr::from_bytes_with_nul(name.as_bytes())
+fn dlsym(handle: NonNull<DlObj>, nam: &str) -> Result<NonNull<c_void>, String> {
+    let name = CStr::from_bytes_with_nul(nam.as_bytes())
         .expect("Missing Null Byte!");
     extern "C" {
         fn dlsym(dlobj: *mut DlObj, symbol: *const c_char) -> *mut c_void;
     }
     unsafe {
         NonNull::new(dlsym(handle.as_ptr(), name.as_ptr()))
-    }
+    }.ok_or(format!("Couldn't load symbol \'{}\"", nam))
 }
+
+/* */
+
+static ZXDG_TOPLEVEL_V6_INTERFACE_NAME: &[u8] = b"zxdg_toplevel_v6\0";
+static ZXDG_TOPLEVEL_V6_INTERFACE_DESTROY: &[u8] = b"destroy\0";
+static ZXDG_TOPLEVEL_V6_INTERFACE_DESTROY_SIG: &[u8] = b"\0";
+static ZXDG_TOPLEVEL_V6_INTERFACE_SET_PARENT: &[u8] = b"set_parent\0";
+static ZXDG_TOPLEVEL_V6_INTERFACE_SET_PARENT_SIG: &[u8] = b"?o\0";
+static ZXDG_TOPLEVEL_V6_INTERFACE_SET_TITLE: &[u8] = b"set_title\0";
+static ZXDG_TOPLEVEL_V6_INTERFACE_SET_TITLE_SIG: &[u8] = b"s\0";
+static ZXDG_TOPLEVEL_V6_INTERFACE_SET_APP_ID: &[u8] = b"set_app_id\0";
+static ZXDG_TOPLEVEL_V6_INTERFACE_SET_APP_ID_SIG: &[u8] = b"s\0";
+static ZXDG_TOPLEVEL_V6_INTERFACE_SHOW_WINDOW_MENU: &[u8] = b"show_window_menu\0";
+static ZXDG_TOPLEVEL_V6_INTERFACE_SHOW_WINDOW_MENU_SIG: &[u8] = b"ouii\0";
+static ZXDG_TOPLEVEL_V6_INTERFACE_MOVE: &[u8] = b"move\0";
+static ZXDG_TOPLEVEL_V6_INTERFACE_MOVE_SIG: &[u8] = b"ou\0";
+static ZXDG_TOPLEVEL_V6_INTERFACE_RESIZE: &[u8] = b"resize\0";
+static ZXDG_TOPLEVEL_V6_INTERFACE_RESIZE_SIG: &[u8] = b"ouu\0";
+static ZXDG_TOPLEVEL_V6_INTERFACE_SET_MAX_SIZE: &[u8] = b"set_max_size\0";
+static ZXDG_TOPLEVEL_V6_INTERFACE_SET_MAX_SIZE_SIG: &[u8] = b"ii\0";
+static ZXDG_TOPLEVEL_V6_INTERFACE_SET_MIN_SIZE: &[u8] = b"set_min_size\0";
+static ZXDG_TOPLEVEL_V6_INTERFACE_SET_MIN_SIZE_SIG: &[u8] = b"ii\0";
+static ZXDG_TOPLEVEL_V6_INTERFACE_SET_MAXIMIZED: &[u8] = b"set_maximized\0";
+static ZXDG_TOPLEVEL_V6_INTERFACE_SET_MAXIMIZED_SIG: &[u8] = b"\0";
+static ZXDG_TOPLEVEL_V6_INTERFACE_UNSET_MAXIMIZED: &[u8] = b"unset_maximized\0";
+static ZXDG_TOPLEVEL_V6_INTERFACE_UNSET_MAXIMIZED_SIG: &[u8] = b"\0";
+static ZXDG_TOPLEVEL_V6_INTERFACE_SET_FULLSCREEN: &[u8] = b"set_fullscreen\0";
+static ZXDG_TOPLEVEL_V6_INTERFACE_SET_FULLSCREEN_SIG: &[u8] = b"?o\0";
+static ZXDG_TOPLEVEL_V6_INTERFACE_UNSET_FULLSCREEN: &[u8] = b"unset_fullscreen\0";
+static ZXDG_TOPLEVEL_V6_INTERFACE_UNSET_FULLSCREEN_SIG: &[u8] = b"\0";
+static ZXDG_TOPLEVEL_V6_INTERFACE_SET_MINIMIZED: &[u8] = b"set_minimized\0";
+static ZXDG_TOPLEVEL_V6_INTERFACE_SET_MINIMIZED_SIG: &[u8] = b"\0";
+
+static mut ZXDG_TOPLEVEL_V6_INTERFACE_METHODS: [WlMessage; 14] = [
+    WlMessage {
+        name: ZXDG_TOPLEVEL_V6_INTERFACE_DESTROY.as_ptr().cast(),
+        signature: ZXDG_TOPLEVEL_V6_INTERFACE_DESTROY_SIG.as_ptr().cast(),
+        wl_interface: std::ptr::null(),
+    },
+    WlMessage {
+        name: ZXDG_TOPLEVEL_V6_INTERFACE_SET_PARENT.as_ptr().cast(),
+        signature: ZXDG_TOPLEVEL_V6_INTERFACE_SET_PARENT_SIG.as_ptr().cast(),
+        wl_interface: std::ptr::null(),
+    },
+    WlMessage {
+        name: ZXDG_TOPLEVEL_V6_INTERFACE_SET_TITLE.as_ptr().cast(),
+        signature: ZXDG_TOPLEVEL_V6_INTERFACE_SET_TITLE_SIG.as_ptr().cast(),
+        wl_interface: std::ptr::null(),
+    },
+    WlMessage {
+        name: ZXDG_TOPLEVEL_V6_INTERFACE_SET_APP_ID.as_ptr().cast(),
+        signature: ZXDG_TOPLEVEL_V6_INTERFACE_SET_APP_ID_SIG.as_ptr().cast(),
+        wl_interface: std::ptr::null(),
+    },
+    WlMessage {
+        name: ZXDG_TOPLEVEL_V6_INTERFACE_SHOW_WINDOW_MENU.as_ptr().cast(),
+        signature: ZXDG_TOPLEVEL_V6_INTERFACE_SHOW_WINDOW_MENU_SIG.as_ptr().cast(),
+        wl_interface: std::ptr::null(),
+    },
+    WlMessage {
+        name: ZXDG_TOPLEVEL_V6_INTERFACE_MOVE.as_ptr().cast(),
+        signature: ZXDG_TOPLEVEL_V6_INTERFACE_MOVE_SIG.as_ptr().cast(),
+        wl_interface: std::ptr::null(),
+    },
+    WlMessage {
+        name: ZXDG_TOPLEVEL_V6_INTERFACE_RESIZE.as_ptr().cast(),
+        signature: ZXDG_TOPLEVEL_V6_INTERFACE_RESIZE_SIG.as_ptr().cast(),
+        wl_interface: std::ptr::null(),
+    },
+    WlMessage {
+        name: ZXDG_TOPLEVEL_V6_INTERFACE_SET_MAX_SIZE.as_ptr().cast(),
+        signature: ZXDG_TOPLEVEL_V6_INTERFACE_SET_MAX_SIZE_SIG.as_ptr().cast(),
+        wl_interface: std::ptr::null(),
+    },
+    WlMessage {
+        name: ZXDG_TOPLEVEL_V6_INTERFACE_SET_MIN_SIZE.as_ptr().cast(),
+        signature: ZXDG_TOPLEVEL_V6_INTERFACE_SET_MIN_SIZE_SIG.as_ptr().cast(),
+        wl_interface: std::ptr::null(),
+    },
+    WlMessage {
+        name: ZXDG_TOPLEVEL_V6_INTERFACE_SET_MAXIMIZED.as_ptr().cast(),
+        signature: ZXDG_TOPLEVEL_V6_INTERFACE_SET_MAXIMIZED_SIG.as_ptr().cast(),
+        wl_interface: std::ptr::null(),
+    },
+    WlMessage {
+        name: ZXDG_TOPLEVEL_V6_INTERFACE_UNSET_MAXIMIZED.as_ptr().cast(),
+        signature: ZXDG_TOPLEVEL_V6_INTERFACE_UNSET_MAXIMIZED_SIG.as_ptr().cast(),
+        wl_interface: std::ptr::null(),
+    },
+    WlMessage {
+        name: ZXDG_TOPLEVEL_V6_INTERFACE_SET_FULLSCREEN.as_ptr().cast(),
+        signature: ZXDG_TOPLEVEL_V6_INTERFACE_SET_FULLSCREEN_SIG.as_ptr().cast(),
+        wl_interface: std::ptr::null(),
+    },
+    WlMessage {
+        name: ZXDG_TOPLEVEL_V6_INTERFACE_UNSET_FULLSCREEN.as_ptr().cast(),
+        signature: ZXDG_TOPLEVEL_V6_INTERFACE_UNSET_FULLSCREEN_SIG.as_ptr().cast(),
+        wl_interface: std::ptr::null(),
+    },
+    WlMessage {
+        name: ZXDG_TOPLEVEL_V6_INTERFACE_SET_MINIMIZED.as_ptr().cast(),
+        signature: ZXDG_TOPLEVEL_V6_INTERFACE_SET_MINIMIZED_SIG.as_ptr().cast(),
+        wl_interface: std::ptr::null(),
+    },
+];
+
+static mut ZXDG_TOPLEVEL_V6_INTERFACE_EVENTS: [WlMessage; 2] = [
+    WlMessage {
+        name: b"configure\0".as_ptr().cast(),
+        signature: b"iia\0".as_ptr().cast(),
+        wl_interface: std::ptr::null(),
+    },
+    WlMessage {
+        name: b"close\0".as_ptr().cast(),
+        signature: b"\0".as_ptr().cast(),
+        wl_interface: std::ptr::null(),
+    },
+];
+
+static mut ZXDG_TOPLEVEL_V6_INTERFACE: WlInterface = WlInterface {
+    /** Interface name */
+    name: ZXDG_TOPLEVEL_V6_INTERFACE_NAME.as_ptr().cast(),
+    /** Interface version */
+    version: 1,
+    /** Number of methods (requests) */
+    method_count: 14,
+    /** Method (request) signatures */
+    methods: unsafe { ZXDG_TOPLEVEL_V6_INTERFACE_METHODS.as_ptr() },
+    /** Number of events */
+    event_count: 2,
+    /** Event signatures */
+    events: unsafe { ZXDG_TOPLEVEL_V6_INTERFACE_EVENTS.as_ptr() },
+};
+
+static mut ZXDG_SURFACE_V6_SURFACE_INTERFACE: [*const WlInterface; 1] = [
+    null()
+];
+
+static mut ZXDG_TOPLEVEL_V6_INTERFACE1: [*const WlInterface; 1] = [
+    unsafe { &ZXDG_TOPLEVEL_V6_INTERFACE }
+];
+
+static mut ZXDG_SURFACE_V6_INTERFACE_METHODS: [WlMessage; 5] = [
+    WlMessage {
+        name: b"destroy\0".as_ptr().cast(),
+        signature: b"\0".as_ptr().cast(),
+        wl_interface: std::ptr::null(),
+    },
+    WlMessage {
+        name: b"get_toplevel\0".as_ptr().cast(),
+        signature: b"n\0".as_ptr().cast(),
+        wl_interface: unsafe { ZXDG_SURFACE_V6_SURFACE_INTERFACE.as_ptr() },
+    },
+    WlMessage {
+        name: b"get_popup\0".as_ptr().cast(),
+        signature: b"noo\0".as_ptr().cast(),
+        wl_interface: unsafe { ZXDG_TOPLEVEL_V6_INTERFACE1.as_ptr() },
+    },
+    WlMessage {
+        name: b"set_window_geometry\0".as_ptr().cast(),
+        signature: b"iiii\0".as_ptr().cast(),
+        wl_interface: std::ptr::null(),
+    },
+    WlMessage {
+        name: b"ack_configure\0".as_ptr().cast(),
+        signature: b"u\0".as_ptr().cast(),
+        wl_interface: std::ptr::null(),
+    },
+];
+
+static mut ZXDG_SURFACE_V6_INTERFACE: WlInterface = WlInterface {
+    /** Interface name */
+    name: b"zxdg_surface_v6\0".as_ptr().cast(),
+    /** Interface version */
+    version: 1,
+    /** Number of methods (requests) */
+    method_count: 5,
+    /** Method (request) signatures */
+    methods: unsafe { ZXDG_SURFACE_V6_INTERFACE_METHODS.as_ptr() },
+    /** Number of events */
+    event_count: 1,
+    /** Event signatures */
+    events: [WlMessage {
+        name: b"configure\0".as_ptr().cast(),
+        signature: b"u\0".as_ptr().cast(),
+        wl_interface: std::ptr::null(),
+    }]
+    .as_ptr(), // *wl_message
+};
+
+static mut SHELL_INTERFACE_DESTROY_SIG: &[u8] = b"\0";
+static mut SHELL_INTERFACE_CREATE_POSITIONER_SIG: &[u8] = b"n\0";
+static mut SHELL_INTERFACE_GET_SURFACE_SIG: &[u8] = b"no\0";
+static mut ZXDG_SHELL_INTERFACE_GET_SURFACE: &[u8] = b"get_xdg_surface\0";
+
+static mut WL_SURFACE_INTERFACE: [*const WlInterface; 1] = [
+    null()
+];
+
+static mut ZXDG_SHELL_V6_INTERFACE_METHODS: [WlMessage; 4] = [
+    WlMessage {
+        name: ZXDG_SHELL_INTERFACE_DESTROY.as_ptr().cast(),
+        signature: unsafe { SHELL_INTERFACE_DESTROY_SIG.as_ptr().cast() },
+        wl_interface: std::ptr::null(),
+    },
+    WlMessage {
+        name: ZXDG_SHELL_INTERFACE_CREATE_POSITIONER.as_ptr().cast(),
+        signature: unsafe { SHELL_INTERFACE_CREATE_POSITIONER_SIG.as_ptr().cast() },
+        wl_interface: unsafe { WL_SURFACE_INTERFACE.as_ptr() },
+    },
+    WlMessage {
+        name: unsafe { ZXDG_SHELL_INTERFACE_GET_SURFACE.as_ptr().cast() },
+        signature: unsafe { SHELL_INTERFACE_GET_SURFACE_SIG.as_ptr().cast() },
+        wl_interface: unsafe { ZXDG_TOPLEVEL_V6_INTERFACE1.as_ptr() },
+    },
+    WlMessage {
+        name: b"pong\0".as_ptr().cast(),
+        signature: b"u\0".as_ptr().cast(),
+        wl_interface: std::ptr::null(),
+    },
+];
+
+static mut ZXDG_SHELL_V6_INTERFACE: WlInterface = WlInterface {
+    /** Interface name */
+    name: ZXDG_SHELL_INTERFACE_NAME.as_ptr().cast(),
+    /** Interface version */
+    version: 1,
+    /** Number of methods (requests) */
+    method_count: 4,
+    /** Method (request) signatures */
+    methods: unsafe { ZXDG_SHELL_V6_INTERFACE_METHODS.as_ptr() },
+    /** Number of events */
+    event_count: 1,
+    /** Event signatures */
+    events: [WlMessage {
+        name: b"ping\0".as_ptr().cast(),
+        signature: b"u\0".as_ptr().cast(),
+        wl_interface: std::ptr::null(),
+    }]
+    .as_ptr(), // *wl_message
+};
 
 /* * From wayland-client-core.h  * */
 
@@ -275,16 +515,20 @@ struct WaylandClient {
     wl_touch_interface: *const WlInterface,
     wl_callback_interface: *const WlInterface,
     wl_surface_interface: *const WlInterface,
-    zxdg_surface_v6_interface: *const WlInterface,
-    zxdg_shell_v6_interface: *const WlInterface,
-    zxdg_toplevel_v6_interface: *const WlInterface,
 }
 
 impl WaylandClient {
-    fn new() -> Option<Self> {
-        let so = dlopen("libwayland-client.so.0\0")?;
+    fn new() -> Result<Self, String> {
+        let so = dlopen("libwayland-client.so.0\0").ok_or("Failed to find wayland-client shared object".to_string())?;
 
-        Some(unsafe { WaylandClient {
+        // Initialize ZXDG_V6 static globals.
+        let wl_surface_interface = dlsym(so, "wl_surface_interface\0")?.cast().as_ptr();
+        unsafe {
+            ZXDG_SURFACE_V6_SURFACE_INTERFACE[0] = wl_surface_interface;
+            WL_SURFACE_INTERFACE[0] = wl_surface_interface;
+        }
+
+        Ok(unsafe { WaylandClient {
             wl_proxy_marshal: transmute(dlsym(so, "wl_proxy_marshal\0")?),
             wl_proxy_destroy: transmute(dlsym(so, "wl_proxy_destroy\0")?),
             wl_display_connect: transmute(dlsym(so, "wl_display_connect\0")?),
@@ -302,10 +546,7 @@ impl WaylandClient {
             wl_keyboard_interface: dlsym(so, "wl_keyboard_interface\0")?.cast().as_ptr(),
             wl_touch_interface: dlsym(so, "wl_touch_interface\0")?.cast().as_ptr(),
             wl_callback_interface: dlsym(so, "wl_callback_interface\0")?.cast().as_ptr(),
-            wl_surface_interface: dlsym(so, "wl_surface_interface\0")?.cast().as_ptr(),
-            zxdg_surface_v6_interface: dlsym(so, "zxdg_surface_v6_interface\0")?.cast().as_ptr(),
-            zxdg_shell_v6_interface: dlsym(so, "zxdg_shell_v6_interface\0")?.cast().as_ptr(),
-            zxdg_toplevel_v6_interface: dlsym(so, "zxdg_toplevel_v6_interface\0")?.cast().as_ptr(),
+            wl_surface_interface,
         } })
     }
 
@@ -432,7 +673,7 @@ impl WaylandClient {
         (self.wl_proxy_marshal_constructor)(
             shell.cast(),
             2 /*ZXDG_SHELL_V6_GET_XDG_SURFACE*/,
-            self.zxdg_surface_v6_interface,
+            &ZXDG_SURFACE_V6_INTERFACE,
             nil,
             surface,
         ).cast()
@@ -443,7 +684,7 @@ impl WaylandClient {
         (self.wl_proxy_marshal_constructor)(
             surface.cast(),
             1 /*ZXDG_SURFACE_V6_GET_TOPLEVEL*/,
-            self.zxdg_toplevel_v6_interface,
+            &ZXDG_TOPLEVEL_V6_INTERFACE,
             nil,
         ).cast()
     }
@@ -514,14 +755,16 @@ struct WaylandEGL {
 }
 
 impl WaylandEGL {
-    fn new() -> Option<Self> {
-        let so = dlopen("libwayland-egl.so.1\0")?;
+    fn new() -> Result<Self, String> {
+        let so = dlopen("libwayland-egl.so.1\0").ok_or("Failed to find wayland-egl shared object")?;
     
-        Some(WaylandEGL {
+        unsafe {
+        Ok(WaylandEGL {
             wl_egl_window_create: transmute(dlsym(so, "wl_egl_window_create\0")?),
             wl_egl_window_resize: transmute(dlsym(so, "wl_egl_window_resize\0")?),
             wl_egl_window_destroy: transmute(dlsym(so, "wl_egl_window_destroy\0")?),
         })
+        }
     }
 }
 
@@ -540,15 +783,17 @@ struct WaylandCursor {
 }
 
 impl WaylandCursor {
-    fn new() -> Option<Self> {
-        let so = dlopen("libwayland-cursor.so.0\0")?;
+    fn new() -> Result<Self, String> {
+        let so = dlopen("libwayland-cursor.so.0\0").ok_or("Failed to find wayland-cursor shared object")?;
 
-        Some(WaylandCursor {
+        unsafe {
+        Ok(WaylandCursor {
             wl_cursor_image_get_buffer: transmute(dlsym(so, "wl_cursor_image_get_buffer\0")?),
             wl_cursor_theme_destroy: transmute(dlsym(so, "wl_cursor_theme_destroy\0")?),
             wl_cursor_theme_load: transmute(dlsym(so, "wl_cursor_theme_load\0")?),
             wl_cursor_theme_get_cursor: transmute(dlsym(so, "wl_cursor_theme_get_cursor\0")?),
         })
+        }
     }
 }
 
@@ -594,15 +839,18 @@ pub(super) struct Wayland {
 }
 
 impl Wayland {
-    pub(super) fn new(name: &str) -> Option<Pin<Box<Self>>> {
+    pub(super) fn new(name: &str) -> Result<Box<Self>, String> {
         let client = WaylandClient::new()?;
         let egl = WaylandEGL::new()?;
         let cursor = WaylandCursor::new()?;
 
+        std::process::exit(0);
+
+        unsafe {
         // Create window.
-        let display = client.connect()?;
+        let display = client.connect().ok_or("Failed to find client")?;
         let registry = client.display_get_registry(display.as_ptr());
-        let mut wayland = Box::pin(Wayland {
+        let mut wayland = Box::new(Wayland {
             client, egl, cursor, display, registry, compositor: null_mut(),
             surface: null_mut(), cursor_surface: null_mut(),
             seat: null_mut(),
@@ -627,13 +875,15 @@ impl Wayland {
             cursor_theme: null_mut(),
             shm: null_mut(),
         });
+        // Wayland window as pointer
+        let window: *mut Wayland = &mut *wayland;
         // Initialization With Callback
         let registry_listener = WlRegistryListener {
             global: registry_global,
             global_remove: registry_global_remove,
         };
         wayland.client.registry_add_listener(registry, &registry_listener,
-            ((&mut *wayland) as *mut Self).cast()
+            window.cast()
         );
         (wayland.client.wl_display_dispatch)(display.as_ptr());
         // Create surfaces
@@ -646,7 +896,7 @@ impl Wayland {
             configure: surface_configure
         };
         wayland.client.zxdg_surface_v6_add_listener(wayland.shell_surface, &zxdg_surface_listener,
-            ((&mut *wayland) as *mut Self).cast()
+            window.cast()
         );
         // Create toplevel
         wayland.toplevel = wayland.client.zxdg_surface_v6_get_toplevel(wayland.shell_surface);
@@ -656,7 +906,7 @@ impl Wayland {
             close: toplevel_close,
         };
         wayland.client.zxdg_toplevel_v6_add_listener(wayland.toplevel, &zxdg_toplevel_listener, 
-            ((&mut *wayland) as *mut Self).cast()
+            window.cast()
         );
         // Set Window & App Title
         let mut window_title = CString::new(name).unwrap();
@@ -670,10 +920,10 @@ impl Wayland {
         let callback_listener = WlCallbackListener {
             done: configure_callback,
         };
-        wayland.client.callback_add_listener(callback, &callback_listener, ((&mut *wayland) as *mut Self).cast());
+        wayland.client.callback_add_listener(callback, &callback_listener, window.cast());
 
-        Some(wayland)
-    }
+        Ok(wayland)
+    }}
 }
 
 impl crate::Nwin for Wayland {
@@ -682,6 +932,7 @@ impl crate::Nwin for Wayland {
     }
 
     fn connect(&mut self, draw: &mut dyn crate::Draw) {
+        dbg!("Connecting 1…");
         match draw.handle() {
             crate::DrawHandle::Gl(_c) => {
                 self.egl_window = unsafe {
@@ -694,6 +945,7 @@ impl crate::Nwin for Wayland {
             }
             crate::DrawHandle::Vulkan(_c) => unimplemented!(),
         }
+        dbg!("Connecting 2…");
         draw.connect(self.egl_window.cast());
     }
 
@@ -713,6 +965,10 @@ impl crate::Nwin for Wayland {
     }
 }
 
+static ZXDG_SHELL_INTERFACE_NAME: &[u8] = b"zxdg_shell_v6\0";
+static ZXDG_SHELL_INTERFACE_DESTROY: &[u8] = b"destroy\0";
+static ZXDG_SHELL_INTERFACE_CREATE_POSITIONER: &[u8] = b"create_positioner\0";
+
 extern fn registry_global(
     window: *mut c_void,
     registry: *mut WlRegistry,
@@ -721,14 +977,17 @@ extern fn registry_global(
     _version: u32,
 ) {
     let window: *mut Wayland = window.cast();
+    
+    unsafe {
     let interface = str::from_utf8(CStr::from_ptr(interface).to_bytes()).unwrap();
 
+    dbg!(interface);
     match interface {
         "wl_compositor" => {
             (*window).compositor = (*window).client.registry_bind(registry, name, (*window).client.wl_compositor_interface, 1).cast();
         }
         "zxdg_shell_v6" => {
-            (*window).shell = (*window).client.registry_bind(registry, name, (*window).client.zxdg_shell_v6_interface, 1).cast();
+            (*window).shell = (*window).client.registry_bind(registry, name, &ZXDG_SHELL_V6_INTERFACE, 1).cast();
 
             let xdg_shell_listener = ZxdgShellListener {
                 ping: handle_xdg_shell_ping
@@ -755,9 +1014,12 @@ extern fn registry_global(
             if (*window).cursor_theme.is_null() {
                 eprintln!("unable to load default theme");
             }
+            
+            static LEFT_PTR: &[u8] = b"left_ptr\0";
+            
             (*window).default_cursor = ((*window).cursor.wl_cursor_theme_get_cursor)(
                 (*window).cursor_theme,
-                CStr::from_bytes_with_nul("left_ptr\0".as_bytes()).unwrap().as_ptr(),
+                CStr::from_bytes_with_nul(LEFT_PTR).unwrap().as_ptr(),
             );
             if (*window).default_cursor.is_null() {
                 panic!("unable to load default left pointer");
@@ -777,6 +1039,7 @@ extern fn registry_global(
         }
         _ => {}
     }
+    }
 }
 
 extern fn registry_global_remove(
@@ -793,7 +1056,9 @@ extern fn surface_configure(
 ) {
     let window: *mut Wayland = window.cast();
 
-    (*window).client.zxdg_surface_v6_ack_configure(zxdg_surface_v6, serial);
+    unsafe {
+        (*window).client.zxdg_surface_v6_ack_configure(zxdg_surface_v6, serial);
+    }
 }
 
 extern fn toplevel_configure(
@@ -805,6 +1070,7 @@ extern fn toplevel_configure(
 ) {
     let window: *mut Wayland = window.cast();
 
+    unsafe {
     if !(*window).egl_window.is_null() && (*window).configured {
         ((*window).egl.wl_egl_window_resize)((*window).egl_window, width, height, 0, 0);
         (*window).configured = false;
@@ -838,6 +1104,7 @@ extern fn toplevel_configure(
             }
         }
     }
+    }
 }
 
 extern fn toplevel_close(
@@ -846,7 +1113,9 @@ extern fn toplevel_close(
 ) {
     let window: *mut Wayland = window.cast();
 
-    (*window).running = false;
+    unsafe {
+        (*window).running = false;
+    }
 }
 
 extern fn configure_callback(
@@ -856,7 +1125,9 @@ extern fn configure_callback(
 ) {
     let window: *mut Wayland = window.cast();
 
-    (*window).client.callback_destroy(callback);
+    unsafe {
+        (*window).client.callback_destroy(callback);
+    }
 
     // if (*window).callback.is_null() {
     //     redraw_wl(window, std::ptr::null_mut(), time);
@@ -887,10 +1158,12 @@ extern fn output_mode(
 ) {
     let window: *mut Wayland = data.cast();
 
-    // Convert from frames per 1000 seconds to seconds per frame.
-    let refresh = (f64::from(refresh) * 0.001).recip();
-    // Convert seconds to nanoseconds.
-    (*window).refresh_rate = (refresh * 1_000_000_000.0) as u64;
+    unsafe {
+        // Convert from frames per 1000 seconds to seconds per frame.
+        let refresh = (f64::from(refresh) * 0.001).recip();
+        // Convert seconds to nanoseconds.
+        (*window).refresh_rate = (refresh * 1_000_000_000.0) as u64;
+    }
 }
 
 extern fn output_done(
@@ -911,6 +1184,7 @@ extern fn seat_handle_capabilities(
     seat: *mut WlSeat,
     caps: u32,
 ) {
+    unsafe {
     let window: *mut Wayland = window.cast();
 
     // Allow Pointer Events
@@ -968,6 +1242,7 @@ extern fn seat_handle_capabilities(
         ((*window).client.wl_proxy_destroy)((*window).touch.cast());
         (*window).touch = std::ptr::null_mut();
     }
+    }
 }
 
 extern fn handle_xdg_shell_ping(
@@ -977,7 +1252,9 @@ extern fn handle_xdg_shell_ping(
 ) {
     let window: *mut Wayland = window.cast();
 
-    (*window).client.zxdg_shell_v6_pong(shell, serial);
+    unsafe {
+        (*window).client.zxdg_shell_v6_pong(shell, serial);
+    }
 }
 
 extern fn keyboard_handle_keymap(
@@ -1014,6 +1291,7 @@ extern fn keyboard_handle_key(
     key: u32,
     state: u32,
 ) {
+    unsafe {
     let window: *mut Wayland = window.cast();
 
     if key == 1 /*KEY_ESC*/ && state != 0 {
@@ -1177,6 +1455,7 @@ extern fn keyboard_handle_key(
             }
         }
     }
+    }
 }
 
 extern fn keyboard_handle_modifiers(
@@ -1198,19 +1477,21 @@ extern fn pointer_handle_enter(
     _sx: i32,
     _sy: i32,
 ) {
-    let window: *mut Wayland = window.cast();
+    unsafe {
+        let window: *mut Wayland = window.cast();
 
-    let cursor = (*window).default_cursor;
-    let image = *(*cursor).images;
-    let buffer = ((*window).cursor.wl_cursor_image_get_buffer)(image);
-    if buffer.is_null() {
-        return;
+        let cursor = (*window).default_cursor;
+        let image = *(*cursor).images;
+        let buffer = ((*window).cursor.wl_cursor_image_get_buffer)(image);
+        if buffer.is_null() {
+            return;
+        }
+
+        (*window).client.pointer_set_cursor(pointer, (*window).cursor_surface, image, serial);
+        (*window).client.surface_attach((*window).cursor_surface, buffer);
+        (*window).client.surface_damage((*window).cursor_surface, image);
+        (*window).client.surface_commit((*window).cursor_surface);
     }
-
-    (*window).client.pointer_set_cursor(pointer, (*window).cursor_surface, image, serial);
-    (*window).client.surface_attach((*window).cursor_surface, buffer);
-    (*window).client.surface_damage((*window).cursor_surface, image);
-    (*window).client.surface_commit((*window).cursor_surface);
 }
 
 extern fn pointer_handle_leave(

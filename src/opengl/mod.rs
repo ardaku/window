@@ -54,6 +54,9 @@ macro_rules! gl_assert {
     };
 }
 
+#[link(name = "EGL")]
+//#[link(name = "GL")]
+#[link(name = "GLESv2")]
 extern "C" {
     fn eglGetDisplay(
         native_display: self::platform::NativeDisplayType,
@@ -579,6 +582,91 @@ pub struct OpenGL {
     vaa_tex: bool,
 }
 
+impl OpenGL {
+    #[cfg(unix)]
+    pub(super) fn new(nwin: &mut dyn crate::Nwin) -> Option<Box<dyn Draw>> {
+        let (display, config, context) = unsafe {
+            // Get EGL Display from Window.
+            let display = eglGetDisplay(match nwin.handle() {
+                #[cfg(not(any(
+                    target_os = "android",
+                    target_os = "macos",
+                    target_os = "ios"
+                )))]
+                crate::NwinHandle::Wayland(handle) => handle,
+            });
+            debug_assert!(!display.is_null());
+
+            // Initialize EGL Display.
+            let mut major = std::mem::MaybeUninit::uninit();
+            let mut minor = std::mem::MaybeUninit::uninit();
+            let ret =
+                eglInitialize(display, major.as_mut_ptr(), minor.as_mut_ptr());
+            debug_assert_eq!(ret, 1);
+
+            // Connect EGL to either OpenGL or OpenGLES, whichever is available.
+            // TODO: also support /*OPENGL:*/ 0x30A2
+            let ret = eglBindAPI(/*OPENGL_ES:*/ 0x30A0);
+            debug_assert_eq!(ret, 1);
+
+            //
+            let mut config = std::mem::MaybeUninit::<*mut c_void>::uninit();
+            let mut n = std::mem::MaybeUninit::<i32>::uninit();
+            let ret = eglChooseConfig(
+                display,
+                [
+                    /*EGL_SURFACE_TYPE:*/ 0x3033,
+                    /*EGL_WINDOW_BIT:*/ 0x04, /*EGL_RED_SIZE:*/ 0x3024,
+                    8, /*EGL_GREEN_SIZE:*/ 0x3023, 8,
+                    /*EGL_BLUE_SIZE:*/ 0x3022, 8,
+                    //                /*EGL_ALPHA_SIZE:*/ 0x3021, 8,
+                    /*EGL_DEPTH_SIZE*/
+                    0x3025, 24, /*EGL_RENDERABLE_TYPE:*/ 0x3040,
+                    /*EGL_OPENGL_ES2_BIT:*/ 0x0004, /*EGL_NONE:*/ 0x3038,
+                ]
+                .as_ptr(),
+                config.as_mut_ptr(),
+                1,
+                n.as_mut_ptr(),
+            );
+            debug_assert_eq!(ret, 1);
+
+            let config = config.assume_init();
+
+            //
+            let context = eglCreateContext(
+                display,
+                config,
+                std::ptr::null_mut(),
+                [
+                    /*EGL_CONTEXT_CLIENT_VERSION:*/ 0x3098, 2,
+                    /*EGL_NONE:*/ 0x3038,
+                ]
+                .as_ptr(),
+            );
+            debug_assert!(!context.is_null());
+
+            (display, config, context)
+        };
+
+        let draw: OpenGL = OpenGL {
+            display,
+            config,
+            context,
+            surface: std::ptr::null_mut(),
+            graphic: 0,
+            depth: false,
+            blending: false,
+            shader: 0,
+            shape_id: std::u32::MAX,
+            vaa_col: false,
+            vaa_tex: false,
+        };
+
+        Some(Box::new(draw))
+    }
+}
+
 impl Drop for OpenGL {
     fn drop(&mut self) {
         unsafe {
@@ -601,6 +689,8 @@ impl Draw for OpenGL {
     }
 
     fn connect(&mut self, connection: *mut c_void) {
+        dbg!("Connecting 3…");
+        
         // Finish connecting EGL.
         self.surface = unsafe {
             eglCreateWindowSurface(
@@ -648,6 +738,8 @@ impl Draw for OpenGL {
 
         // Set default background for OpenGL.
         self.background(0.0, 0.0, 1.0);
+        
+        dbg!("End OpenGL initialization");
     }
 
     fn background(&mut self, r: f32, g: f32, b: f32) {
@@ -676,14 +768,14 @@ impl Draw for OpenGL {
         shader: &dyn Nshader,
         shape: &mut dyn Ngroup,
     ) {
-        let w = i32::from(w);
+        /*let w = i32::from(w);
         let h = i32::from(h);
         let toolbar_height = i32::from(toolbar_height);
         unsafe {
             glViewport(0, h - toolbar_height, w, toolbar_height);
             self.draw(shader, shape);
             glViewport(0, 0, w, h - toolbar_height);
-        }
+        }*/
     }
 
     fn begin_draw(&mut self) {
@@ -1111,87 +1203,4 @@ fn create_shader(source: *const i8, shader_type: u32) -> u32 {
     }
 
     shader
-}
-
-#[cfg(unix)]
-pub(super) fn new(window: &mut Window) -> Option<Box<dyn Draw>> {
-    let (display, config, context) = unsafe {
-        // Get EGL Display from Window.
-        let display = eglGetDisplay(match window.nwin.handle() {
-            #[cfg(not(any(
-                target_os = "android",
-                target_os = "macos",
-                target_os = "ios"
-            )))]
-            crate::NwinHandle::Wayland(handle) => handle,
-        });
-        debug_assert!(!display.is_null());
-
-        // Initialize EGL Display.
-        let mut major = std::mem::MaybeUninit::uninit();
-        let mut minor = std::mem::MaybeUninit::uninit();
-        let ret =
-            eglInitialize(display, major.as_mut_ptr(), minor.as_mut_ptr());
-        debug_assert_eq!(ret, 1);
-
-        // Connect EGL to either OpenGL or OpenGLES, whichever is available.
-        // TODO: also support /*OPENGL:*/ 0x30A2
-        let ret = eglBindAPI(/*OPENGL_ES:*/ 0x30A0);
-        debug_assert_eq!(ret, 1);
-
-        //
-        let mut config = std::mem::MaybeUninit::<*mut c_void>::uninit();
-        let mut n = std::mem::MaybeUninit::<i32>::uninit();
-        let ret = eglChooseConfig(
-            display,
-            [
-                /*EGL_SURFACE_TYPE:*/ 0x3033,
-                /*EGL_WINDOW_BIT:*/ 0x04, /*EGL_RED_SIZE:*/ 0x3024,
-                8, /*EGL_GREEN_SIZE:*/ 0x3023, 8,
-                /*EGL_BLUE_SIZE:*/ 0x3022, 8,
-                //                /*EGL_ALPHA_SIZE:*/ 0x3021, 8,
-                /*EGL_DEPTH_SIZE*/
-                0x3025, 24, /*EGL_RENDERABLE_TYPE:*/ 0x3040,
-                /*EGL_OPENGL_ES2_BIT:*/ 0x0004, /*EGL_NONE:*/ 0x3038,
-            ]
-            .as_ptr(),
-            config.as_mut_ptr(),
-            1,
-            n.as_mut_ptr(),
-        );
-        debug_assert_eq!(ret, 1);
-
-        let config = config.assume_init();
-
-        //
-        let context = eglCreateContext(
-            display,
-            config,
-            std::ptr::null_mut(),
-            [
-                /*EGL_CONTEXT_CLIENT_VERSION:*/ 0x3098, 2,
-                /*EGL_NONE:*/ 0x3038,
-            ]
-            .as_ptr(),
-        );
-        debug_assert!(!context.is_null());
-
-        (display, config, context)
-    };
-
-    let draw: OpenGL = OpenGL {
-        display,
-        config,
-        context,
-        surface: std::ptr::null_mut(),
-        graphic: 0,
-        depth: false,
-        blending: false,
-        shader: 0,
-        shape_id: std::u32::MAX,
-        vaa_col: false,
-        vaa_tex: false,
-    };
-
-    Some(Box::new(draw))
 }

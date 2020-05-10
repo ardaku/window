@@ -35,8 +35,6 @@ pub use self::keycodes::*;
 pub use self::mat4::*;
 pub use self::shape::*;
 
-use std::pin::Pin;
-
 /// Native Window Handle.
 enum NwinHandle {
     /// Wayland window handle.
@@ -227,7 +225,7 @@ pub struct Window {
     // /// Height of the toolbar.
     // pub toolbar_height: u16,
     draw: Box<dyn Draw>,
-    nwin: Pin<Box<dyn Nwin>>,
+    nwin: Box<dyn Nwin>,
     // redraw: fn(nanos: u64) -> (),
 }
 
@@ -236,31 +234,31 @@ impl Window {
     pub fn new(
         name: &str,
         run: fn(nanos: u64) -> (),
-        toolbar: fn(&mut Self) -> (Shader, Group),
+        // toolbar: fn(&mut Self) -> (Shader, Group),
     ) -> Self {
         /*********************/
         /* Create The Window */
         /*********************/
 
         // Hopefully find a backend.
-        let nwin = None
-            .or_else(|| wayland::Wayland::new(name))
-            .expect("Couldn't find a window manager.");
-
+        let mut nwin = Err("No backends built!".to_string())
+            .or_else(|_| wayland::Wayland::new(name))
+            .expect("Couldn't find a window manager");
+            
         /**********************/
         /* Initialize Drawing */
         /**********************/
 
         // Try to initialize OpenGL(ES).
-        let draw = None
-            .or_else(|| opengl::OpenGL::new(&mut nwin))
+        let mut draw = None
+            .or_else(|| opengl::OpenGL::new(&mut *nwin))
             .expect("Couldn't find a GPU library.");
 
         /****************************/
         /* Connect Window & Drawing */
         /****************************/
 
-        nwin.connect(&mut draw);
+        nwin.connect(&mut *draw);
 
         /**********************/
         /* Initialize Toolbar */
@@ -366,7 +364,7 @@ impl Window {
         self.draw.toolbar(
             self.nwin.dimensions().0,
             self.nwin.dimensions().1,
-            self.toolbar_height,
+            0, // self.toolbar_height,
             &*shader.0,
             &mut *shape.0,
         );
