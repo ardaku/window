@@ -226,7 +226,6 @@ pub struct Window {
     // pub toolbar_height: u16,
     draw: Box<dyn Draw>,
     nwin: Box<dyn Nwin>,
-    // redraw: fn(nanos: u64) -> (),
 }
 
 impl Window {
@@ -234,7 +233,6 @@ impl Window {
     pub fn new(
         name: &str,
         run: fn(nanos: u64) -> (),
-        // toolbar: fn(&mut Self) -> (Shader, Group),
     ) -> Self {
         /*********************/
         /* Create The Window */
@@ -242,7 +240,7 @@ impl Window {
 
         // Hopefully find a backend.
         let mut nwin = Err("No backends built!".to_string())
-            .or_else(|_| wayland::Wayland::new(name))
+            .or_else(|_| wayland::Wayland::new(name, run))
             .or_else(|e| Err(format!("Couldn't find a window manager: {}", e)))
             .unwrap();
 

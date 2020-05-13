@@ -1220,6 +1220,9 @@ pub(super) struct Wayland {
     window_width: c_int,
     window_height: c_int,
     refresh_rate: u64,
+    // Millisecond counter on last frame.
+    last_millis: u32,
+    start_time: u32,
     // FIXME: Event based rather than state based.
     running: bool,
     is_restored: bool,
@@ -1233,10 +1236,12 @@ pub(super) struct Wayland {
     default_cursor: *mut WlCursor,
     cursor_theme: *mut WlCursorTheme,
     shm: *mut WlShm,
+    
+    redraw: fn(nanos: u64) -> (),
 }
 
 impl Wayland {
-    pub(super) fn new(name: &str) -> Result<Box<Self>, String> {
+    pub(super) fn new(name: &str, redraw: fn(nanos: u64) -> ()) -> Result<Box<Self>, String> {
         let client = WaylandClient::new().map_err(|e| format!("Wayland Client {}", e))?;
         let egl = WaylandEGL::new().map_err(|e| format!("Wayland EGL {}", e))?;
         let cursor = WaylandCursor::new().map_err(|e| format!("Wayland Cursor {}", e))?;
@@ -1270,6 +1275,8 @@ impl Wayland {
                 restore_height: 360,
                 window_width: 640,
                 window_height: 360,
+                last_millis: 0,
+                start_time: 0,
                 refresh_rate: 0,
                 running: true,
                 is_restored: false,
@@ -1281,6 +1288,8 @@ impl Wayland {
                 default_cursor: null_mut(),
                 cursor_theme: null_mut(),
                 shm: null_mut(),
+                
+                redraw,
             });
             // Wayland window as pointer
             let window: *mut Wayland = &mut *wayland;
@@ -2028,23 +2037,25 @@ extern "C" fn redraw_wl(
 
         dbg!(millis);
         
-/*        if (*wayland).start_time == 0 {
+        // FIXME: Time
+        if (*wayland).start_time == 0 {
             (*wayland).start_time = millis;
             0u32
         } else {
             // TODO: overflowing subtract.
             millis - (*wayland).last_millis
-        }*/
+        }
     } else {
-//        0u32
+        0u32
     };
     // assert!((*wayland).callback == callback);
     (*wayland).callback = std::ptr::null_mut();
-    /*let orig_nanos = u64::from(diff_millis) * 1_000_000;
+    
+    // FIXME: Simpler?
+    let orig_nanos = u64::from(diff_millis) * 1_000_000;
     (*wayland).last_millis = millis;
-
     let temp_nanos = orig_nanos + (*wayland).refresh_rate / 2;
-    let diff_nanos = temp_nanos - (temp_nanos % (*wayland).refresh_rate);*/
+    let diff_nanos = temp_nanos - (temp_nanos % (*wayland).refresh_rate);
 
     // Redraw on the screen.
     dbg!((*wayland).draw);
@@ -2057,7 +2068,7 @@ extern "C" fn redraw_wl(
 
     // Draw user-defined objects.
 
-    // ((*c).redraw)(diff_nanos);
+    ((*wayland).redraw)(diff_nanos);
 
     // Get ready for next frame.
     

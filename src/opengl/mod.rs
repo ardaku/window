@@ -619,7 +619,7 @@ impl OpenGL {
                     /*EGL_RED_SIZE:*/ 0x3024, 8,
                     /*EGL_GREEN_SIZE:*/ 0x3023, 8,
                     /*EGL_BLUE_SIZE:*/ 0x3022, 8,
-                    // A bug in some versions of wayland/mesa?, means alpha
+                    // A bug in some versions of wayland? or mesa?, means alpha
                     // should always be set to match R,G,B to avoid crashing.
                     /*EGL_ALPHA_SIZE:*/ 0x3021, 8,
                     /*EGL_DEPTH_SIZE*/
