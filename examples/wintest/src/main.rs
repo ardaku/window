@@ -55,8 +55,6 @@ fn main() {
             let float: f32 = c.borrow_mut().timed.into();
 
             println!("{}", float);
-
-            //            window::test();
         });
     }
 

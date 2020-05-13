@@ -1,5 +1,7 @@
 use std::ffi::c_void;
 
+/* * Platform-specific types * */
+
 #[cfg(target_platform = "windows")]
 mod native {
     //    typedef HDC     EGLNativeDisplayType;
@@ -85,3 +87,7 @@ typedef EGLNativePixmapType  NativePixmapType;
 typedef EGLNativeWindowType  NativeWindowType;*/
 
 // pub use self::native::*;
+
+/* ************************************************************************** */
+
+

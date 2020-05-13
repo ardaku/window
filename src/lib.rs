@@ -243,7 +243,8 @@ impl Window {
         // Hopefully find a backend.
         let mut nwin = Err("No backends built!".to_string())
             .or_else(|_| wayland::Wayland::new(name))
-            .expect("Couldn't find a window manager");
+            .or_else(|e| Err(format!("Couldn't find a window manager: {}", e)))
+            .unwrap();
 
         /**********************/
         /* Initialize Drawing */
@@ -385,5 +386,11 @@ impl Window {
         let (w, h) = (f32::from(w), f32::from(h));
 
         h / w
+    }
+}
+
+impl Drop for Window {
+    fn drop(&mut self) {
+        std::process::exit(0);
     }
 }

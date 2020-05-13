@@ -1,36 +1,12 @@
+use dl_api::linker;
+
 use std::{
     ffi::{CStr, CString},
     mem::transmute,
-    os::raw::{c_char, c_int, c_long, c_uint, c_void},
+    os::raw::{c_char, c_int, c_uint, c_void},
     ptr::{null, null_mut, NonNull},
     str,
 };
-
-/* * Dynamic Loading Into Separate Namespace * */
-
-#[repr(transparent)]
-struct DlObj(c_void);
-
-fn dlopen(name: &str) -> Option<NonNull<DlObj>> {
-    let name =
-        CStr::from_bytes_with_nul(name.as_bytes()).expect("Missing Null Byte!");
-    extern "C" {
-        fn dlopen(name: *const c_char, flags: c_int) -> *mut DlObj;
-    }
-    unsafe {
-        NonNull::new(dlopen(name.as_ptr(), 0x00002 /*NOW*/))
-    }
-}
-
-fn dlsym(handle: NonNull<DlObj>, nam: &str) -> Result<NonNull<c_void>, String> {
-    let name =
-        CStr::from_bytes_with_nul(nam.as_bytes()).expect("Missing Null Byte!");
-    extern "C" {
-        fn dlsym(dlobj: *mut DlObj, symbol: *const c_char) -> *mut c_void;
-    }
-    unsafe { NonNull::new(dlsym(handle.as_ptr(), name.as_ptr())) }
-        .ok_or(format!("Couldn't load symbol \'{}\"", nam))
-}
 
 /* */
 
@@ -780,115 +756,50 @@ static XDG_SURFACE_LISTENER: ZxdgSurfaceListener = ZxdgSurfaceListener {
 };
 
 // Wrapper around Wayland Library
-struct WaylandClient {
-    wl_proxy_marshal:
-        unsafe extern "C" fn(p: *mut WlProxy, opcode: u32, ...) -> (),
-    wl_proxy_destroy: unsafe extern "C" fn(proxy: *mut WlProxy) -> (),
-    wl_display_connect:
-        unsafe extern "C" fn(name: *const c_char) -> *mut WlDisplay,
-    wl_proxy_marshal_constructor: unsafe extern "C" fn(
+linker!(extern "C" WaylandClient "libwayland-client.so.0" {
+    // Static globals
+    static wl_registry_interface: *const WlInterface;
+    static wl_compositor_interface: *const WlInterface;
+    static wl_seat_interface: *const WlInterface;
+    static wl_shm_interface: *const WlInterface;
+    static wl_pointer_interface: *const WlInterface;
+    static wl_output_interface: *const WlInterface;
+    static wl_keyboard_interface: *const WlInterface;
+    static wl_touch_interface: *const WlInterface;
+    static wl_callback_interface: *const WlInterface;
+    static wl_surface_interface: *const WlInterface;
+    // Variadic C functions
+    valist fn wl_proxy_marshal(p: *mut WlProxy, opcode: u32, ...) -> ();
+    valist fn wl_proxy_marshal_constructor(
         proxy: *mut WlProxy,
         opcode: u32,
         interface: *const WlInterface,
         ...
-    ) -> *mut WlProxy,
-    wl_proxy_add_listener: unsafe extern "C" fn(
+    ) -> *mut WlProxy;
+    valist fn wl_proxy_marshal_constructor_versioned(
         proxy: *mut WlProxy,
-        *const extern "C" fn() -> (),
+        opcode: u32,
+        interface: *const WlInterface,
+        version: u32,
+        ...
+    ) -> *mut WlProxy;
+    // Normal C functions
+    fn wl_proxy_destroy(proxy: *mut WlProxy) -> ();
+    fn wl_display_connect(name: *const c_char) -> *mut WlDisplay;
+    fn wl_proxy_add_listener(
+        proxy: *mut WlProxy,
+        listener: *const extern "C" fn() -> (),
         data: *mut c_void,
-    ) -> c_int,
-    wl_display_dispatch: unsafe extern "C" fn(display: *mut WlDisplay) -> c_int,
-    wl_proxy_marshal_constructor_versioned:
-        unsafe extern "C" fn(
-            proxy: *mut WlProxy,
-            opcode: u32,
-            interface: *const WlInterface,
-            version: u32,
-            ...
-        ) -> *mut WlProxy,
-    // Static globals
-    wl_registry_interface: *const WlInterface,
-    wl_compositor_interface: *const WlInterface,
-    wl_seat_interface: *const WlInterface,
-    wl_shm_interface: *const WlInterface,
-    wl_pointer_interface: *const WlInterface,
-    wl_output_interface: *const WlInterface,
-    wl_keyboard_interface: *const WlInterface,
-    wl_touch_interface: *const WlInterface,
-    wl_callback_interface: *const WlInterface,
-    wl_surface_interface: *const WlInterface,
-}
+    ) -> c_int;
+    fn wl_display_dispatch(display: *mut WlDisplay) -> c_int;
+});
 
 impl WaylandClient {
-    fn new() -> Result<Self, String> {
-        let so = dlopen("libwayland-client.so.0\0")
-            .ok_or("Failed to find wayland-client shared object".to_string())?;
-
+    fn init(&self) {
         // Initialize ZXDG_V6 static globals.
-        let wl_surface_interface =
-            dlsym(so, "wl_surface_interface\0")?.cast().as_ptr();
         unsafe {
-            WL_SURFACE_INTERFACE[0] = wl_surface_interface;
+            WL_SURFACE_INTERFACE[0] = self.wl_surface_interface;
         }
-
-        Ok(unsafe {
-            WaylandClient {
-                wl_proxy_marshal: transmute(dlsym(so, "wl_proxy_marshal\0")?),
-                wl_proxy_destroy: transmute(dlsym(so, "wl_proxy_destroy\0")?),
-                wl_display_connect: transmute(dlsym(
-                    so,
-                    "wl_display_connect\0",
-                )?),
-                wl_proxy_marshal_constructor: transmute(dlsym(
-                    so,
-                    "wl_proxy_marshal_constructor\0",
-                )?),
-                wl_proxy_add_listener: transmute(dlsym(
-                    so,
-                    "wl_proxy_add_listener\0",
-                )?),
-                wl_display_dispatch: transmute(dlsym(
-                    so,
-                    "wl_display_dispatch\0",
-                )?),
-                wl_proxy_marshal_constructor_versioned: transmute(dlsym(
-                    so,
-                    "wl_proxy_marshal_constructor_versioned\0",
-                )?),
-                // Static globals
-                wl_registry_interface: dlsym(so, "wl_registry_interface\0")?
-                    .cast()
-                    .as_ptr(),
-                wl_compositor_interface: dlsym(
-                    so,
-                    "wl_compositor_interface\0",
-                )?
-                .cast()
-                .as_ptr(),
-                wl_seat_interface: dlsym(so, "wl_seat_interface\0")?
-                    .cast()
-                    .as_ptr(),
-                wl_shm_interface: dlsym(so, "wl_shm_interface\0")?
-                    .cast()
-                    .as_ptr(),
-                wl_pointer_interface: dlsym(so, "wl_pointer_interface\0")?
-                    .cast()
-                    .as_ptr(),
-                wl_output_interface: dlsym(so, "wl_output_interface\0")?
-                    .cast()
-                    .as_ptr(),
-                wl_keyboard_interface: dlsym(so, "wl_keyboard_interface\0")?
-                    .cast()
-                    .as_ptr(),
-                wl_touch_interface: dlsym(so, "wl_touch_interface\0")?
-                    .cast()
-                    .as_ptr(),
-                wl_callback_interface: dlsym(so, "wl_callback_interface\0")?
-                    .cast()
-                    .as_ptr(),
-                wl_surface_interface,
-            }
-        })
     }
 
     // Inline Functions From include/wayland-client-protocol.h
@@ -1250,90 +1161,35 @@ impl WaylandClient {
     }
 }
 
-struct WaylandEGL {
-    wl_egl_window_create: unsafe extern "C" fn(
+linker!(extern "C" WaylandEGL "libwayland-egl.so.1" {
+    fn wl_egl_window_create(
         surface: *mut WlSurface,
         width: c_int,
         height: c_int,
-    ) -> *mut WlEglWindow,
-    wl_egl_window_resize: unsafe extern "C" fn(
+    ) -> *mut WlEglWindow;
+    fn wl_egl_window_resize(
         egl_window: *mut WlEglWindow,
         width: c_int,
         height: c_int,
         dx: c_int,
         dy: c_int,
-    ) -> (),
-    wl_egl_window_destroy:
-        unsafe extern "C" fn(egl_window: *mut WlEglWindow) -> (),
-}
+    ) -> ();
+    fn wl_egl_window_destroy(egl_window: *mut WlEglWindow) -> ();
+});
 
-impl WaylandEGL {
-    fn new() -> Result<Self, String> {
-        let so = dlopen("libwayland-egl.so.1\0")
-            .ok_or("Failed to find wayland-egl shared object")?;
-
-        unsafe {
-            Ok(WaylandEGL {
-                wl_egl_window_create: transmute(dlsym(
-                    so,
-                    "wl_egl_window_create\0",
-                )?),
-                wl_egl_window_resize: transmute(dlsym(
-                    so,
-                    "wl_egl_window_resize\0",
-                )?),
-                wl_egl_window_destroy: transmute(dlsym(
-                    so,
-                    "wl_egl_window_destroy\0",
-                )?),
-            })
-        }
-    }
-}
-
-struct WaylandCursor {
-    wl_cursor_image_get_buffer:
-        unsafe extern "C" fn(image: *mut WlCursorImage) -> *mut WlBuffer,
-    wl_cursor_theme_destroy:
-        unsafe extern "C" fn(theme: *mut WlCursorTheme) -> (),
-    wl_cursor_theme_load: unsafe extern "C" fn(
+linker!(extern "C" WaylandCursor "libwayland-cursor.so.0" {
+    fn wl_cursor_image_get_buffer(image: *mut WlCursorImage) -> *mut WlBuffer;
+    fn wl_cursor_theme_destroy(theme: *mut WlCursorTheme) -> ();
+    fn wl_cursor_theme_load(
         name: *const c_char,
         size: c_int,
         shm: *mut WlShm,
-    ) -> *mut WlCursorTheme,
-    wl_cursor_theme_get_cursor: unsafe extern "C" fn(
+    ) -> *mut WlCursorTheme;
+    fn wl_cursor_theme_get_cursor(
         theme: *mut WlCursorTheme,
         name: *const c_char,
-    ) -> *mut WlCursor,
-}
-
-impl WaylandCursor {
-    fn new() -> Result<Self, String> {
-        let so = dlopen("libwayland-cursor.so.0\0")
-            .ok_or("Failed to find wayland-cursor shared object")?;
-
-        unsafe {
-            Ok(WaylandCursor {
-                wl_cursor_image_get_buffer: transmute(dlsym(
-                    so,
-                    "wl_cursor_image_get_buffer\0",
-                )?),
-                wl_cursor_theme_destroy: transmute(dlsym(
-                    so,
-                    "wl_cursor_theme_destroy\0",
-                )?),
-                wl_cursor_theme_load: transmute(dlsym(
-                    so,
-                    "wl_cursor_theme_load\0",
-                )?),
-                wl_cursor_theme_get_cursor: transmute(dlsym(
-                    so,
-                    "wl_cursor_theme_get_cursor\0",
-                )?),
-            })
-        }
-    }
-}
+    ) -> *mut WlCursor;
+});
 
 // Wrapper around Wayland Libraries
 pub(super) struct Wayland {
@@ -1381,9 +1237,12 @@ pub(super) struct Wayland {
 
 impl Wayland {
     pub(super) fn new(name: &str) -> Result<Box<Self>, String> {
-        let client = WaylandClient::new()?;
-        let egl = WaylandEGL::new()?;
-        let cursor = WaylandCursor::new()?;
+        let client = WaylandClient::new().map_err(|e| format!("Wayland Client {}", e))?;
+        let egl = WaylandEGL::new().map_err(|e| format!("Wayland EGL {}", e))?;
+        let cursor = WaylandCursor::new().map_err(|e| format!("Wayland Cursor {}", e))?;
+
+        // Needed for ZXDG extensions.
+        client.init();
 
         unsafe {
             // Create window.
@@ -2032,7 +1891,7 @@ extern "C" fn keyboard_handle_key(
             } as i8;
 
             if !offset.is_negative() {
-                let bit = 1 << offset;
+                let bit = 1u128 << offset;
 
                 if state == 0 {
                     println!("Key release {:b}", bit);

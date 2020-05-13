@@ -28,3 +28,4 @@ is-it-maintained-open-issues = { repository = "libcala/window" }
 maintenance = { status = "actively-developed" }
 
 [dependencies]
+dl_api = { path = "../dl_api" }

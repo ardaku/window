@@ -2,7 +2,6 @@ use std::ffi::c_void;
 
 use super::Draw;
 use super::DrawHandle;
-use super::Window;
 use crate::Ngraphic;
 use crate::Ngroup;
 use crate::Nshader;
@@ -263,8 +262,8 @@ impl Graphic {
             while width > 1 && height > 1 && offset != pixels.len() {
                 // 2 ^ 5
                 // Divide width & height.
-                width >>= 1;
-                height >>= 1;
+                width /= 2;
+                height /= 2;
                 // Increase mipmap level.
                 mipmap_level += 1;
 
@@ -514,7 +513,7 @@ impl Ngraphic for Graphic {
     }
 
     fn height(&self) -> u16 {
-        (((self.pixels.len() >> 2) as u32) / self.width as u32) as u16
+        (((self.pixels.len() / 4) as u32) / self.width as u32) as u16
     }
 
     fn resize(&mut self, pixels: &[u8], width: usize) {
@@ -532,7 +531,7 @@ impl Ngraphic for Graphic {
                 0,
                 GL_RGBA as i32,
                 width,                                // w
-                ((pixels.len() >> 2) as i32) / width, // h
+                ((pixels.len() / 4) as i32) / width, // h
                 0,
                 GL_RGBA,
                 0x1401, /*GL_UNSIGNED_BYTE*/
@@ -557,7 +556,7 @@ impl Ngraphic for Graphic {
                 0,
                 GL_RGBA as i32,
                 self.width,                                     // w
-                ((self.pixels.len() >> 2) as i32) / self.width, // h
+                ((self.pixels.len() / 4) as i32) / self.width, // h
                 0,
                 GL_RGBA,
                 0x1401, /*GL_UNSIGNED_BYTE*/
@@ -620,7 +619,9 @@ impl OpenGL {
                     /*EGL_RED_SIZE:*/ 0x3024, 8,
                     /*EGL_GREEN_SIZE:*/ 0x3023, 8,
                     /*EGL_BLUE_SIZE:*/ 0x3022, 8,
-                    //                /*EGL_ALPHA_SIZE:*/ 0x3021, 8,
+                    // A bug in some versions of wayland/mesa?, means alpha
+                    // should always be set to match R,G,B to avoid crashing.
+                    /*EGL_ALPHA_SIZE:*/ 0x3021, 8,
                     /*EGL_DEPTH_SIZE*/
                     0x3025, 24, /*EGL_RENDERABLE_TYPE:*/ 0x3040,
                     /*EGL_OPENGL_ES2_BIT:*/ 0x0004,
@@ -739,7 +740,7 @@ impl Draw for OpenGL {
         }*/
 
         // Set default background for OpenGL.
-        self.background(0.0, 0.0, 1.0);
+        self.background(1.0, 0.0, 0.0);
 
         dbg!("End OpenGL initialization");
     }
