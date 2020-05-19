@@ -230,10 +230,7 @@ pub struct Window {
 
 impl Window {
     /// Start the Wayland + OpenGL application.
-    pub fn new(
-        name: &str,
-        run: fn(nanos: u64) -> (),
-    ) -> Self {
+    pub fn new(name: &str, run: fn(nanos: u64) -> ()) -> Self {
         /*********************/
         /* Create The Window */
         /*********************/
@@ -365,12 +362,6 @@ impl Window {
             &*shader.0,
             &mut *shape.0,
         );
-    }
-
-    /// Update toolbar graphic.
-    pub fn toolbar(&mut self, callback: fn(&mut [u8], u16)) {
-        // self.toolbar_graphic.0.update(&mut |a, b| callback(a, b));
-        // self.toolbar_callback = callback;
     }
 
     /// If a key is being held down.

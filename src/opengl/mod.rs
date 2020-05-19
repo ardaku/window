@@ -530,7 +530,7 @@ impl Ngraphic for Graphic {
                 GL_TEXTURE_2D,
                 0,
                 GL_RGBA as i32,
-                width,                                // w
+                width,                               // w
                 ((pixels.len() / 4) as i32) / width, // h
                 0,
                 GL_RGBA,
@@ -555,7 +555,7 @@ impl Ngraphic for Graphic {
                 GL_TEXTURE_2D,
                 0,
                 GL_RGBA as i32,
-                self.width,                                     // w
+                self.width,                                    // w
                 ((self.pixels.len() / 4) as i32) / self.width, // h
                 0,
                 GL_RGBA,
@@ -621,8 +621,8 @@ impl OpenGL {
                     /*EGL_BLUE_SIZE:*/ 0x3022, 8,
                     // A bug in some versions of wayland? or mesa?, means alpha
                     // should always be set to match R,G,B to avoid crashing.
-                    /*EGL_ALPHA_SIZE:*/ 0x3021, 8,
-                    /*EGL_DEPTH_SIZE*/
+                    /*EGL_ALPHA_SIZE:*/
+                    0x3021, 8, /*EGL_DEPTH_SIZE*/
                     0x3025, 24, /*EGL_RENDERABLE_TYPE:*/ 0x3040,
                     /*EGL_OPENGL_ES2_BIT:*/ 0x0004,
                     /*EGL_NONE:*/ 0x3038,
@@ -692,8 +692,6 @@ impl Draw for OpenGL {
     }
 
     fn connect(&mut self, connection: *mut c_void) {
-        dbg!("Connecting 3…");
-
         // Finish connecting EGL.
         self.surface = unsafe {
             eglCreateWindowSurface(
@@ -740,9 +738,7 @@ impl Draw for OpenGL {
         }*/
 
         // Set default background for OpenGL.
-        self.background(1.0, 0.0, 0.0);
-
-        dbg!("End OpenGL initialization");
+        self.background(0.0, 0.0, 1.0);
     }
 
     fn background(&mut self, r: f32, g: f32, b: f32) {
@@ -794,7 +790,6 @@ impl Draw for OpenGL {
     }
 
     fn finish_draw(&mut self) {
-        println!("FINISHING_DRAW");
         if self.vaa_col {
             unsafe { glDisableVertexAttribArray(GL_ATTRIB_COL) }
             gl_assert!("glDisableVertexAttribArray#0");
@@ -810,7 +805,6 @@ impl Draw for OpenGL {
         unsafe {
             eglSwapBuffers(self.display, self.surface);
         }
-        println!("FINISED_DRAW");
     }
 
     fn draw(&mut self, shader: &dyn Nshader, shape: &mut dyn Ngroup) {

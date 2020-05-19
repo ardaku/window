@@ -89,5 +89,3 @@ typedef EGLNativeWindowType  NativeWindowType;*/
 // pub use self::native::*;
 
 /* ************************************************************************** */
-
-

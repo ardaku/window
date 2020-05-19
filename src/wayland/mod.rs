@@ -2,7 +2,6 @@ use dl_api::linker;
 
 use std::{
     ffi::{CStr, CString},
-    mem::transmute,
     os::raw::{c_char, c_int, c_uint, c_void},
     ptr::{null, null_mut, NonNull},
     str,
@@ -1021,7 +1020,8 @@ impl WaylandClient {
             3, /*WL_SURFACE_FRAME*/
             self.wl_callback_interface,
             NIL,
-        ).cast()
+        )
+        .cast()
     }
     // From include/protocol/xdg-shell-unstable-v6-client-protocol.h
     #[inline(always)]
@@ -1236,15 +1236,21 @@ pub(super) struct Wayland {
     default_cursor: *mut WlCursor,
     cursor_theme: *mut WlCursorTheme,
     shm: *mut WlShm,
-    
+
     redraw: fn(nanos: u64) -> (),
 }
 
 impl Wayland {
-    pub(super) fn new(name: &str, redraw: fn(nanos: u64) -> ()) -> Result<Box<Self>, String> {
-        let client = WaylandClient::new().map_err(|e| format!("Wayland Client {}", e))?;
-        let egl = WaylandEGL::new().map_err(|e| format!("Wayland EGL {}", e))?;
-        let cursor = WaylandCursor::new().map_err(|e| format!("Wayland Cursor {}", e))?;
+    pub(super) fn new(
+        name: &str,
+        redraw: fn(nanos: u64) -> (),
+    ) -> Result<Box<Self>, String> {
+        let client = WaylandClient::new()
+            .map_err(|e| format!("Wayland Client {}", e))?;
+        let egl =
+            WaylandEGL::new().map_err(|e| format!("Wayland EGL {}", e))?;
+        let cursor = WaylandCursor::new()
+            .map_err(|e| format!("Wayland Cursor {}", e))?;
 
         // Needed for ZXDG extensions.
         client.init();
@@ -1288,7 +1294,7 @@ impl Wayland {
                 default_cursor: null_mut(),
                 cursor_theme: null_mut(),
                 shm: null_mut(),
-                
+
                 redraw,
             });
             // Wayland window as pointer
@@ -1299,7 +1305,6 @@ impl Wayland {
                 &REGISTRY_LISTENER,
                 window.cast(),
             );
-            println!("boi");
             (wayland.client.wl_display_dispatch)(display.as_ptr());
             // Create surfaces
             wayland.surface =
@@ -1361,7 +1366,9 @@ impl crate::Nwin for Wayland {
     }
 
     fn connect(&mut self, draw: &mut Box<dyn crate::Draw>) {
-        self.draw = NonNull::new(Box::into_raw(unsafe { std::mem::transmute_copy(draw) }));
+        self.draw = NonNull::new(Box::into_raw(unsafe {
+            std::mem::transmute_copy(draw)
+        }));
 
         match draw.handle() {
             crate::DrawHandle::Gl(_c) => {
@@ -1375,7 +1382,6 @@ impl crate::Nwin for Wayland {
             }
             crate::DrawHandle::Vulkan(_c) => unimplemented!(),
         }
-        dbg!("Connecting 2…");
         draw.connect(self.egl_window.cast());
     }
 
@@ -1409,7 +1415,6 @@ extern "C" fn registry_global(
         let interface =
             str::from_utf8(CStr::from_ptr(interface).to_bytes()).unwrap();
 
-        dbg!(interface);
         match interface {
             "wl_compositor" => {
                 (*window).compositor = (*window)
@@ -1451,7 +1456,6 @@ extern "C" fn registry_global(
                 );
             }
             "wl_shm" => {
-                dbg!("SHM Binding Registry");
                 (*window).shm = (*window)
                     .client
                     .registry_bind(
@@ -1461,7 +1465,6 @@ extern "C" fn registry_global(
                         1,
                     )
                     .cast();
-                dbg!("SHM Bounded Registry");
 
                 (*window).cursor_theme = ((*window)
                     .cursor
@@ -1469,13 +1472,9 @@ extern "C" fn registry_global(
                     null_mut(), 16, (*window).shm
                 );
 
-                dbg!("Loaded Cursor Theme");
-
                 if (*window).cursor_theme.is_null() {
                     eprintln!("unable to load default theme");
                 }
-
-                dbg!("Get CURSOR");
 
                 static LEFT_PTR: &[u8] = b"left_ptr\0";
 
@@ -1487,8 +1486,6 @@ extern "C" fn registry_global(
                 if (*window).default_cursor.is_null() {
                     panic!("unable to load default left pointer");
                 }
-
-                dbg!("Got CURSOR");
             }
             "wl_output" => {
                 let output = (*window)
@@ -2032,55 +2029,54 @@ extern "C" fn redraw_wl(
     let wayland: *mut Wayland = data.cast();
 
     unsafe {
-    let diff_millis = if !callback.is_null() {
-        (*wayland).client.callback_destroy(callback);
+        let diff_millis = if !callback.is_null() {
+            (*wayland).client.callback_destroy(callback);
 
-        dbg!(millis);
-        
-        // FIXME: Time
-        if (*wayland).start_time == 0 {
-            (*wayland).start_time = millis;
-            0u32
+            // FIXME: Time
+            if (*wayland).start_time == 0 {
+                (*wayland).start_time = millis;
+                0u32
+            } else {
+                // TODO: overflowing subtract.
+                millis - (*wayland).last_millis
+            }
         } else {
-            // TODO: overflowing subtract.
-            millis - (*wayland).last_millis
-        }
-    } else {
-        0u32
-    };
-    // assert!((*wayland).callback == callback);
-    (*wayland).callback = std::ptr::null_mut();
-    
-    // FIXME: Simpler?
-    let orig_nanos = u64::from(diff_millis) * 1_000_000;
-    (*wayland).last_millis = millis;
-    let temp_nanos = orig_nanos + (*wayland).refresh_rate / 2;
-    let diff_nanos = temp_nanos - (temp_nanos % (*wayland).refresh_rate);
+            0u32
+        };
+        // assert!((*wayland).callback == callback);
+        (*wayland).callback = std::ptr::null_mut();
 
-    // Redraw on the screen.
-    dbg!((*wayland).draw);
-    (*(*wayland).draw.unwrap().as_ptr()).begin_draw();
-    /*(*c).draw_toolbar(
-        &(*c).toolbar_shader,
-        &mut (*c).toolbar_shape,
-        &(*c).toolbar_graphic,
-    );*/
+        // FIXME: Simpler?
+        let orig_nanos = u64::from(diff_millis) * 1_000_000;
+        (*wayland).last_millis = millis;
+        let temp_nanos = orig_nanos + (*wayland).refresh_rate / 2;
+        let diff_nanos = temp_nanos - (temp_nanos % (*wayland).refresh_rate);
 
-    // Draw user-defined objects.
+        // Redraw on the screen.
+        (*(*wayland).draw.unwrap().as_ptr()).begin_draw();
 
-    ((*wayland).redraw)(diff_nanos);
+        /*(*c).draw_toolbar(
+            &(*c).toolbar_shader,
+            &mut (*c).toolbar_shape,
+            &(*c).toolbar_graphic,
+        );*/
 
-    // Get ready for next frame.
-    
-    dbg!((*wayland).callback);
-    
-    (*wayland).callback = (*wayland).client.surface_frame((*wayland).surface);
+        // Draw user-defined objects.
 
-    dbg!((*wayland).callback);
+        ((*wayland).redraw)(diff_nanos);
 
-    (*wayland).client.callback_add_listener((*wayland).callback, &FRAME_LISTENER, data);
+        // Get ready for next frame.
 
-    // Redraw on the screen.
-    (*(*wayland).draw.unwrap().as_ptr()).finish_draw();
+        (*wayland).callback =
+            (*wayland).client.surface_frame((*wayland).surface);
+
+        (*wayland).client.callback_add_listener(
+            (*wayland).callback,
+            &FRAME_LISTENER,
+            data,
+        );
+
+        // Redraw on the screen.
+        (*(*wayland).draw.unwrap().as_ptr()).finish_draw();
     }
 }
