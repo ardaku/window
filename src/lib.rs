@@ -115,6 +115,8 @@ trait Draw {
     fn camera(&mut self, shader: &dyn Nshader, cam: Transform);
     /// Set tint
     fn tint(&mut self, shader: &dyn Nshader, tint: [f32; 4]);
+    /// Window resize
+    fn resize(&mut self, width: u16, height: u16);
 }
 
 trait Nshader {

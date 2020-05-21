@@ -5,6 +5,7 @@ use std::{
     os::raw::{c_char, c_int, c_uint, c_void},
     ptr::{null, null_mut, NonNull},
     str,
+    convert::TryInto,
 };
 
 /* */
@@ -1584,6 +1585,11 @@ extern "C" fn toplevel_configure(
                     );
                 }
             }
+        }
+        
+        if let Some(draw) = (*window).draw {
+            (*draw.as_ptr()).resize((*window).window_width.try_into().unwrap(), (*window).window_height.try_into().unwrap());
+            println!("RESIZe");
         }
     }
 }

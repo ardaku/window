@@ -517,6 +517,8 @@ impl Ngraphic for Graphic {
     }
 
     fn resize(&mut self, pixels: &[u8], width: usize) {
+        println!("RESzein");
+    
         let width = width as i32;
 
         self.width = width;
@@ -973,6 +975,12 @@ impl Draw for OpenGL {
             unsafe {
                 glUniform4f(a, tint[0], tint[1], tint[2], tint[3]);
             }
+        }
+    }
+    
+    fn resize(&mut self, width: u16, height: u16) {
+        unsafe {
+            glViewport(0, 0, width.into(), height.into());
         }
     }
 }
