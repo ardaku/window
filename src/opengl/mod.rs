@@ -1,4 +1,5 @@
 use std::ffi::c_void;
+use std::collections::HashMap;
 
 use super::Draw;
 use super::DrawHandle;
@@ -193,7 +194,7 @@ pub struct Shader {
     // Some if OpenGL texture uniform exists.
     graphic: bool,
     // Some if 3D.
-    depth: Option<i32>,
+    camera: i32,
     // Some if tint.
     tint: Option<i32>,
     // True if transparency is allowed.
@@ -475,7 +476,13 @@ impl Nshader for Shader {
     }
 
     fn depth(&self) -> Option<i32> {
-        self.depth
+        None // FIXME
+        // Some(self.camera) 
+        // self.depth
+    }
+
+    fn camera(&self) -> i32 {
+        self.camera
     }
 
     fn gradient(&self) -> bool {
@@ -567,6 +574,11 @@ impl Ngraphic for Graphic {
     }
 }
 
+struct ShaderData {
+    dirty_transform: bool, // If matrix needs to be updated.
+    matrix: [[f32; 4]; 4], // Transform matrix, minus coordinate system.
+}
+
 pub struct OpenGL {
     surface: *mut c_void,
     display: *mut c_void,
@@ -579,6 +591,7 @@ pub struct OpenGL {
     shape_id: u32,
     vaa_col: bool,
     vaa_tex: bool,
+    shaders: HashMap<u32, ShaderData>,
 }
 
 impl OpenGL {
@@ -664,6 +677,7 @@ impl OpenGL {
             shape_id: std::u32::MAX,
             vaa_col: false,
             vaa_tex: false,
+            shaders: HashMap::new(),
         };
 
         Some(Box::new(draw))
@@ -752,7 +766,12 @@ impl Draw for OpenGL {
         &mut self,
         builder: crate::ShaderBuilder,
     ) -> Box<dyn Nshader> {
-        Box::new(Shader::new(builder))
+        let shader = Shader::new(builder);
+        self.shaders.insert(shader.program(), ShaderData {
+            dirty_transform: true,
+            matrix: [[1.0, 0.0, 0.0, 0.0], [0.0, 1.0, 0.0, 0.0], [0.0, 0.0, 1.0, 0.0], [0.0, 0.0, 0.0, 1.0]]
+        });
+        Box::new(shader)
     }
 
     fn group_new(&mut self) -> Box<dyn Ngroup> {
@@ -798,6 +817,25 @@ impl Draw for OpenGL {
     }
 
     fn draw(&mut self, shader: &dyn Nshader, shape: &mut dyn Ngroup) {
+        let shader_data = self.shaders.get_mut(&shader.program()).unwrap();
+        if shader_data.dirty_transform {
+            let mut matrix = shader_data.matrix;
+            matrix[0][0] *= 2.0; // double X
+            matrix[1][1] *= -2.0; // Flip and double Y
+            matrix[3][0] -= 1.0;
+            matrix[3][1] += 1.0;
+            unsafe {
+                glUniformMatrix4fv(
+                    shader.camera(),
+                    1,
+                    0, /*GL_FALSE*/
+                    matrix.as_ptr().cast(),
+                );
+            }
+            gl_assert!("glUniformMatrix4fv");
+            shader_data.dirty_transform = false;
+        }
+
         if self.bind_shader(shader) {
             if !self.vaa_col && shader.gradient() {
                 unsafe { glEnableVertexAttribArray(GL_ATTRIB_COL) }
@@ -946,6 +984,7 @@ impl Draw for OpenGL {
     }
 
     fn camera(&mut self, shader: &dyn Nshader, cam: crate::Transform) {
+        println!("AA");
         if let Some(a) = shader.depth() {
             self.bind_shader(shader);
             unsafe {
@@ -956,6 +995,7 @@ impl Draw for OpenGL {
                     cam.as_ptr() as *const c_void,
                 );
             }
+            gl_assert!("glUniformMatrix4fv");
         }
     }
 
@@ -970,6 +1010,11 @@ impl Draw for OpenGL {
     
     fn resize(&mut self, width: u16, height: u16) {
         println!("OpengGL resize");
+        // Mark matrices to be updated to new aspect ratio.
+        for shader in &mut self.shaders {
+            shader.1.dirty_transform = true;
+        }
+        // Update viewport
         unsafe {
             glViewport(0, 0, width.into(), height.into());
         }
@@ -1110,20 +1155,14 @@ fn create_program(builder: crate::ShaderBuilder) -> Shader {
         panic!("Error: linking:\n{}", log);
     }
 
-    let depth = if builder.depth {
-        let camera = unsafe {
-            glGetUniformLocation(
-                program,
-                "cam\0".as_ptr() as *const _ as *const _,
-            )
-        };
-        gl_assert!("glGetUniformLocation#cam");
-        assert!(camera > -1);
-
-        Some(camera)
-    } else {
-        None
+    let camera = unsafe {
+        glGetUniformLocation(
+            program,
+            "cam\0".as_ptr() as *const _ as *const _,
+        )
     };
+    gl_assert!("glGetUniformLocation#cam");
+    assert!(camera > -1);
 
     let tint = if builder.tint {
         let tint = unsafe {
@@ -1146,7 +1185,7 @@ fn create_program(builder: crate::ShaderBuilder) -> Shader {
         program,
         gradient: builder.gradient,
         graphic,
-        depth,
+        camera,
         tint,
         blending: builder.blend,
     }

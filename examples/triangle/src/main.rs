@@ -21,18 +21,20 @@ fn main() {
     let mut shader: Shader = window.shader_new(include!(concat!(env!("OUT_DIR"), "/res/", "color", ".rs")));
     let shape: Shape = ShapeBuilder::new(&mut shader)
         .vert(&[
-              -0.75, 0.75,  1.0, 0.0, 0.0,
-              0.75, 0.75,   0.0, 1.0, 0.0,
-              0.0, -0.75,   0.0, 0.0, 0.0,
+              0.125, 0.895,   1.0, 0.0, 0.0,
+              0.895, 0.895,   0.0, 1.0, 0.0,
+              0.5,   0.125,   0.0, 0.0, 1.0,
         ])
         .face(Transform::new())
         .finish();
     let mut group: Group = window.group_new();
     group.push(&shape, &Transform::new());
 
-    let context = Context {
+    let mut context = Context {
         window, shader, group
     };
+
+    context.window.background(0.1, 0.0, 0.1);
 
     unsafe { CONTEXT = MaybeUninit::new(context) };
 

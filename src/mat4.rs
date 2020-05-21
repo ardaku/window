@@ -1,6 +1,3 @@
-// Allow this until attributes on expressions are no longer experimental.
-#![allow(clippy::deprecated_cfg_attr)]
-
 /// A 4x4 transformation matrix.
 #[repr(C)]
 #[derive(Copy, Clone)]

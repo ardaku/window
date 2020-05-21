@@ -4,6 +4,9 @@
 //! Other Rust window creation libraries require you to build for a specific backend, so I made this crate to fix the issue.  You can now make a program that runs Wayland on a machine that has Wayland installed, and will fall back to XCB if it's not installed.  And, will run OpenGLES (eventually try Vulkan first, too) if it's installed, and fall back to OpenGL if it's not installed.
 //!
 //! Since this crate is minimal, it doesn't even handle window decoration.  If you want window decoration and GUI widgets, check out [barg](https://crates.io/crates/barg) which depends on this crate.  And if you want more than just rendering, check out [cala](https://crates.io/crates/cala).  And, eventually, specifically for video games [plop](https://crates.io/crates/plop).
+//!
+//! # Coordinate System
+//! ![](https://raw.githubusercontent.com/libcala/window/5205e59f0cd9f37a619f590e94218900afc2395b/res/coordinate_system.svg)
 
 #![warn(missing_docs)]
 #![doc(
@@ -121,6 +124,7 @@ trait Draw {
 
 trait Nshader {
     fn depth(&self) -> Option<i32>;
+    fn camera(&self) -> i32;
     fn tint(&self) -> Option<i32>;
     fn gradient(&self) -> bool;
     fn graphic(&self) -> bool;
