@@ -1,5 +1,5 @@
 [package]
-name = "wintest"
+name = "triangle"
 version = "0.1.0"
 authors = ["Jeron Aldaron Lau <jeronlau@plopgrizzly.com>"]
 edition = "2018"
@@ -7,7 +7,7 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [build-dependencies]
-res = "0.5"
+res = { path = "/home/aldaronlau/devel/res" }
 
 [dependencies]
 window = { path = "../../" }

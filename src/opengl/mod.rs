@@ -517,8 +517,6 @@ impl Ngraphic for Graphic {
     }
 
     fn resize(&mut self, pixels: &[u8], width: usize) {
-        println!("RESzein");
-    
         let width = width as i32;
 
         self.width = width;
@@ -792,16 +790,6 @@ impl Draw for OpenGL {
     }
 
     fn finish_draw(&mut self) {
-        if self.vaa_col {
-            unsafe { glDisableVertexAttribArray(GL_ATTRIB_COL) }
-            gl_assert!("glDisableVertexAttribArray#0");
-            self.vaa_col = false;
-        }
-        if self.vaa_tex {
-            unsafe { glDisableVertexAttribArray(GL_ATTRIB_TEX) }
-            gl_assert!("glDisableVertexAttribArray#1");
-            self.vaa_tex = false;
-        }
         unsafe { glDisableVertexAttribArray(GL_ATTRIB_POS) }
         gl_assert!("glDisableVertexAttribArray#4");
         unsafe {
@@ -814,6 +802,7 @@ impl Draw for OpenGL {
             if !self.vaa_col && shader.gradient() {
                 unsafe { glEnableVertexAttribArray(GL_ATTRIB_COL) }
                 gl_assert!("glEnableVertexAttribArray#2");
+                println!("EENABLE COL {}", self.vaa_col);
                 self.vaa_col = true;
             }
             if !self.vaa_tex && shader.graphic() {
@@ -824,6 +813,7 @@ impl Draw for OpenGL {
             if self.vaa_col && !shader.gradient() {
                 unsafe { glDisableVertexAttribArray(GL_ATTRIB_COL) }
                 gl_assert!("glDisableVertexAttribArray#2");
+                println!("DISABLE COL");
                 self.vaa_col = false;
             }
             if self.vaa_tex && !shader.graphic() {
@@ -979,6 +969,7 @@ impl Draw for OpenGL {
     }
     
     fn resize(&mut self, width: u16, height: u16) {
+        println!("OpengGL resize");
         unsafe {
             glViewport(0, 0, width.into(), height.into());
         }
