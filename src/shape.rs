@@ -38,7 +38,7 @@ impl<'a> ShapeBuilder<'a> {
 
     /// Add a face to the shape.
     pub fn face(mut self, transform: Transform) -> Self {
-        let dimensions = if self.shader.0.depth().is_some() {
+        let dimensions = if self.shader.0.depth() {
             3
         } else {
             2
@@ -122,7 +122,7 @@ impl<'a> ShapeBuilder<'a> {
 
     /// Finish building the shape.
     pub fn finish(self) -> Shape {
-        let dimensions = if self.shader.0.depth().is_some() {
+        let dimensions = if self.shader.0.depth() {
             3
         } else {
             2

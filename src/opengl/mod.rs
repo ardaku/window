@@ -199,6 +199,8 @@ pub struct Shader {
     tint: Option<i32>,
     // True if transparency is allowed.
     blending: bool,
+    // Z coordinate?
+    depth: bool,
 }
 
 ///
@@ -475,10 +477,8 @@ impl Nshader for Shader {
         self.tint
     }
 
-    fn depth(&self) -> Option<i32> {
-        None // FIXME
-        // Some(self.camera) 
-        // self.depth
+    fn depth(&self) -> bool {
+        self.depth
     }
 
     fn camera(&self) -> i32 {
@@ -880,13 +880,13 @@ impl Draw for OpenGL {
                 self.blending = false;
             }
 
-            if shader.depth().is_some() && !self.depth {
+            if shader.depth() && !self.depth {
                 unsafe {
                     glEnable(0x0B71 /*DEPTH_TEST*/);
                     gl_assert!("glEnable#DEPTH_TEST");
                 }
                 self.depth = true;
-            } else if shader.depth().is_none() && self.depth {
+            } else if shader.depth() && self.depth {
                 unsafe {
                     glDisable(0x0B71 /*DEPTH_TEST*/);
                     gl_assert!("glDisable#DEPTH_TEST");
@@ -895,7 +895,7 @@ impl Draw for OpenGL {
             }
 
             unsafe {
-                let stride = if shader.depth().is_some() { 3 } else { 2 }
+                let stride = if shader.depth() { 3 } else { 2 }
                     + if shader.gradient() { 3 } else { 0 }
                     + if shader.graphic() { 2 } else { 0 };
                 let stride = (stride * std::mem::size_of::<f32>()) as i32;
@@ -906,7 +906,7 @@ impl Draw for OpenGL {
                 {
                     glVertexAttribPointer(
                         GL_ATTRIB_POS,
-                        if shader.depth().is_some() { 3 } else { 2 },
+                        if shader.depth() { 3 } else { 2 },
                         0x1406, /*GL_FLOAT*/
                         0,      /*GL_FALSE*/
                         stride,
@@ -924,7 +924,7 @@ impl Draw for OpenGL {
                         0x1406, /*GL_FLOAT*/
                         0,      /*GL_FALSE*/
                         stride,
-                        ptr.offset(if shader.depth().is_some() {
+                        ptr.offset(if shader.depth() {
                             3
                         } else {
                             2
@@ -943,7 +943,7 @@ impl Draw for OpenGL {
                         0,      /*GL_FALSE*/
                         stride,
                         ptr.offset(
-                            if shader.depth().is_some() { 3 } else { 2 }
+                            if shader.depth() { 3 } else { 2 }
                                 + if shader.gradient() { 3 } else { 0 },
                         ),
                     );
@@ -984,19 +984,6 @@ impl Draw for OpenGL {
     }
 
     fn camera(&mut self, shader: &dyn Nshader, cam: crate::Transform) {
-        println!("AA");
-        if let Some(a) = shader.depth() {
-            self.bind_shader(shader);
-            unsafe {
-                glUniformMatrix4fv(
-                    a,
-                    1,
-                    0, /*GL_FALSE*/
-                    cam.as_ptr() as *const c_void,
-                );
-            }
-            gl_assert!("glUniformMatrix4fv");
-        }
     }
 
     fn tint(&mut self, shader: &dyn Nshader, tint: [f32; 4]) {
@@ -1188,6 +1175,7 @@ fn create_program(builder: crate::ShaderBuilder) -> Shader {
         camera,
         tint,
         blending: builder.blend,
+        depth: builder.depth,
     }
 }
 

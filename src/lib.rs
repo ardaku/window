@@ -123,7 +123,7 @@ trait Draw {
 }
 
 trait Nshader {
-    fn depth(&self) -> Option<i32>;
+    fn depth(&self) -> bool;
     fn camera(&self) -> i32;
     fn tint(&self) -> Option<i32>;
     fn gradient(&self) -> bool;
