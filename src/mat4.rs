@@ -14,14 +14,17 @@ impl Default for Transform {
 impl Transform {
     /// Create a new identity matrix (transform that does nothing).
     pub fn new() -> Self {
-        Self {
-            mat: [
-                [1.0, 0.0, 0.0, 0.0],
-                [0.0, 1.0, 0.0, 0.0],
-                [0.0, 0.0, 1.0, 0.0],
-                [0.0, 0.0, 0.0, 1.0],
-            ],
-        }
+        Self::from_mat4([
+            [1.0, 0.0, 0.0, 0.0],
+            [0.0, 1.0, 0.0, 0.0],
+            [0.0, 0.0, 1.0, 0.0],
+            [0.0, 0.0, 0.0, 1.0],
+        ])
+    }
+    
+    /// Create a new Transform from a 4x4 matrix.
+    pub fn from_mat4(mat: [[f32; 4]; 4]) -> Self {
+        Self { mat }
     }
 
     /// Scale transformation (make biggger or smaller).

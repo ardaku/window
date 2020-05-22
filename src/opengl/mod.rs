@@ -6,6 +6,7 @@ use super::DrawHandle;
 use crate::Ngraphic;
 use crate::Ngroup;
 use crate::Nshader;
+use crate::Transform;
 
 mod platform;
 
@@ -592,6 +593,8 @@ pub struct OpenGL {
     vaa_col: bool,
     vaa_tex: bool,
     shaders: HashMap<u32, ShaderData>,
+    cam: Transform,
+    height: f32,
 }
 
 impl OpenGL {
@@ -665,6 +668,8 @@ impl OpenGL {
             (display, config, context)
         };
 
+        let height = 480.0 / 640.0;
+
         let draw: OpenGL = OpenGL {
             display,
             config,
@@ -678,6 +683,8 @@ impl OpenGL {
             vaa_col: false,
             vaa_tex: false,
             shaders: HashMap::new(),
+            cam: Transform::new(),
+            height,
         };
 
         Some(Box::new(draw))
@@ -817,13 +824,9 @@ impl Draw for OpenGL {
     }
 
     fn draw(&mut self, shader: &dyn Nshader, shape: &mut dyn Ngroup) {
-        let shader_data = self.shaders.get_mut(&shader.program()).unwrap();
-        if shader_data.dirty_transform {
-            let mut matrix = shader_data.matrix;
-            matrix[0][0] *= 2.0; // double X
-            matrix[1][1] *= -2.0; // Flip and double Y
-            matrix[3][0] -= 1.0;
-            matrix[3][1] += 1.0;
+        let shaderdata = self.shaders.get_mut(&shader.program()).unwrap();
+        if shaderdata.dirty_transform {
+            let mut matrix = (self.cam * Transform::from_mat4(shaderdata.matrix)).scale(2.0, -2.0 / self.height, 1.0).translate(-1.0, 1.0, 0.0);
             unsafe {
                 glUniformMatrix4fv(
                     shader.camera(),
@@ -833,7 +836,7 @@ impl Draw for OpenGL {
                 );
             }
             gl_assert!("glUniformMatrix4fv");
-            shader_data.dirty_transform = false;
+            shaderdata.dirty_transform = false;
         }
 
         if self.bind_shader(shader) {
@@ -984,6 +987,11 @@ impl Draw for OpenGL {
     }
 
     fn camera(&mut self, shader: &dyn Nshader, cam: crate::Transform) {
+        self.cam = cam;
+        // Mark matrices to be updated with the new transform.
+        for shader in &mut self.shaders {
+            shader.1.dirty_transform = true;
+        }
     }
 
     fn tint(&mut self, shader: &dyn Nshader, tint: [f32; 4]) {
@@ -1005,6 +1013,8 @@ impl Draw for OpenGL {
         unsafe {
             glViewport(0, 0, width.into(), height.into());
         }
+        //
+        self.height = height as f32 / width as f32;
     }
 }
 
