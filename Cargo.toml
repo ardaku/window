@@ -29,3 +29,7 @@ maintenance = { status = "actively-developed" }
 
 [dependencies]
 dl_api = { path = "../dl_api" }
+
+[features]
+default = []
+gpu-debugging = []

@@ -41,14 +41,14 @@ fn _get_error(string: &str) {
     }
 }
 
-#[cfg(debug_assertions)]
+#[cfg(feature = "gpu-debugging")]
 macro_rules! gl_assert {
     ($x:expr) => {
         _get_error($x);
     };
 }
 
-#[cfg(not(debug_assertions))]
+#[cfg(not(feature = "gpu-debugging"))]
 macro_rules! gl_assert {
     ($x:expr) => {
         $x
