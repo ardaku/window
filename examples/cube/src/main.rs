@@ -22,17 +22,17 @@ fn main() {
     let mut shader: Shader = window.shader_new(include!(concat!(env!("OUT_DIR"), "/res/", "graphic", ".rs")));
     let shape: Shape = ShapeBuilder::new(&mut shader)
         .vert(&[
-              0.125, 0.895, 0.0,  0.0, 1.0,
-              0.895, 0.895, 0.0,  1.0, 1.0,
-              0.895, 0.125, 0.0,  1.0, 0.0,
-              0.125, 0.125, 0.0,  0.0, 0.0,
-              0.125, 0.895, 0.0,  0.0, 1.0,
-              0.895, 0.125, 0.0,  1.0, 0.0,
+              -1.0, 1.0, 0.0,  0.0, 1.0,
+              1.0, 1.0, 0.0,  1.0, 1.0,
+              1.0, -1.0, 0.0,  1.0, 0.0,
+              -1.0, -1.0, 0.0,  0.0, 0.0,
+              -1.0, 1.0, 0.0,  0.0, 1.0,
+              1.0, -1.0, 0.0,  1.0, 0.0,
         ])
-        .face(Transform::new())
+        .face(Transform::new().scale(0.25, 0.25, 0.25))
         .finish();
     let mut group: Group = window.group_new();
-    group.push(&shape, &Transform::new());
+    group.push(&shape, &Transform::new().translate(0.5, 0.5 * window.aspect(), 1.0));
 
     let texture: &[u8] = include_bytes!("../../../res/box.png");
     let data = std::io::Cursor::new(texture);

@@ -91,31 +91,6 @@ impl Transform {
         self * a
     }
 
-    /// Create a perspective matrix.
-    /// - `fovy` - Y dimension field of view (in cycles), 0.25 is standard
-    ///   domain: 0 < fovy < 0.5
-    /// - `aspect` - `window_height / window_width`
-    /// - `near` - Near clipping pane, domain: 0 < near
-    /// - `far` - Far clipping pane, domain: near < far
-    pub fn perspective(fovy: f32, aspect: f32, near: f32, far: f32) -> Self {
-        let f = 1.0 / (fovy * std::f32::consts::PI).tan();
-        let s = (f * aspect, f);
-
-        let zcoord_domain = near - far;
-        let zscale = (far + near) / zcoord_domain; // far / zcoord_domain;
-        let zwithw = (2.0 * far * near) / zcoord_domain; //far * near / zcoord_domain;
-
-        #[cfg_attr(rustfmt, rustfmt_skip)]
-        Self {
-            mat: [
-                [s.0, 0.0, 0.0, 0.0],
-                [0.0, s.1, 0.0, 0.0],
-                [0.0, 0.0, zscale, -1.0],
-                [0.0, 0.0, zwithw, 0.0],
-            ]
-        }
-    }
-
     pub(crate) fn as_ptr(&self) -> *const f32 {
         self.mat[0].as_ptr()
     }

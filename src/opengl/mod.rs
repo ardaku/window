@@ -595,6 +595,9 @@ pub struct OpenGL {
     shaders: HashMap<u32, ShaderData>,
     cam: Transform,
     height: f32,
+    fov: f32,
+    near: f32,
+    horizon: f32,
 }
 
 impl OpenGL {
@@ -669,6 +672,9 @@ impl OpenGL {
         };
 
         let height = 480.0 / 640.0;
+        let fov = 1.0 / (0.25 * std::f32::consts::PI).tan(); // 90 degrees
+        let near = 0.01; // 1cm
+        let horizon = 5000.0; // 5km
 
         let draw: OpenGL = OpenGL {
             display,
@@ -685,6 +691,9 @@ impl OpenGL {
             shaders: HashMap::new(),
             cam: Transform::new(),
             height,
+            fov,
+            near,
+            horizon,
         };
 
         Some(Box::new(draw))
@@ -826,7 +835,7 @@ impl Draw for OpenGL {
     fn draw(&mut self, shader: &dyn Nshader, shape: &mut dyn Ngroup) {
         let shaderdata = self.shaders.get_mut(&shader.program()).unwrap();
         if shaderdata.dirty_transform {
-            let mut matrix = (self.cam * Transform::from_mat4(shaderdata.matrix)).scale(2.0, -2.0 / self.height, 1.0).translate(-1.0, 1.0, 0.0);
+            let mut matrix = (Transform::from_mat4(shaderdata.matrix)).scale(2.0, -2.0 / self.height, -1.0).translate(-1.0, 1.0, 0.0) * self.cam * Transform::from_mat4([[self.fov, 0.0, 0.0, 0.0], [0.0, self.fov, 0.0, 0.0], [0.0, 0.0, (self.horizon + self.near) / (self.near - self.horizon), -1.0], [0.0, 0.0, (2.0 * self.horizon * self.near) / (self.near - self.horizon), 0.0]]);
             unsafe {
                 glUniformMatrix4fv(
                     shader.camera(),
