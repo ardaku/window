@@ -898,7 +898,7 @@ impl Draw for OpenGL {
                     gl_assert!("glEnable#DEPTH_TEST");
                 }
                 self.depth = true;
-            } else if shader.depth() && self.depth {
+            } else if !shader.depth() && self.depth {
                 unsafe {
                     glDisable(0x0B71 /*DEPTH_TEST*/);
                     gl_assert!("glDisable#DEPTH_TEST");
