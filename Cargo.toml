@@ -29,6 +29,8 @@ maintenance = { status = "actively-developed" }
 
 [dependencies]
 dl_api = { path = "../dl_api" }
+human = { path = "../human" }
+pasts = "0.4"
 
 [features]
 default = []
