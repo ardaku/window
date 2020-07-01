@@ -1,4 +1,4 @@
-use human::Input;
+use human::{Mode, Input, UiInput, GameInput, TextInput};
 use std::{cell::RefCell, future::Future, pin::Pin, task::{Context, Poll, Waker}, sync::atomic::{Ordering, AtomicBool}};
 
 // True for async thread, false for main thread.
@@ -41,4 +41,12 @@ pub(super) unsafe fn push_inputs(inputs: &[Input]) {
 
 pub(super) async fn input() -> Input {
     InputFuture.await
+}
+
+pub(super) fn keyboard_back() -> Input {
+    match human::mode_keyboard() {
+        Mode::Ui => Input::Ui(UiInput::Back),
+        Mode::Text => Input::Text(TextInput::Back),
+        Mode::Game => Input::Game(0, GameInput::Back),
+    }
 }
