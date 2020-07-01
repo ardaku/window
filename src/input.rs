@@ -4,7 +4,7 @@ pub use human::{Input, renumber, rumble, GameInput, Mode, TextInput, UiInput};
 use pasts::prelude::*;
 
 /// Get user input from all connected human interface devices.
-pub async fn input<'a>() -> Input<'a> {
+pub async fn input() -> Input {
     loop {
         match [human::input().fut(), crate::ffi::input().fut()].select().await {
             (0, Input::Text(_)) => { /* ignore terminal text */ },

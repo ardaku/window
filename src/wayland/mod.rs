@@ -1,3 +1,5 @@
+use human::{Input, UiInput};
+
 use dl_api::linker;
 
 use std::{
@@ -1239,6 +1241,9 @@ pub(super) struct Wayland {
     shm: *mut WlShm,
 
     redraw: fn(nanos: u64) -> (),
+    
+    // Async event queues.
+    input_queue: Vec<Input>,
 }
 
 impl Wayland {
@@ -1297,6 +1302,8 @@ impl Wayland {
                 shm: null_mut(),
 
                 redraw,
+                
+                input_queue: Vec::new(),
             });
             // Wayland window as pointer
             let window: *mut Wayland = &mut *wayland;
@@ -1389,17 +1396,16 @@ impl crate::Nwin for Wayland {
     fn run(&mut self) -> bool {
         let ret =
             unsafe { (self.client.wl_display_dispatch)(self.display.as_ptr()) };
+        if !self.input_queue.is_empty() {
+            unsafe { crate::ffi::push_inputs(self.input_queue.as_slice()) };
+            self.input_queue.clear();
+        }
 
         ret != -1 && self.running
     }
 
     fn dimensions(&self) -> (u16, u16) {
         (self.window_width as u16, self.window_height as u16)
-    }
-
-    fn key_held(&self, key: crate::Key) -> bool {
-        false
-        // self.keys_states & (1 << key as i8) != 0
     }
 }
 
@@ -1880,11 +1886,7 @@ extern "C" fn keyboard_handle_key(
                 119 => Break,
                 125 => System,
                 127 => Menu,
-                143 =>
-                /*Function Key should be ignored*/
-                {
-                    ExtraClick
-                }
+                143 => ExtraClick,
                 163 => FastForward,
                 164 => PausePlay,
                 165 => Rewind,
@@ -1975,7 +1977,7 @@ extern "C" fn pointer_handle_motion(
     x: i32,
     y: i32,
 ) {
-    let window: *mut Wayland = window.cast();
+    let window: &mut Wayland = unsafe { &mut *window.cast() };
 
     let x = x as f32 / 256.0;
     let y = y as f32 / 256.0;
@@ -1991,25 +1993,21 @@ extern "C" fn pointer_handle_button(
     button: u32,
     state: u32,
 ) {
-    let window: *mut Wayland = window.cast();
+    let window: &mut Wayland = unsafe { &mut *window.cast() };
 
     match button {
         0x110 /*BTN_LEFT*/ => {
-            // pressed.
-            if state != 0 {
-                /*if (*window).pointer_xy.1 < f32::from((*window).toolbar_height) {
-                    wl_proxy_marshal(
-                        (*c).toplevel,
-                        5, /*ZXDG_TOPLEVEL_V6_MOVE*/
-                        (*c).seat,
-                        serial,
-                    );
-                } else {*/
-                    println!("Press");
-                //}
+            window.input_queue.push(Input::Ui(if state != 0 {
+                UiInput::Press
             } else {
-                println!("Release");
-            }
+                UiInput::Release
+            }));
+            /*wl_proxy_marshal(
+                (*c).toplevel,
+                5, /*ZXDG_TOPLEVEL_V6_MOVE*/
+                (*c).seat,
+                serial,
+            );*/
         }
         0x111 /*BTN_RIGHT*/ => {}
         0x112 /*BTN_MIDDLE*/ => {}
@@ -2019,12 +2017,22 @@ extern "C" fn pointer_handle_button(
 }
 
 extern "C" fn pointer_handle_axis(
-    _window: *mut c_void,
+    window: *mut c_void,
     _pointer: *mut WlPointer,
     _time: u32,
-    _axis: u32,
-    _value: i32,
+    axis: u32,
+    value: i32,
 ) {
+    let window: &mut Wayland = unsafe { &mut *window.cast() };
+
+    window.input_queue.push(Input::Ui(match axis {
+        0 => UiInput::ScrollY(value as f64 / 2560.0),
+        1 => UiInput::ScrollX(value as f64 / 2560.0),
+        x => {
+            eprintln!("Unknown Wayland Axis {}", x);
+            return;
+        }
+    }));
 }
 
 extern "C" fn redraw_wl(

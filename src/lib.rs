@@ -77,8 +77,6 @@ trait Nwin {
     fn run(&mut self) -> bool;
     /// Get the window width & height.
     fn dimensions(&self) -> (u16, u16);
-    /// Get if a key is held down.
-    fn key_held(&self, key: crate::Key) -> bool;
 }
 
 trait Draw {
@@ -370,11 +368,6 @@ impl Window {
             &*shader.0,
             &mut *shape.0,
         );
-    }
-
-    /// If a key is being held down.
-    pub fn key(&self, key: Key) -> bool {
-        self.nwin.key_held(key)
     }
 
     /// Get the aspect ratio: `window_height / window_width`.
