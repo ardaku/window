@@ -174,8 +174,8 @@ trait Ngraphic {
     fn update(&mut self, updater: &mut dyn FnMut(&mut [u8], u16));
 }
 
-/// A graphic on the GPU.
-pub struct Graphic(Box<dyn Ngraphic>);
+/// A raster that has been uploaded to the GPU.
+pub struct RasterId(Box<dyn Ngraphic>);
 
 fn nearly_equal(a: f32, b: f32) -> bool {
     let abs_a = a.abs();
@@ -314,14 +314,14 @@ impl Window {
         pixels: &[u8],
         width: usize,
         height: usize,
-    ) -> Graphic {
-        Graphic(self.draw.graphic(pixels, width, height))
+    ) -> RasterId {
+        RasterId(self.draw.graphic(pixels, width, height))
     }
 
     /// Update RGBA graphic on the GPU.
     pub fn update_graphic(
         &mut self,
-        graphic: &mut Graphic,
+        graphic: &mut RasterId,
         closure: &mut dyn FnMut(&mut [u8], u16),
     ) {
         graphic.0.update(closure);
@@ -342,7 +342,7 @@ impl Window {
         &mut self,
         shader: &Shader,
         shape: &mut Group,
-        graphic: &Graphic,
+        graphic: &RasterId,
     ) {
         self.draw.bind_graphic(&*graphic.0);
         self.draw(shader, shape);
@@ -358,7 +358,7 @@ impl Window {
         &mut self,
         shader: &Shader,
         shape: &mut Group,
-        graphic: &Graphic,
+        graphic: &RasterId,
     ) {
         self.draw.bind_graphic(&*graphic.0);
         self.draw.toolbar(
