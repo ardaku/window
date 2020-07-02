@@ -24,11 +24,11 @@ macro_rules! shader {
     };
 }
 
+mod ffi;
+pub mod input;
 mod keycodes;
 mod mat4;
 mod shape;
-pub mod input;
-mod ffi;
 
 #[cfg(unix)]
 mod wayland;

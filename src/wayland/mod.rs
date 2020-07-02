@@ -3,11 +3,11 @@ use human::{Input, UiInput};
 use dl_api::linker;
 
 use std::{
+    convert::TryInto,
     ffi::{CStr, CString},
     os::raw::{c_char, c_int, c_uint, c_void},
     ptr::{null, null_mut, NonNull},
     str,
-    convert::TryInto,
 };
 
 /* */
@@ -1240,7 +1240,7 @@ pub(super) struct Wayland {
     shm: *mut WlShm,
 
     redraw: fn(nanos: u64) -> (),
-    
+
     // Async event queues.
     input_queue: Vec<Input>,
 }
@@ -1300,7 +1300,7 @@ impl Wayland {
                 shm: null_mut(),
 
                 redraw,
-                
+
                 input_queue: Vec::new(),
             });
             // Wayland window as pointer
@@ -1590,10 +1590,12 @@ extern "C" fn toplevel_configure(
                 }
             }
         }
-        
+
         if let Some(draw) = (*window).draw {
-            (*draw.as_ptr()).resize((*window).window_width.try_into().unwrap(), (*window).window_height.try_into().unwrap());
-            println!("RESIZe");
+            (*draw.as_ptr()).resize(
+                (*window).window_width.try_into().unwrap(),
+                (*window).window_height.try_into().unwrap(),
+            );
         }
     }
 }
@@ -1746,9 +1748,7 @@ extern "C" fn keyboard_handle_key(
 ) {
     let window: &mut Wayland = unsafe { &mut *wayland.cast() };
 
-    if key == 1 /*KEY_ESC*/ && state != 0 {
-        window.input_queue.push(crate::ffi::keyboard_back());
-    } else if key == 87 /*KEY_F11*/ && state != 0 {
+    if key == 87 /*KEY_F11*/ && state != 0 {
         (*window).configured = true;
 
         if (*window).fullscreen {
@@ -1779,142 +1779,138 @@ extern "C" fn keyboard_handle_key(
             );
         }
     } else {
-        use crate::Key::*;
+        let held = state != 0;
 
-        let offset = match key {
-            1 => Back,
-            2 => Num1,
-            3 => Num2,
-            4 => Num3,
-            5 => Num4,
-            6 => Num5,
-            7 => Num6,
-            8 => Num7,
-            9 => Num8,
-            10 => Num9,
-            11 => Num0,
-            12 => Minus,
-            13 => Equals,
-            14 => Backspace,
-            15 => Tab,
-            16 => Q,
-            17 => W,
-            18 => E,
-            19 => R,
-            20 => T,
-            21 => Y,
-            22 => U,
-            23 => I,
-            24 => O,
-            25 => P,
-            26 => SquareBracketOpen,
-            27 => SquareBracketClose,
-            28 => Enter,
-            29 => LeftCtrl,
-            30 => A,
-            31 => S,
-            32 => D,
-            33 => F,
-            34 => G,
-            35 => H,
-            36 => J,
-            37 => K,
-            38 => L,
-            39 => Semicolon,
-            40 => Quote,
-            41 => Backtick,
-            42 => LeftShift,
-            43 => Backslash,
-            44 => Z,
-            45 => X,
-            46 => C,
-            47 => V,
-            48 => B,
-            49 => N,
-            50 => M,
-            51 => Comma,
-            52 => Period,
-            53 => Slash,
-            54 => RightShift,
-            55 => NumpadMultiply,
-            56 => LeftAlt,
-            57 => Space,
-            58 => CapsLock,
-            59 => F1,
-            60 => F2,
-            61 => F3,
-            62 => F4,
-            63 => F5,
-            64 => F6,
-            65 => F7,
-            66 => F8,
-            67 => F9,
-            68 => F10,
-            69 => NumpadLock,
-            70 => ScrollLock,
-            71 => Numpad7,
-            72 => Numpad8,
-            73 => Numpad9,
-            74 => NumpadSubtract,
-            75 => Numpad4,
-            76 => Numpad5,
-            77 => Numpad6,
-            78 => NumpadAdd,
-            79 => Numpad1,
-            80 => Numpad2,
-            81 => Numpad3,
-            82 => Numpad0,
-            83 => NumpadDot,
-            87 => F11,
-            88 => F12,
-            96 => NumpadEnter,
-            97 => RightCtrl,
-            98 => NumpadDivide,
-            99 => PrintScreen,
-            100 => RightAlt,
-            102 => Home,
-            103 => Up,
-            104 => PageUp,
-            105 => Left,
-            106 => Right,
-            107 => End,
-            108 => Down,
-            109 => PageDown,
-            110 => Insert,
-            111 => Delete,
-            113 => Mute,
-            114 => VolumeDown,
-            115 => VolumeUp,
-            119 => Break,
-            125 => System,
-            127 => Menu,
-            143 => ExtraClick,
-            163 => FastForward,
-            164 => PausePlay,
-            165 => Rewind,
-            166 => Stop,
-            190 => MicrophoneToggle,
-            192 => TrackpadOn,
-            193 => TrackpadOff,
-            212 => CameraToggle,
-            224 => BrightnessDown,
-            225 => BrightnessUp,
-            247 => AirplaneMode,
-            e => {
-                eprintln!("Error: Unknown key combination: {}", e);
-                ExtraClick
-            }
-        } as i8;
-
-        if !offset.is_negative() {
-            let bit = 1u128 << offset;
-
-            if state == 0 {
-                println!("Key release {:b}", bit);
+        window.input_queue.push(
+            if let Some(input) = match key {
+                1 => crate::ffi::keyboard_back(held), // Back,
+                2 => crate::ffi::key_one(held),       // Num1,
+                3 => crate::ffi::key_two(held),       // Num2,
+                4 => crate::ffi::key_three(held),     // Num3,
+                5 => crate::ffi::key_four(held),      // Num4,
+                6 => crate::ffi::key_five(held),      // Num5,
+                7 => crate::ffi::key_six(held),       // Num6,
+                8 => crate::ffi::key_seven(held),     // Num7,
+                9 => crate::ffi::key_eight(held),     // Num8,
+                10 => crate::ffi::key_nine(held),     // Num9,
+                11 => crate::ffi::key_ten(held),      // Num0,
+                12 => crate::ffi::key_eleven(held),   // Minus,
+                13 => crate::ffi::key_twelve(held),   // Equals,
+                14 => return,                         // Backspace,
+                15 => crate::ffi::key_tab(held),      // Tab,
+                16 => return,                         // Q,
+                17 => crate::ffi::key_w(held),        // W,
+                18 => crate::ffi::key_e(held),        // E,
+                19 => crate::ffi::key_r(held),        // R,
+                20 => crate::ffi::key_t(held),        // T,
+                21 => return,                         // Y,
+                22 => crate::ffi::key_u(held),        // U,
+                23 => crate::ffi::key_i(held),        // I,
+                24 => return,                         // O,
+                25 => return,                         // P,
+                26 => return,                         // SquareBracketOpen,
+                27 => return,                         // SquareBracketClose,
+                28 => crate::ffi::key_enter(held),    // Enter,
+                29 => crate::ffi::key_ctrl(held),     // LeftCtrl,
+                30 => crate::ffi::key_a(held),        // A,
+                31 => crate::ffi::key_s(held),        // S,
+                32 => crate::ffi::key_d(held),        // D,
+                33 => crate::ffi::key_f(held),        // F,
+                34 => crate::ffi::key_g(held),        // G,
+                35 => crate::ffi::key_h(held),        // H,
+                36 => crate::ffi::key_j(held),        // J,
+                37 => crate::ffi::key_k(held),        // K,
+                38 => crate::ffi::key_l(held),        // L,
+                39 => return,                         // Semicolon,
+                40 => return,                         // Quote,
+                41 => return,                         // Backtick,
+                42 => crate::ffi::key_shift(held),    // LeftShift,
+                43 => crate::ffi::key_backslash(held), // Backslash,
+                44 => return,                         // Z,
+                45 => return,                         // X,
+                46 => return,                         // C,
+                47 => return,                         // V,
+                48 => return,                         // B,
+                49 => return,                         // N,
+                50 => return,                         // M,
+                51 => return,                         // Comma,
+                52 => return,                         // Period,
+                53 => return,                         // Slash,
+                54 => crate::ffi::key_shift(held),    // RightShift,
+                55 => crate::ffi::key_twelve(held),   // NumpadMultiply,
+                56 => crate::ffi::key_alt(held),      // LeftAlt,
+                57 => crate::ffi::key_space(held),    // Space,
+                58 => return,                         // CapsLock,
+                59 => return,                         // F1,
+                60 => return,                         // F2,
+                61 => return,                         // F3,
+                62 => return,                         // F4,
+                63 => return,                         // F5,
+                64 => return,                         // F6,
+                65 => return,                         // F7,
+                66 => return,                         // F8,
+                67 => return,                         // F9,
+                68 => return,                         // F10,
+                69 => crate::ffi::key_ten(held),      // NumpadLock,
+                70 => return,                         // ScrollLock,
+                71 => crate::ffi::key_seven(held),    // Numpad7,
+                72 => crate::ffi::key_eight(held),    // Numpad8,
+                73 => crate::ffi::key_nine(held),     // Numpad9,
+                74 => return,                         // NumpadSubtract,
+                75 => crate::ffi::key_four(held),     // Numpad4,
+                76 => crate::ffi::key_five(held),     // Numpad5,
+                77 => crate::ffi::key_six(held),      // Numpad6,
+                78 => return,                         // NumpadAdd,
+                79 => crate::ffi::key_one(held),      // Numpad1,
+                80 => crate::ffi::key_two(held),      // Numpad2,
+                81 => crate::ffi::key_three(held),    // Numpad3,
+                82 => return,                         // Numpad0,
+                83 => return,                         // NumpadDot,
+                87 => return,                         // F11,
+                88 => return,                         // F12,
+                96 => crate::ffi::key_enter(held),    // NumpadEnter,
+                97 => crate::ffi::key_ctrl(held),     // RightCtrl,
+                98 => crate::ffi::key_eleven(held),   // NumpadDivide,
+                99 => return,                         // PrintScreen,
+                100 => crate::ffi::key_alt(held),     // RightAlt,
+                102 => return,                        // Home,
+                103 => crate::ffi::key_up(held),      // Up,
+                104 => return,                        // PageUp,
+                105 => crate::ffi::key_left(held),    // Left,
+                106 => crate::ffi::key_right(held),   // Right,
+                107 => return,                        // End,
+                108 => crate::ffi::key_down(held),    // Down,
+                109 => return,                        // PageDown,
+                110 => return,                        // Insert,
+                111 => return,                        // Delete,
+                113 => return,                        // Mute,
+                114 => return,                        // VolumeDown,
+                115 => return,                        // VolumeUp,
+                119 => return,                        // Break,
+                125 => return,                        // System,
+                127 => return,                        // Menu,
+                143 => return,                        // ExtraClick,
+                163 => return,                        // FastForward,
+                164 => return,                        // PausePlay,
+                165 => return,                        // Rewind,
+                166 => return,                        // Stop,
+                190 => return,                        // MicrophoneToggle,
+                192 => return,                        // TrackpadOn,
+                193 => return,                        // TrackpadOff,
+                212 => return,                        // CameraToggle,
+                224 => return,                        // BrightnessDown,
+                225 => return,                        // BrightnessUp,
+                247 => return,                        // AirplaneMode,
+                e => {
+                    eprintln!("Error: Unknown key combination: {}", e);
+                    return; // ExtraClick
+                }
+            } {
+                input
             } else {
-                println!("Key press {:b}", bit);
-            }
-        }
+                return;
+            },
+        );
     }
 }
 

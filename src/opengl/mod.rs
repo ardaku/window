@@ -1,5 +1,5 @@
-use std::ffi::c_void;
 use std::collections::HashMap;
+use std::ffi::c_void;
 
 use super::Draw;
 use super::DrawHandle;
@@ -783,10 +783,18 @@ impl Draw for OpenGL {
         builder: crate::ShaderBuilder,
     ) -> Box<dyn Nshader> {
         let shader = Shader::new(builder);
-        self.shaders.insert(shader.program(), ShaderData {
-            dirty_transform: true,
-            matrix: [[1.0, 0.0, 0.0, 0.0], [0.0, 1.0, 0.0, 0.0], [0.0, 0.0, 1.0, 0.0], [0.0, 0.0, 0.0, 1.0]]
-        });
+        self.shaders.insert(
+            shader.program(),
+            ShaderData {
+                dirty_transform: true,
+                matrix: [
+                    [1.0, 0.0, 0.0, 0.0],
+                    [0.0, 1.0, 0.0, 0.0],
+                    [0.0, 0.0, 1.0, 0.0],
+                    [0.0, 0.0, 0.0, 1.0],
+                ],
+            },
+        );
         Box::new(shader)
     }
 
@@ -835,7 +843,27 @@ impl Draw for OpenGL {
     fn draw(&mut self, shader: &dyn Nshader, shape: &mut dyn Ngroup) {
         let shaderdata = self.shaders.get_mut(&shader.program()).unwrap();
         if shaderdata.dirty_transform {
-            let mut matrix = (Transform::from_mat4(shaderdata.matrix)).scale(2.0, -2.0 / self.height, -1.0).translate(-1.0, 1.0, 0.0) * self.cam * Transform::from_mat4([[self.fov, 0.0, 0.0, 0.0], [0.0, self.fov, 0.0, 0.0], [0.0, 0.0, (self.horizon + self.near) / (self.near - self.horizon), -1.0], [0.0, 0.0, (2.0 * self.horizon * self.near) / (self.near - self.horizon), 0.0]]);
+            let matrix = (Transform::from_mat4(shaderdata.matrix))
+                .scale(2.0, -2.0 / self.height, -1.0)
+                .translate(-1.0, 1.0, 0.0)
+                * self.cam
+                * Transform::from_mat4([
+                    [self.fov, 0.0, 0.0, 0.0],
+                    [0.0, self.fov, 0.0, 0.0],
+                    [
+                        0.0,
+                        0.0,
+                        (self.horizon + self.near) / (self.near - self.horizon),
+                        -1.0,
+                    ],
+                    [
+                        0.0,
+                        0.0,
+                        (2.0 * self.horizon * self.near)
+                            / (self.near - self.horizon),
+                        0.0,
+                    ],
+                ]);
             unsafe {
                 glUniformMatrix4fv(
                     shader.camera(),
@@ -936,11 +964,7 @@ impl Draw for OpenGL {
                         0x1406, /*GL_FLOAT*/
                         0,      /*GL_FALSE*/
                         stride,
-                        ptr.offset(if shader.depth() {
-                            3
-                        } else {
-                            2
-                        }),
+                        ptr.offset(if shader.depth() { 3 } else { 2 }),
                     );
                     gl_assert!("glVertexAttribPointer#COL");
                 }
@@ -1011,9 +1035,8 @@ impl Draw for OpenGL {
             }
         }
     }
-    
+
     fn resize(&mut self, width: u16, height: u16) {
-        println!("OpengGL resize");
         // Mark matrices to be updated to new aspect ratio.
         for shader in &mut self.shaders {
             shader.1.dirty_transform = true;
@@ -1162,10 +1185,7 @@ fn create_program(builder: crate::ShaderBuilder) -> Shader {
     }
 
     let camera = unsafe {
-        glGetUniformLocation(
-            program,
-            "cam\0".as_ptr() as *const _ as *const _,
-        )
+        glGetUniformLocation(program, "cam\0".as_ptr() as *const _ as *const _)
     };
     gl_assert!("glGetUniformLocation#cam");
     assert!(camera > -1);

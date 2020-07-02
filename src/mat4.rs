@@ -21,7 +21,7 @@ impl Transform {
             [0.0, 0.0, 0.0, 1.0],
         ])
     }
-    
+
     /// Create a new Transform from a 4x4 matrix.
     pub fn from_mat4(mat: [[f32; 4]; 4]) -> Self {
         Self { mat }

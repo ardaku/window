@@ -38,11 +38,7 @@ impl<'a> ShapeBuilder<'a> {
 
     /// Add a face to the shape.
     pub fn face(mut self, transform: Transform) -> Self {
-        let dimensions = if self.shader.0.depth() {
-            3
-        } else {
-            2
-        };
+        let dimensions = if self.shader.0.depth() { 3 } else { 2 };
         let components = if self.shader.0.blending() { 4 } else { 3 };
         let stride = dimensions
             + if self.shader.0.gradient() {
@@ -122,11 +118,7 @@ impl<'a> ShapeBuilder<'a> {
 
     /// Finish building the shape.
     pub fn finish(self) -> Shape {
-        let dimensions = if self.shader.0.depth() {
-            3
-        } else {
-            2
-        };
+        let dimensions = if self.shader.0.depth() { 3 } else { 2 };
         let components = if self.shader.0.gradient() {
             if self.shader.0.blending() {
                 4
