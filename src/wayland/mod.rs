@@ -1974,12 +1974,15 @@ extern "C" fn pointer_handle_motion(
     x: i32,
     y: i32,
 ) {
-    let window: &mut Wayland = unsafe { &mut *window.cast() };
+    let wayland: &mut Wayland = unsafe { &mut *window.cast() };
 
-    let x = x as f32 / 256.0;
-    let y = y as f32 / 256.0;
+    let w = (wayland.window_width as f64 * 256.0).recip();
 
-    println!("Pointer motion: {} {}", x, y);
+    let x = x as f64 * w;
+    let y = y as f64 * w;
+
+    wayland.input_queue.push(Input::Ui(UiInput::MoveX(x)));
+    wayland.input_queue.push(Input::Ui(UiInput::MoveY(y)));
 }
 
 extern "C" fn pointer_handle_button(
@@ -1999,6 +2002,7 @@ extern "C" fn pointer_handle_button(
             } else {
                 UiInput::Release
             }));
+            // FIXME: Ability to move the window
             /*wl_proxy_marshal(
                 (*c).toplevel,
                 5, /*ZXDG_TOPLEVEL_V6_MOVE*/
