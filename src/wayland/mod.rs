@@ -312,10 +312,6 @@ struct WlRegistry(c_void);
 #[repr(transparent)]
 struct WlCompositor(c_void);
 #[repr(transparent)]
-struct WlShellSurface(c_void);
-#[repr(transparent)]
-struct WlShell(c_void);
-#[repr(transparent)]
 struct WlSeat(c_void);
 #[repr(transparent)]
 struct WlCallback(c_void);
@@ -573,52 +569,62 @@ struct WlPointerListener {
 #[repr(C)]
 struct WlTouchListener {
     // Touch down event at beginning of touch sequence.
-    down: extern "C" fn(
-        data: *mut c_void,
-        touch: *mut WlTouch,
-        serial: u32,
-        time: u32,
-        surface: *mut WlSurface,
-        id: i32,
-        x: i32,
-        y: i32,
-    ) -> (),
+    down: Option<
+        extern "C" fn(
+            data: *mut c_void,
+            touch: *mut WlTouch,
+            serial: u32,
+            time: u32,
+            surface: *mut WlSurface,
+            id: i32,
+            x: i32,
+            y: i32,
+        ) -> (),
+    >,
     // End of a touch event sequence.
-    up: extern "C" fn(
-        data: *mut c_void,
-        touch: *mut WlTouch,
-        serial: u32,
-        time: u32,
-        id: i32,
-    ) -> (),
+    up: Option<
+        extern "C" fn(
+            data: *mut c_void,
+            touch: *mut WlTouch,
+            serial: u32,
+            time: u32,
+            id: i32,
+        ) -> (),
+    >,
     // Update of touch point coordinates.
-    motion: extern "C" fn(
-        data: *mut c_void,
-        touch: *mut WlTouch,
-        time: u32,
-        id: i32,
-        x: i32,
-        y: i32,
-    ) -> (),
+    motion: Option<
+        extern "C" fn(
+            data: *mut c_void,
+            touch: *mut WlTouch,
+            time: u32,
+            id: i32,
+            x: i32,
+            y: i32,
+        ) -> (),
+    >,
     // End of touch frame event.
-    frame: extern "C" fn(data: *mut c_void, touch: *mut WlTouch) -> (),
+    frame: Option<extern "C" fn(data: *mut c_void, touch: *mut WlTouch) -> ()>,
     // Global gesture, don't process touch stream anymore.
-    cancel: extern "C" fn(data: *mut c_void, touch: *mut WlTouch) -> (),
+    cancel: Option<extern "C" fn(data: *mut c_void, touch: *mut WlTouch) -> ()>,
     // Touch event changed shape (ellipse).
-    shape: extern "C" fn(
-        data: *mut c_void,
-        touch: *mut WlTouch,
-        id: i32,
-        major: i32,
-        minor: i32,
-    ) -> (),
+    shape: Option<
+        extern "C" fn(
+            data: *mut c_void,
+            touch: *mut WlTouch,
+            id: i32,
+            major: i32,
+            minor: i32,
+        ) -> (),
+    >,
     // Update orientation of touch point
-    orientation: extern "C" fn(
-        data: *mut c_void,
-        touch: *mut WlTouch,
-        id: i32,
-        orientation: i32,
-    ) -> (),
+    orientation: Option<
+        extern "C" fn(
+            data: *mut c_void,
+            touch: *mut WlTouch,
+            id: i32,
+            orientation: i32,
+        ) -> (),
+    >,
 }
 
 /* * From wayland-cursor.h  * */
@@ -713,6 +719,15 @@ const NIL: *mut c_void = null_mut();
 static FRAME_LISTENER: WlCallbackListener = WlCallbackListener {
     done: Some(redraw_wl),
 };
+static TOUCH_LISTENER: WlTouchListener = WlTouchListener {
+    down: Some(touch_handle_down),
+    up: Some(touch_handle_up),
+    motion: Some(touch_handle_motion),
+    frame: Some(touch_handle_frame),
+    cancel: Some(touch_handle_cancel),
+    shape: Some(touch_handle_shape),
+    orientation: Some(touch_handle_orientation),
+};
 static KEYBOARD_LISTENER: WlKeyboardListener = WlKeyboardListener {
     keymap: Some(keyboard_handle_keymap),
     enter: Some(keyboard_handle_enter),
@@ -805,11 +820,11 @@ impl WaylandClient {
     }
 
     // Inline Functions From include/wayland-client-protocol.h
-    #[inline(always)]
+    /*#[inline(always)]
     unsafe fn surface_destroy(&self, surface: *mut WlSurface) {
         (self.wl_proxy_marshal)(surface.cast(), 0 /*WL_SURFACE_DESTROY*/);
         (self.wl_proxy_destroy)(surface.cast());
-    }
+    }*/
     #[inline(always)]
     unsafe fn pointer_set_cursor(
         &self,
@@ -1087,7 +1102,7 @@ impl WaylandClient {
         &self,
         toplevel: *mut ZxdgToplevel,
         title: *const c_char,
-    ) -> () {
+    ) {
         (self.wl_proxy_marshal)(
             toplevel.cast(),
             2, /*ZXDG_TOPLEVEL_V6_SET_TITLE*/
@@ -1099,7 +1114,7 @@ impl WaylandClient {
         &self,
         toplevel: *mut ZxdgToplevel,
         title: *const c_char,
-    ) -> () {
+    ) {
         (self.wl_proxy_marshal)(
             toplevel.cast(),
             3, /*ZXDG_TOPLEVEL_V6_SET_APP_ID*/
@@ -1196,7 +1211,7 @@ linker!(extern "C" WaylandCursor "libwayland-cursor.so.0" {
 
 // Wrapper around Wayland Libraries
 pub(super) struct Wayland {
-    // 
+    //
     window: *mut crate::Window,
 
     // Draw
@@ -1209,7 +1224,6 @@ pub(super) struct Wayland {
 
     // Client
     display: NonNull<WlDisplay>,
-    registry: *mut WlRegistry,
     callback: *mut WlCallback,
     compositor: *mut WlCompositor,
     surface: *mut WlSurface,
@@ -1226,9 +1240,6 @@ pub(super) struct Wayland {
     window_width: c_int,
     window_height: c_int,
     refresh_rate: f64,
-    // Millisecond counter on last frame.
-    last_millis: u32,
-    start_time: u32,
     // FIXME: Event based rather than state based.
     is_restored: bool,
     fullscreen: bool,
@@ -1246,6 +1257,14 @@ pub(super) struct Wayland {
 
     // Async event queues.
     input_queue: Vec<Input>,
+
+    // Function to calculate if the window should move
+    move_: fn(x: f64, y: f64) -> bool,
+    move_state: bool,
+}
+
+fn move_dummy(_x: f64, _y: f64) -> bool {
+    false
 }
 
 impl Wayland {
@@ -1274,7 +1293,6 @@ impl Wayland {
                 egl,
                 cursor,
                 display,
-                registry,
                 callback: null_mut(),
                 compositor: null_mut(),
                 surface: null_mut(),
@@ -1290,8 +1308,6 @@ impl Wayland {
                 restore_height: 360,
                 window_width: 640,
                 window_height: 360,
-                last_millis: 0,
-                start_time: 0,
                 refresh_rate: 0.0,
                 is_restored: false,
                 fullscreen: false,
@@ -1306,6 +1322,9 @@ impl Wayland {
                 redraw,
 
                 input_queue: Vec::new(),
+
+                move_state: false,
+                move_: move_dummy,
             });
             // Wayland window as pointer
             let window: *mut Wayland = &mut *wayland;
@@ -1342,7 +1361,7 @@ impl Wayland {
                 window.cast(),
             );
             // Set Window & App Title
-            let mut window_title = CString::new(name).unwrap();
+            let window_title = CString::new(name).unwrap();
             wayland.client.zxdg_toplevel_v6_set_title(
                 wayland.toplevel,
                 window_title.as_ptr(),
@@ -1561,38 +1580,36 @@ extern "C" fn toplevel_configure(
             (*window).configured = false;
             (*window).window_width = width;
             (*window).window_height = height;
+        } else if (*window).fullscreen {
+        } else if width != 0 && height != 0 {
+            if (*window).is_restored {
+                (*window).restore_width = (*window).window_width;
+                (*window).restore_height = (*window).window_height;
+            }
+            (*window).is_restored = false;
+            if !(*window).egl_window.is_null() {
+                ((*window).egl.wl_egl_window_resize)(
+                    (*window).egl_window,
+                    width,
+                    height,
+                    0,
+                    0,
+                );
+            }
+            (*window).window_width = width;
+            (*window).window_height = height;
         } else {
-            if (*window).fullscreen {
-            } else if width != 0 && height != 0 {
-                if (*window).is_restored {
-                    (*window).restore_width = (*window).window_width;
-                    (*window).restore_height = (*window).window_height;
-                }
-                (*window).is_restored = false;
-                if !(*window).egl_window.is_null() {
-                    ((*window).egl.wl_egl_window_resize)(
-                        (*window).egl_window,
-                        width,
-                        height,
-                        0,
-                        0,
-                    );
-                }
-                (*window).window_width = width;
-                (*window).window_height = height;
-            } else {
-                (*window).window_width = (*window).restore_width;
-                (*window).window_height = (*window).restore_height;
-                (*window).is_restored = true;
-                if !(*window).egl_window.is_null() {
-                    ((*window).egl.wl_egl_window_resize)(
-                        (*window).egl_window,
-                        (*window).restore_width,
-                        (*window).restore_height,
-                        0,
-                        0,
-                    );
-                }
+            (*window).window_width = (*window).restore_width;
+            (*window).window_height = (*window).restore_height;
+            (*window).is_restored = true;
+            if !(*window).egl_window.is_null() {
+                ((*window).egl.wl_egl_window_resize)(
+                    (*window).egl_window,
+                    (*window).restore_width,
+                    (*window).restore_height,
+                    0,
+                    0,
+                );
             }
         }
 
@@ -1695,9 +1712,11 @@ extern "C" fn seat_handle_capabilities(
         let has_touch = (caps & WlSeatCapability::Touch as u32) != 0;
         if has_touch && (*window).touch.is_null() {
             (*window).touch = (*window).client.seat_get_touch(seat);
-
-        // FIXME Allow Touch Events
-        // (*window).client.touch_add_listener((*window).touch, &touch_listener, window.cast());
+            (*window).client.touch_add_listener(
+                (*window).touch,
+                &TOUCH_LISTENER,
+                window.cast(),
+            );
         } else if !has_touch && !(*window).touch.is_null() {
             ((*window).client.wl_proxy_destroy)((*window).touch.cast());
             (*window).touch = std::ptr::null_mut();
@@ -1715,6 +1734,67 @@ extern "C" fn handle_xdg_shell_ping(
     unsafe {
         (*window).client.zxdg_shell_v6_pong(shell, serial);
     }
+}
+
+extern "C" fn touch_handle_down(
+    _window: *mut c_void,
+    _touch: *mut WlTouch,
+    _serial: u32,
+    _time: u32,
+    _surface: *mut WlSurface,
+    id: i32,
+    x: i32,
+    y: i32,
+) {
+    println!("Touch::Down {} {} {}", id, x, y);
+}
+
+extern "C" fn touch_handle_up(
+    _window: *mut c_void,
+    _touch: *mut WlTouch,
+    _serial: u32,
+    _time: u32,
+    id: i32,
+) {
+    println!("Touch::Up {}", id);
+}
+
+extern "C" fn touch_handle_motion(
+    _window: *mut c_void,
+    _touch: *mut WlTouch,
+    _time: u32,
+    id: i32,
+    x: i32,
+    y: i32,
+) {
+    println!("Touch::Motion {} {} {}", id, x, y);
+}
+
+extern "C" fn touch_handle_frame(_data: *mut c_void, _touch: *mut WlTouch) {
+    println!("Touch::Frame");
+}
+
+extern "C" fn touch_handle_cancel(_data: *mut c_void, _touch: *mut WlTouch) {
+    println!("Touch::Cancel");
+}
+
+extern "C" fn touch_handle_shape(
+    _data: *mut c_void,
+    _touch: *mut WlTouch,
+    id: i32,
+    major: i32,
+    minor: i32,
+) {
+    println!("Touch::Shape {} {} {}", id, major, minor);
+}
+
+extern "C" fn touch_handle_orientation(
+    _data: *mut c_void,
+    _touch: *mut WlTouch,
+    id: i32,
+    orientation: i32,
+) {
+    println!("Touch::Orientation {} {}", id, orientation);
 }
 
 extern "C" fn keyboard_handle_keymap(
@@ -1986,6 +2066,8 @@ extern "C" fn pointer_handle_motion(
     let x = x as f64 * w;
     let y = y as f64 * w;
 
+    wayland.move_state = (wayland.move_)(x, y);
+
     wayland.input_queue.push(Input::Ui(UiInput::MoveX(x)));
     wayland.input_queue.push(Input::Ui(UiInput::MoveY(y)));
 }
@@ -1999,21 +2081,25 @@ extern "C" fn pointer_handle_button(
     state: u32,
 ) {
     let window: &mut Wayland = unsafe { &mut *window.cast() };
+    let pressed = state != 0;
 
     match button {
         0x110 /*BTN_LEFT*/ => {
-            window.input_queue.push(Input::Ui(if state != 0 {
+            window.input_queue.push(Input::Ui(if pressed {
                 UiInput::Press
             } else {
                 UiInput::Release
             }));
-            // FIXME: Ability to move the window
-            /*wl_proxy_marshal(
-                (*c).toplevel,
-                5, /*ZXDG_TOPLEVEL_V6_MOVE*/
-                (*c).seat,
-                serial,
-            );*/
+            if window.move_state {
+                unsafe {
+                    (window.client.wl_proxy_marshal)(
+                        window.toplevel.cast(),
+                        5, /*ZXDG_TOPLEVEL_V6_MOVE*/
+                        window.seat,
+                        serial,
+                    );
+                }
+            }
         }
         0x111 /*BTN_RIGHT*/ => {}
         0x112 /*BTN_MIDDLE*/ => {}
@@ -2044,7 +2130,7 @@ extern "C" fn pointer_handle_axis(
 extern "C" fn redraw_wl(
     data: *mut c_void,
     callback: *mut WlCallback,
-    millis: u32,
+    _millis: u32, // Use refresh rate instead
 ) {
     let wayland: &mut Wayland = unsafe { &mut *data.cast() };
 
@@ -2058,11 +2144,10 @@ extern "C" fn redraw_wl(
         (*wayland.draw.unwrap().as_ptr()).begin_draw();
 
         // Draw user-defined objects.
-        (wayland.redraw)(unsafe { &mut *wayland.window }, wayland.refresh_rate);
+        (wayland.redraw)(&mut *wayland.window, wayland.refresh_rate);
 
         // Get ready for next frame.
-        wayland.callback =
-            wayland.client.surface_frame((*wayland).surface);
+        wayland.callback = wayland.client.surface_frame((*wayland).surface);
         wayland.client.callback_add_listener(
             wayland.callback,
             &FRAME_LISTENER,

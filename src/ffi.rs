@@ -142,9 +142,8 @@ pub(super) fn key_d(held: bool) -> Option<Input> {
 
 fn key_num(held: bool, number: u8) -> Option<Input> {
     if held {
-        match human::mode_keyboard() {
-            Mode::Game => return Some(Input::Game(0, GameInput::Slot(number))),
-            _ => {}
+        if let Mode::Game = human::mode_keyboard() {
+            return Some(Input::Game(0, GameInput::Slot(number)));
         }
     }
     None

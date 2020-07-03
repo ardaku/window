@@ -48,13 +48,13 @@ impl Transform {
     /// - `y`: axis-vector y.
     /// - `z`: axis-vector z.
     /// - `c`: angle in cycles.
-    pub fn rotate(self, x: f32, y: f32, z: f32, c: f32) -> Self {
+    pub fn rotate(self, x: f32, y: f32, z: f32, cycles: f32) -> Self {
         // Step 1. Normalize xyz rotation vector.
         let length = ((x * x) + (y * y) + (z * z)).sqrt();
         let (x, y, z) = (x / length, y / length, z / length);
 
         // Step 2. Get quaternion vector.
-        let angle = c * std::f32::consts::PI;
+        let angle = cycles * std::f32::consts::PI;
         let scalar = angle.sin();
         let (x, y, z) = (x * scalar, y * scalar, z * scalar);
 
@@ -78,7 +78,7 @@ impl Transform {
         let sz2 = z2 * scalar;
         let sx2 = x2 * scalar;
 
-        #[cfg_attr(rustfmt, rustfmt_skip)]
+        #[rustfmt::skip]
         let a = Self {
             mat: [
                 [1.0 - yy2 - zz2, xy2 + sz2, xz2 - sy2, 0.0],

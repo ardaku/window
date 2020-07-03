@@ -72,6 +72,7 @@ trait Nwin {
     /// Get a pointer that refers to this window for interfacing.
     fn handle(&self) -> NwinHandle;
     /// Connect window to the drawing context.
+    #[allow(clippy::borrowed_box)] // Nope, this is actually required
     fn connect(&mut self, draw: &mut Box<dyn Draw>);
     /// Get the next frame.  Return false on quit.
     fn run(&mut self, window: *mut crate::Window) -> bool;
@@ -105,17 +106,8 @@ trait Draw {
     ) -> Box<dyn Ngraphic>;
     /// Use a graphic.
     fn bind_graphic(&mut self, graphic: &dyn Ngraphic);
-    /// Render toolbar with width & height.
-    fn toolbar(
-        &mut self,
-        w: u16,
-        height: u16,
-        toolbar_height: u16,
-        shader: &dyn Nshader,
-        shape: &mut dyn Ngroup,
-    );
     /// Set camera
-    fn camera(&mut self, shader: &dyn Nshader, cam: Transform);
+    fn camera(&mut self, cam: Transform);
     /// Set tint
     fn tint(&mut self, shader: &dyn Nshader, tint: [f32; 4]);
     /// Window resize
@@ -236,7 +228,10 @@ pub struct Window {
 
 impl Window {
     /// Start the Wayland + OpenGL application.
-    pub fn new(name: &str, run: fn(window: &mut Window, nanos: f64) -> ()) -> Self {
+    pub fn new(
+        name: &str,
+        run: fn(window: &mut Window, nanos: f64) -> (),
+    ) -> Self {
         /*********************/
         /* Create The Window */
         /*********************/
@@ -329,8 +324,8 @@ impl Window {
     }
 
     /// Set camera coordinates for a shader.
-    pub fn camera(&mut self, shader: &Shader, cam: Transform) {
-        self.draw.camera(&*shader.0, cam)
+    pub fn camera(&mut self, cam: Transform) {
+        self.draw.camera(cam)
     }
 
     /// Set RGBA tint for a shader.
@@ -352,23 +347,6 @@ impl Window {
     /// Draw a group.
     pub fn draw(&mut self, shader: &Shader, group: &Group) {
         self.draw.draw(&*shader.0, &*group.0);
-    }
-
-    /// Draw the toolbar.
-    fn draw_toolbar(
-        &mut self,
-        shader: &Shader,
-        shape: &mut Group,
-        graphic: &RasterId,
-    ) {
-        self.draw.bind_graphic(&*graphic.0);
-        self.draw.toolbar(
-            self.nwin.dimensions().0,
-            self.nwin.dimensions().1,
-            0, // self.toolbar_height,
-            &*shader.0,
-            &mut *shape.0,
-        );
     }
 
     /// Get the aspect ratio: `window_height / window_width`.

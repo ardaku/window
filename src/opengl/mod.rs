@@ -1,6 +1,6 @@
+use std::cell::Cell;
 use std::collections::HashMap;
 use std::ffi::c_void;
-use std::cell::Cell;
 
 use super::Draw;
 use super::DrawHandle;
@@ -51,7 +51,7 @@ macro_rules! gl_assert {
 
 #[cfg(not(feature = "gpu-debugging"))]
 macro_rules! gl_assert {
-    ($x:expr) => { };
+    ($x:expr) => {};
 }
 
 #[link(name = "EGL")]
@@ -95,17 +95,17 @@ extern "C" {
 
     // OpenGL
     fn glCreateProgram() -> u32;
-    fn glAttachShader(program: u32, shader: u32) -> ();
-    fn glLinkProgram(program: u32) -> ();
-    fn glGetProgramiv(program: u32, pname: u32, params: *mut i32) -> ();
+    fn glAttachShader(program: u32, shader: u32);
+    fn glLinkProgram(program: u32);
+    fn glGetProgramiv(program: u32, pname: u32, params: *mut i32);
     fn glGetProgramInfoLog(
         program: u32,
         max_len: i32,
         length: *mut i32,
         info_log: *mut i8,
-    ) -> ();
-    fn glUseProgram(program: u32) -> ();
-    fn glBindAttribLocation(program: u32, index: u32, name: *const i8) -> ();
+    );
+    fn glUseProgram(program: u32);
+    fn glBindAttribLocation(program: u32, index: u32, name: *const i8);
     fn glGetUniformLocation(program: u32, name: *const i8) -> i32;
     fn glCreateShader(shader_type: u32) -> u32;
     fn glShaderSource(
@@ -113,25 +113,25 @@ extern "C" {
         count: i32,
         string: *const *const i8,
         length: *const i32,
-    ) -> ();
-    fn glCompileShader(shader: u32) -> ();
-    fn glGetShaderiv(shader: u32, pname: u32, params: *mut i32) -> ();
+    );
+    fn glCompileShader(shader: u32);
+    fn glGetShaderiv(shader: u32, pname: u32, params: *mut i32);
     fn glGetShaderInfoLog(
         shader: u32,
         max_length: i32,
         length: *mut i32,
         infoLog: *mut i8,
-    ) -> ();
+    );
     //
     fn glUniformMatrix4fv(
         location: i32,
         count: i32,
         transpose: u8,
         value: *const c_void,
-    ) -> ();
-    fn glUniform4f(location: i32, v0: f32, v1: f32, v2: f32, v3: f32) -> ();
-    fn glClearColor(red: f32, green: f32, blue: f32, alpha: f32) -> ();
-    fn glClear(mask: u32) -> ();
+    );
+    fn glUniform4f(location: i32, v0: f32, v1: f32, v2: f32, v3: f32);
+    fn glClearColor(red: f32, green: f32, blue: f32, alpha: f32);
+    fn glClear(mask: u32);
     fn glVertexAttribPointer(
         indx: u32,
         size: i32,
@@ -139,36 +139,31 @@ extern "C" {
         normalized: u32,
         stride: i32,
         ptr: *const f32,
-    ) -> ();
-    fn glDisable(cap: u32) -> ();
-    fn glEnable(cap: u32) -> ();
-    fn glEnableVertexAttribArray(index: u32) -> ();
-    fn glDisableVertexAttribArray(index: u32) -> ();
+    );
+    fn glDisable(cap: u32);
+    fn glEnable(cap: u32);
+    fn glEnableVertexAttribArray(index: u32);
+    fn glDisableVertexAttribArray(index: u32);
     fn glDrawElements(
         mode: u32,
         count: i32,
         draw_type: u32,
         indices: *const c_void,
-    ) -> ();
-    fn glGenBuffers(n: i32, buffers: *mut u32) -> ();
-    fn glBindBuffer(target: u32, buffer: u32) -> ();
-    fn glBufferData(
-        target: u32,
-        size: isize,
-        data: *const c_void,
-        usage: u32,
-    ) -> ();
+    );
+    fn glGenBuffers(n: i32, buffers: *mut u32);
+    fn glBindBuffer(target: u32, buffer: u32);
+    fn glBufferData(target: u32, size: isize, data: *const c_void, usage: u32);
     fn glBufferSubData(
         target: u32,
         offs: isize,
         size: isize,
         data: *const c_void,
-    ) -> ();
-    fn glDeleteBuffers(n: i32, buffers: *const u32) -> ();
+    );
+    fn glDeleteBuffers(n: i32, buffers: *const u32);
     // fn glGetString(name: u32) -> *const u8;
-    fn glGenTextures(n: u32, textures: *mut u32) -> ();
-    fn glBindTexture(target: u32, texture: u32) -> ();
-    fn glTexParameteri(target: u32, pname: u32, param: i32) -> ();
+    fn glGenTextures(n: u32, textures: *mut u32);
+    fn glBindTexture(target: u32, texture: u32);
+    fn glTexParameteri(target: u32, pname: u32, param: i32);
     fn glTexImage2D(
         target: u32,
         level: i32,
@@ -179,10 +174,10 @@ extern "C" {
         format: u32,
         stype: u32,
         pixels: *const u8,
-    ) -> ();
+    );
     fn glGenerateMipmap(target: u32);
-    fn glViewport(x: i32, y: i32, width: i32, height: i32) -> ();
-    fn glBlendFuncSeparate(a: u32, b: u32, c: u32, d: u32) -> ();
+    fn glViewport(x: i32, y: i32, width: i32, height: i32);
+    fn glBlendFuncSeparate(a: u32, b: u32, c: u32, d: u32);
 }
 
 /// A shader.  Shaders are a program that runs on the GPU to render a `Shape`.
@@ -601,6 +596,7 @@ pub struct OpenGL {
 
 impl OpenGL {
     #[cfg(unix)]
+    #[allow(clippy::new_ret_no_self)] // It's basically Self, in a weird way.
     pub(super) fn new(nwin: &mut dyn crate::Nwin) -> Option<Box<dyn Draw>> {
         let (display, config, context) = unsafe {
             // Get EGL Display from Window.
@@ -799,24 +795,6 @@ impl Draw for OpenGL {
 
     fn group_new(&mut self) -> Box<dyn Ngroup> {
         Box::new(Group::new())
-    }
-
-    fn toolbar(
-        &mut self,
-        w: u16,
-        h: u16,
-        toolbar_height: u16,
-        shader: &dyn Nshader,
-        shape: &mut dyn Ngroup,
-    ) {
-        /*let w = i32::from(w);
-        let h = i32::from(h);
-        let toolbar_height = i32::from(toolbar_height);
-        unsafe {
-            glViewport(0, h - toolbar_height, w, toolbar_height);
-            self.draw(shader, shape);
-            glViewport(0, 0, w, h - toolbar_height);
-        }*/
     }
 
     fn begin_draw(&mut self) {
@@ -1018,7 +996,7 @@ impl Draw for OpenGL {
         }
     }
 
-    fn camera(&mut self, shader: &dyn Nshader, cam: crate::Transform) {
+    fn camera(&mut self, cam: crate::Transform) {
         self.cam = cam;
         // Mark matrices to be updated with the new transform.
         for shader in &mut self.shaders {
