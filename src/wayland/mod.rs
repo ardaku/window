@@ -7,6 +7,7 @@ use std::{
     ffi::{CStr, CString},
     os::raw::{c_char, c_int, c_uint, c_void},
     ptr::{null, null_mut, NonNull},
+    time::Duration,
     str,
 };
 
@@ -1239,7 +1240,7 @@ pub(super) struct Wayland {
     restore_height: c_int,
     window_width: c_int,
     window_height: c_int,
-    refresh_rate: f64,
+    refresh_rate: Duration,
     // FIXME: Event based rather than state based.
     is_restored: bool,
     fullscreen: bool,
@@ -1253,7 +1254,7 @@ pub(super) struct Wayland {
     cursor_theme: *mut WlCursorTheme,
     shm: *mut WlShm,
 
-    redraw: fn(window: &mut crate::Window, nanos: f64) -> (),
+    redraw: fn(window: &mut crate::Window, nanos: Duration) -> (),
 
     // Async event queues.
     input_queue: Vec<Input>,
@@ -1270,7 +1271,7 @@ fn move_dummy(_x: f64, _y: f64) -> bool {
 impl Wayland {
     pub(super) fn new(
         name: &str,
-        redraw: fn(window: &mut crate::Window, nanos: f64) -> (),
+        redraw: fn(window: &mut crate::Window, nanos: Duration) -> (),
     ) -> Result<Box<Self>, String> {
         let client = WaylandClient::new()
             .map_err(|e| format!("Wayland Client {}", e))?;
@@ -1308,7 +1309,7 @@ impl Wayland {
                 restore_height: 360,
                 window_width: 640,
                 window_height: 360,
-                refresh_rate: 0.0,
+                refresh_rate: Duration::new(0, 0),
                 is_restored: false,
                 fullscreen: false,
                 configured: false,
@@ -1656,10 +1657,8 @@ extern "C" fn output_mode(
     let window: *mut Wayland = data.cast();
 
     unsafe {
-        // Convert from frames per 1000 seconds to seconds per frame.
-        let refresh = (f64::from(refresh) * 0.001).recip();
-        // Convert seconds to nanoseconds.
-        (*window).refresh_rate = refresh * 1_000_000_000.0;
+        // Convert from frames per 1000 seconds to `Duration` per frame.
+        (*window).refresh_rate = Duration::from_secs(1000).div_f64(refresh as f64);
     }
 }
 

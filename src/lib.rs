@@ -26,7 +26,6 @@ macro_rules! shader {
 
 mod ffi;
 pub mod input;
-mod keycodes;
 mod mat4;
 mod shape;
 
@@ -36,7 +35,6 @@ mod wayland;
 #[cfg(not(any(target_os = "macos", target_os = "ios")))]
 mod opengl;
 
-pub use self::keycodes::*;
 pub use self::mat4::*;
 pub use self::shape::*;
 
@@ -230,7 +228,7 @@ impl Window {
     /// Start the Wayland + OpenGL application.
     pub fn new(
         name: &str,
-        run: fn(window: &mut Window, nanos: f64) -> (),
+        run: fn(window: &mut Window, elapsed: std::time::Duration) -> (),
     ) -> Self {
         /*********************/
         /* Create The Window */
