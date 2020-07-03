@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 use std::ffi::c_void;
+use std::cell::Cell;
 
 use super::Draw;
 use super::DrawHandle;
@@ -50,9 +51,7 @@ macro_rules! gl_assert {
 
 #[cfg(not(feature = "gpu-debugging"))]
 macro_rules! gl_assert {
-    ($x:expr) => {
-        $x
-    };
+    ($x:expr) => { };
 }
 
 #[link(name = "EGL")]
@@ -309,9 +308,9 @@ pub struct Group {
     indices: Vec<u32>,
     vertex_buf: u32,
     vertices: Vec<f32>,
-    dirty_vertex_size: bool,
-    dirty_index_size: bool,
-    dirty_data: bool,
+    dirty_vertex_size: Cell<bool>,
+    dirty_index_size: Cell<bool>,
+    dirty_data: Cell<bool>,
 }
 
 impl Group {
@@ -325,9 +324,9 @@ impl Group {
             indices,
             vertex_buf,
             vertices,
-            dirty_vertex_size: false,
-            dirty_index_size: false,
-            dirty_data: false,
+            dirty_vertex_size: Cell::new(false),
+            dirty_index_size: Cell::new(false),
+            dirty_data: Cell::new(false),
         }
     }
 }
@@ -337,15 +336,15 @@ impl Ngroup for Group {
         self.indices.len() as i32
     }
 
-    fn bind(&mut self) {
-        if self.dirty_data {
-            if self.dirty_vertex_size {
+    fn bind(&self) {
+        if self.dirty_data.get() {
+            if self.dirty_vertex_size.get() {
                 vbo_resize::<f32>(
                     GL_ARRAY_BUFFER,
                     self.vertex_buf,
                     &self.vertices,
                 );
-                self.dirty_vertex_size = false;
+                self.dirty_vertex_size.set(false);
             } else {
                 vbo_set::<f32>(
                     GL_ARRAY_BUFFER,
@@ -355,13 +354,13 @@ impl Ngroup for Group {
                     &self.vertices,
                 );
             }
-            if self.dirty_index_size {
+            if self.dirty_index_size.get() {
                 vbo_resize::<u32>(
                     GL_ELEMENT_ARRAY_BUFFER,
                     self.index_buf,
                     &self.indices,
                 );
-                self.dirty_index_size = false;
+                self.dirty_index_size.set(false);
             } else {
                 vbo_set::<u32>(
                     GL_ELEMENT_ARRAY_BUFFER,
@@ -371,7 +370,7 @@ impl Ngroup for Group {
                     &self.indices,
                 );
             }
-            self.dirty_data = false;
+            self.dirty_data.set(false);
         }
 
         debug_assert_ne!(self.index_buf, 0);
@@ -447,14 +446,14 @@ impl Ngroup for Group {
         }
 
         if initial_vertex_cap != self.vertices.capacity() {
-            self.dirty_vertex_size = true;
+            self.dirty_vertex_size.set(true);
         }
 
         if initial_index_cap != self.indices.capacity() {
-            self.dirty_index_size = true;
+            self.dirty_index_size.set(true);
         }
 
-        self.dirty_data = true;
+        self.dirty_data.set(true);
     }
 }
 
@@ -840,7 +839,7 @@ impl Draw for OpenGL {
         }
     }
 
-    fn draw(&mut self, shader: &dyn Nshader, shape: &mut dyn Ngroup) {
+    fn draw(&mut self, shader: &dyn Nshader, shape: &dyn Ngroup) {
         let shaderdata = self.shaders.get_mut(&shader.program()).unwrap();
         if shaderdata.dirty_transform {
             let matrix = (Transform::from_mat4(shaderdata.matrix))

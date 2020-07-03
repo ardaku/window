@@ -1196,6 +1196,9 @@ linker!(extern "C" WaylandCursor "libwayland-cursor.so.0" {
 
 // Wrapper around Wayland Libraries
 pub(super) struct Wayland {
+    // 
+    window: *mut crate::Window,
+
     // Draw
     draw: Option<NonNull<dyn crate::Draw>>,
 
@@ -1222,7 +1225,7 @@ pub(super) struct Wayland {
     restore_height: c_int,
     window_width: c_int,
     window_height: c_int,
-    refresh_rate: u64,
+    refresh_rate: f64,
     // Millisecond counter on last frame.
     last_millis: u32,
     start_time: u32,
@@ -1239,7 +1242,7 @@ pub(super) struct Wayland {
     cursor_theme: *mut WlCursorTheme,
     shm: *mut WlShm,
 
-    redraw: fn(nanos: u64) -> (),
+    redraw: fn(window: &mut crate::Window, nanos: f64) -> (),
 
     // Async event queues.
     input_queue: Vec<Input>,
@@ -1248,7 +1251,7 @@ pub(super) struct Wayland {
 impl Wayland {
     pub(super) fn new(
         name: &str,
-        redraw: fn(nanos: u64) -> (),
+        redraw: fn(window: &mut crate::Window, nanos: f64) -> (),
     ) -> Result<Box<Self>, String> {
         let client = WaylandClient::new()
             .map_err(|e| format!("Wayland Client {}", e))?;
@@ -1265,6 +1268,7 @@ impl Wayland {
             let display = client.connect().ok_or("Failed to find client")?;
             let registry = client.display_get_registry(display.as_ptr());
             let mut wayland = Box::new(Wayland {
+                window: std::ptr::null_mut(),
                 draw: None,
                 client,
                 egl,
@@ -1288,7 +1292,7 @@ impl Wayland {
                 window_height: 360,
                 last_millis: 0,
                 start_time: 0,
-                refresh_rate: 0,
+                refresh_rate: 0.0,
                 is_restored: false,
                 fullscreen: false,
                 configured: false,
@@ -1391,7 +1395,8 @@ impl crate::Nwin for Wayland {
         draw.connect(self.egl_window.cast());
     }
 
-    fn run(&mut self) -> bool {
+    fn run(&mut self, window: *mut crate::Window) -> bool {
+        self.window = window;
         let ret =
             unsafe { (self.client.wl_display_dispatch)(self.display.as_ptr()) };
         if !self.input_queue.is_empty() {
@@ -1637,7 +1642,7 @@ extern "C" fn output_mode(
         // Convert from frames per 1000 seconds to seconds per frame.
         let refresh = (f64::from(refresh) * 0.001).recip();
         // Convert seconds to nanoseconds.
-        (*window).refresh_rate = (refresh * 1_000_000_000.0) as u64;
+        (*window).refresh_rate = refresh * 1_000_000_000.0;
     }
 }
 
@@ -2041,57 +2046,30 @@ extern "C" fn redraw_wl(
     callback: *mut WlCallback,
     millis: u32,
 ) {
-    let wayland: *mut Wayland = data.cast();
+    let wayland: &mut Wayland = unsafe { &mut *data.cast() };
 
     unsafe {
-        let diff_millis = if !callback.is_null() {
-            (*wayland).client.callback_destroy(callback);
+        if !callback.is_null() {
+            wayland.client.callback_destroy(callback);
+        }
+        wayland.callback = std::ptr::null_mut();
 
-            // FIXME: Time
-            if (*wayland).start_time == 0 {
-                (*wayland).start_time = millis;
-                0u32
-            } else {
-                // TODO: overflowing subtract.
-                millis - (*wayland).last_millis
-            }
-        } else {
-            0u32
-        };
-        // assert!((*wayland).callback == callback);
-        (*wayland).callback = std::ptr::null_mut();
-
-        // FIXME: Simpler?
-        let orig_nanos = u64::from(diff_millis) * 1_000_000;
-        (*wayland).last_millis = millis;
-        let temp_nanos = orig_nanos + (*wayland).refresh_rate / 2;
-        let diff_nanos = temp_nanos - (temp_nanos % (*wayland).refresh_rate);
-
-        // Redraw on the screen.
-        (*(*wayland).draw.unwrap().as_ptr()).begin_draw();
-
-        /*(*c).draw_toolbar(
-            &(*c).toolbar_shader,
-            &mut (*c).toolbar_shape,
-            &(*c).toolbar_graphic,
-        );*/
+        // Start rendering on the screen.
+        (*wayland.draw.unwrap().as_ptr()).begin_draw();
 
         // Draw user-defined objects.
-
-        ((*wayland).redraw)(diff_nanos);
+        (wayland.redraw)(unsafe { &mut *wayland.window }, wayland.refresh_rate);
 
         // Get ready for next frame.
-
-        (*wayland).callback =
-            (*wayland).client.surface_frame((*wayland).surface);
-
-        (*wayland).client.callback_add_listener(
-            (*wayland).callback,
+        wayland.callback =
+            wayland.client.surface_frame((*wayland).surface);
+        wayland.client.callback_add_listener(
+            wayland.callback,
             &FRAME_LISTENER,
             data,
         );
 
-        // Redraw on the screen.
-        (*(*wayland).draw.unwrap().as_ptr()).finish_draw();
+        // Finish rendering on the screen.
+        (*wayland.draw.unwrap().as_ptr()).finish_draw();
     }
 }

@@ -16,8 +16,8 @@
 
 use std::ffi::c_void;
 
-/// **video** Load a generated shader from `res`.
-#[macro_export(self)]
+/// Load a generated shader from the `res` crate.
+#[macro_export]
 macro_rules! shader {
     ($shadername: literal) => {
         include!(concat!(env!("OUT_DIR"), "/res/", $shadername, ".rs"));
@@ -74,7 +74,7 @@ trait Nwin {
     /// Connect window to the drawing context.
     fn connect(&mut self, draw: &mut Box<dyn Draw>);
     /// Get the next frame.  Return false on quit.
-    fn run(&mut self) -> bool;
+    fn run(&mut self, window: *mut crate::Window) -> bool;
     /// Get the window width & height.
     fn dimensions(&self) -> (u16, u16);
 }
@@ -95,7 +95,7 @@ trait Draw {
     /// Create a shape.
     fn group_new(&mut self) -> Box<dyn Ngroup>;
     /// Draw a shape.
-    fn draw(&mut self, shader: &dyn Nshader, shape: &mut dyn Ngroup);
+    fn draw(&mut self, shader: &dyn Nshader, shape: &dyn Ngroup);
     /// Upload graphic.
     fn graphic(
         &mut self,
@@ -135,7 +135,7 @@ trait Nshader {
 
 trait Ngroup {
     fn len(&self) -> i32;
-    fn bind(&mut self);
+    fn bind(&self);
     fn id(&self) -> u32;
     fn push(&mut self, shape: &crate::Shape, transform: &crate::Transform);
     fn push_tex(
@@ -236,7 +236,7 @@ pub struct Window {
 
 impl Window {
     /// Start the Wayland + OpenGL application.
-    pub fn new(name: &str, run: fn(nanos: u64) -> ()) -> Self {
+    pub fn new(name: &str, run: fn(window: &mut Window, nanos: f64) -> ()) -> Self {
         /*********************/
         /* Create The Window */
         /*********************/
@@ -290,7 +290,8 @@ impl Window {
 
     /// Run the next frame in the window.
     pub fn run(&mut self) -> bool {
-        self.nwin.run()
+        let this: *mut _ = self;
+        self.nwin.run(this)
     }
 
     /// Change the background color.
@@ -341,7 +342,7 @@ impl Window {
     pub fn draw_graphic(
         &mut self,
         shader: &Shader,
-        shape: &mut Group,
+        shape: &Group,
         graphic: &RasterId,
     ) {
         self.draw.bind_graphic(&*graphic.0);
@@ -349,8 +350,8 @@ impl Window {
     }
 
     /// Draw a group.
-    pub fn draw(&mut self, shader: &Shader, group: &mut Group) {
-        self.draw.draw(&*shader.0, &mut *group.0);
+    pub fn draw(&mut self, shader: &Shader, group: &Group) {
+        self.draw.draw(&*shader.0, &*group.0);
     }
 
     /// Draw the toolbar.
