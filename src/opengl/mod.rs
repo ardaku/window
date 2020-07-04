@@ -818,15 +818,40 @@ impl Draw for OpenGL {
     }
 
     fn draw(&mut self, shader: &dyn Nshader, shape: &dyn Ngroup) {
+        if self.bind_shader(shader) {
+            if !self.vaa_col && shader.gradient() {
+                unsafe { glEnableVertexAttribArray(GL_ATTRIB_COL) }
+                gl_assert!("glEnableVertexAttribArray#2");
+                println!("EENABLE COL {}", self.vaa_col);
+                self.vaa_col = true;
+            }
+            if !self.vaa_tex && shader.graphic() {
+                unsafe { glEnableVertexAttribArray(GL_ATTRIB_TEX) }
+                gl_assert!("glEnableVertexAttribArray#3");
+                self.vaa_tex = true;
+            }
+            if self.vaa_col && !shader.gradient() {
+                unsafe { glDisableVertexAttribArray(GL_ATTRIB_COL) }
+                gl_assert!("glDisableVertexAttribArray#2");
+                println!("DISABLE COL");
+                self.vaa_col = false;
+            }
+            if self.vaa_tex && !shader.graphic() {
+                unsafe { glDisableVertexAttribArray(GL_ATTRIB_TEX) }
+                gl_assert!("glDisableVertexAttribArray#3");
+                self.vaa_tex = false;
+            }
+        }
+    
         let shaderdata = self.shaders.get_mut(&shader.program()).unwrap();
         if shaderdata.dirty_transform {
             let matrix = (Transform::from_mat4(shaderdata.matrix))
-                .scale(2.0, -2.0 / self.height, -2.0)
+                .scale(2.0, -2.0, -2.0)
                 .translate(-1.0, 1.0, 0.0)
                 * self.cam
                 * Transform::from_mat4([
                     [self.fov, 0.0, 0.0, 0.0],
-                    [0.0, self.fov, 0.0, 0.0],
+                    [0.0, self.fov / self.height, 0.0, 0.0],
                     [
                         0.0,
                         0.0,
@@ -851,31 +876,6 @@ impl Draw for OpenGL {
             }
             gl_assert!("glUniformMatrix4fv");
             shaderdata.dirty_transform = false;
-        }
-
-        if self.bind_shader(shader) {
-            if !self.vaa_col && shader.gradient() {
-                unsafe { glEnableVertexAttribArray(GL_ATTRIB_COL) }
-                gl_assert!("glEnableVertexAttribArray#2");
-                println!("EENABLE COL {}", self.vaa_col);
-                self.vaa_col = true;
-            }
-            if !self.vaa_tex && shader.graphic() {
-                unsafe { glEnableVertexAttribArray(GL_ATTRIB_TEX) }
-                gl_assert!("glEnableVertexAttribArray#3");
-                self.vaa_tex = true;
-            }
-            if self.vaa_col && !shader.gradient() {
-                unsafe { glDisableVertexAttribArray(GL_ATTRIB_COL) }
-                gl_assert!("glDisableVertexAttribArray#2");
-                println!("DISABLE COL");
-                self.vaa_col = false;
-            }
-            if self.vaa_tex && !shader.graphic() {
-                unsafe { glDisableVertexAttribArray(GL_ATTRIB_TEX) }
-                gl_assert!("glDisableVertexAttribArray#3");
-                self.vaa_tex = false;
-            }
         }
 
         // IF SAME SHAPE
