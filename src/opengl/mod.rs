@@ -821,7 +821,7 @@ impl Draw for OpenGL {
         let shaderdata = self.shaders.get_mut(&shader.program()).unwrap();
         if shaderdata.dirty_transform {
             let matrix = (Transform::from_mat4(shaderdata.matrix))
-                .scale(2.0, -2.0 / self.height, -1.0)
+                .scale(2.0, -2.0 / self.height, -2.0)
                 .translate(-1.0, 1.0, 0.0)
                 * self.cam
                 * Transform::from_mat4([
