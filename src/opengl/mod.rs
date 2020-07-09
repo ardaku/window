@@ -589,7 +589,6 @@ pub struct OpenGL {
     shaders: HashMap<u32, ShaderData>,
     cam: Transform,
     height: f32,
-    fov: f32,
     near: f32,
     horizon: f32,
 }
@@ -667,7 +666,6 @@ impl OpenGL {
         };
 
         let height = 480.0 / 640.0;
-        let fov = 1.0 / (0.25 * std::f32::consts::PI).tan(); // 90 degrees
         let near = 0.01; // 1cm
         let horizon = 5000.0; // 5km
 
@@ -686,7 +684,6 @@ impl OpenGL {
             shaders: HashMap::new(),
             cam: Transform::new(),
             height,
-            fov,
             near,
             horizon,
         };
@@ -845,8 +842,8 @@ impl Draw for OpenGL {
     
         let perspective = if shader.depth() {
             Transform::from_mat4([
-                [self.fov, 0.0, 0.0, 0.0],
-                [0.0, self.fov / self.height, 0.0, 0.0],
+                [1.0, 0.0, 0.0, 0.0],
+                [0.0, 1.0 / self.height, 0.0, 0.0],
                 [
                     0.0,
                     0.0,
@@ -863,8 +860,8 @@ impl Draw for OpenGL {
             ])
         } else {
             Transform::from_mat4([
-                [self.fov, 0.0, 0.0, 0.0],
-                [0.0, self.fov / self.height, 0.0, 0.0],
+                [1.0, 0.0, 0.0, 0.0],
+                [0.0, 1.0 / self.height, 0.0, 0.0],
                 [0.0, 0.0, 1.0, 0.0],
                 [0.0, 0.0, 0.0, 1.0],
             ])
@@ -874,7 +871,7 @@ impl Draw for OpenGL {
         if shaderdata.dirty_transform {
             let matrix = (Transform::from_mat4(shaderdata.matrix))
                 .scale(2.0, -2.0, -2.0)
-                .translate(-1.0, 1.0, 0.0)
+                .translate(-1.0, self.height, 0.0)
                 * self.cam
                 * perspective;
             unsafe {
