@@ -249,7 +249,11 @@ pub(super) fn key_up(held: bool) -> Option<Input> {
             }
         }
         Mode::Game => Some(Input::Game(0, GameInput::Up(held))),
-        Mode::Text => Some(Input::Text(TextInput::Up)),
+        Mode::Text => if held {
+            Some(Input::Text(TextInput::Up))
+        } else {
+            None
+        },
     }
 }
 
@@ -263,7 +267,11 @@ pub(super) fn key_down(held: bool) -> Option<Input> {
             }
         }
         Mode::Game => Some(Input::Game(0, GameInput::Down(held))),
-        Mode::Text => Some(Input::Text(TextInput::Down)),
+        Mode::Text => if held {
+            Some(Input::Text(TextInput::Down))
+        } else {
+            None
+        },
     }
 }
 
@@ -277,7 +285,11 @@ pub(super) fn key_left(held: bool) -> Option<Input> {
             }
         }
         Mode::Game => Some(Input::Game(0, GameInput::Left(held))),
-        Mode::Text => Some(Input::Text(TextInput::Left)),
+        Mode::Text => if held {
+            Some(Input::Text(TextInput::Left))
+        } else {
+            None
+        },
     }
 }
 
@@ -291,7 +303,11 @@ pub(super) fn key_right(held: bool) -> Option<Input> {
             }
         }
         Mode::Game => Some(Input::Game(0, GameInput::Right(held))),
-        Mode::Text => Some(Input::Text(TextInput::Right)),
+        Mode::Text => if held {
+            Some(Input::Text(TextInput::Right))
+        } else {
+            None
+        },
     }
 }
 
