@@ -1793,7 +1793,7 @@ extern "C" fn touch_handle_orientation(
     id: i32,
     orientation: i32,
 ) {
-    println!("Touch::Orientation {} {}", id, orientation);
+    println!("FIXME: Touch::Orientation {} {}", id, orientation);
 }
 
 extern "C" fn keyboard_handle_keymap(

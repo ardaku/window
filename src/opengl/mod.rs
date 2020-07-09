@@ -843,29 +843,40 @@ impl Draw for OpenGL {
             }
         }
     
+        let perspective = if shader.depth() {
+            Transform::from_mat4([
+                [self.fov, 0.0, 0.0, 0.0],
+                [0.0, self.fov / self.height, 0.0, 0.0],
+                [
+                    0.0,
+                    0.0,
+                    (self.horizon + self.near) / (self.near - self.horizon),
+                    -1.0,
+                ],
+                [
+                    0.0,
+                    0.0,
+                    (2.0 * self.horizon * self.near)
+                        / (self.near - self.horizon),
+                    0.0,
+                ],
+            ])
+        } else {
+            Transform::from_mat4([
+                [self.fov, 0.0, 0.0, 0.0],
+                [0.0, self.fov / self.height, 0.0, 0.0],
+                [0.0, 0.0, 1.0, 0.0],
+                [0.0, 0.0, 0.0, 1.0],
+            ])
+        };
+    
         let shaderdata = self.shaders.get_mut(&shader.program()).unwrap();
         if shaderdata.dirty_transform {
             let matrix = (Transform::from_mat4(shaderdata.matrix))
                 .scale(2.0, -2.0, -2.0)
                 .translate(-1.0, 1.0, 0.0)
                 * self.cam
-                * Transform::from_mat4([
-                    [self.fov, 0.0, 0.0, 0.0],
-                    [0.0, self.fov / self.height, 0.0, 0.0],
-                    [
-                        0.0,
-                        0.0,
-                        (self.horizon + self.near) / (self.near - self.horizon),
-                        -1.0,
-                    ],
-                    [
-                        0.0,
-                        0.0,
-                        (2.0 * self.horizon * self.near)
-                            / (self.near - self.horizon),
-                        0.0,
-                    ],
-                ]);
+                * perspective;
             unsafe {
                 glUniformMatrix4fv(
                     shader.camera(),
