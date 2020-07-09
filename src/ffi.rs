@@ -207,7 +207,11 @@ pub(super) fn key_tab(held: bool) -> Option<Input> {
             }
         }
         Mode::Game => Some(Input::Game(0, GameInput::JoyPush(held))),
-        Mode::Text => Some(Input::Text(TextInput::Tab)),
+        Mode::Text => if held {
+            Some(Input::Text(TextInput::Tab))
+        } else {
+            None
+        },
     }
 }
 
@@ -235,7 +239,11 @@ pub(super) fn key_enter(held: bool) -> Option<Input> {
             }
         }
         Mode::Game => Some(Input::Game(0, GameInput::A(held))),
-        Mode::Text => Some(Input::Text(TextInput::Enter)),
+        Mode::Text => if held {
+            Some(Input::Text(TextInput::Enter))
+        } else {
+            None
+        },
     }
 }
 
