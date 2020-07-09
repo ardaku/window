@@ -726,8 +726,8 @@ static TOUCH_LISTENER: WlTouchListener = WlTouchListener {
     motion: Some(touch_handle_motion),
     frame: Some(touch_handle_frame),
     cancel: Some(touch_handle_cancel),
-    shape: Some(touch_handle_shape),
-    orientation: Some(touch_handle_orientation),
+    shape: None,
+    orientation: None,
 };
 static KEYBOARD_LISTENER: WlKeyboardListener = WlKeyboardListener {
     keymap: Some(keyboard_handle_keymap),
@@ -1775,25 +1775,6 @@ extern "C" fn touch_handle_frame(_data: *mut c_void, _touch: *mut WlTouch) {
 
 extern "C" fn touch_handle_cancel(_data: *mut c_void, _touch: *mut WlTouch) {
     println!("Touch::Cancel");
-}
-
-extern "C" fn touch_handle_shape(
-    _data: *mut c_void,
-    _touch: *mut WlTouch,
-    id: i32,
-    major: i32,
-    minor: i32,
-) {
-    println!("Touch::Shape {} {} {}", id, major, minor);
-}
-
-extern "C" fn touch_handle_orientation(
-    _data: *mut c_void,
-    _touch: *mut WlTouch,
-    id: i32,
-    orientation: i32,
-) {
-    println!("FIXME: Touch::Orientation {} {}", id, orientation);
 }
 
 extern "C" fn keyboard_handle_keymap(
