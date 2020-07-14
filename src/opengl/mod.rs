@@ -384,59 +384,111 @@ impl Ngroup for Group {
         self.index_buf
     }
 
-    fn push(&mut self, shape: &crate::Shape, transform: &crate::Transform) {
-        self.push_tex(shape, transform, ([0.0, 0.0], [1.0, 1.0]))
+    fn write(&mut self, location: (usize, usize), shape: &crate::Shape, transform: &crate::Transform) -> (usize, usize) {
+        self.write_texcoords(location, shape, transform, ([0.0, 0.0], [1.0, 1.0]))
     }
 
-    fn push_tex(
+    fn write_texcoords(
         &mut self,
+        location: (usize, usize),
         shape: &crate::Shape,
         transform: &crate::Transform,
         tex_coords: ([f32; 2], [f32; 2]),
-    ) {
-        let vertex_offset = self.vertices.len() as u32 / shape.stride;
+    ) -> (usize, usize) {
         let initial_vertex_cap = self.vertices.capacity();
         let initial_index_cap = self.indices.capacity();
 
-        for index in shape.indices.iter() {
-            self.indices.push(index + vertex_offset);
-        }
-        for i in 0..(shape.vertices.len() / shape.stride as usize) {
-            let offset = i * shape.stride as usize;
-
-            let vector = *transform
-                * if shape.dimensions == 3 {
-                    [
-                        shape.vertices[offset],
-                        shape.vertices[offset + 1],
-                        shape.vertices[offset + 2],
-                    ]
-                } else {
-                    [shape.vertices[offset], shape.vertices[offset + 1], 0.0]
-                };
-
-            self.vertices.push(vector[0]);
-            self.vertices.push(vector[1]);
-            if shape.dimensions == 3 {
-                self.vertices.push(vector[2]);
+        if self.indices.len() == location.0 && self.vertices.len() == location.1
+        {
+            let vertex_offset = self.vertices.len() as u32 / shape.stride;
+            for index in shape.indices.iter() {
+                self.indices.push(index + vertex_offset);
             }
+            for i in 0..(shape.vertices.len() / shape.stride as usize) {
+                let offset = i * shape.stride as usize;
 
-            // Check to see if there is extra texture coordinate data.
-            if shape.dimensions + shape.components + 2 == shape.stride {
-                self.vertices.push(
-                    shape.vertices[offset + shape.dimensions as usize]
-                        * tex_coords.1[0]
-                        + tex_coords.0[0],
-                );
-                self.vertices.push(
-                    shape.vertices[offset + shape.dimensions as usize + 1]
-                        * tex_coords.1[1]
-                        + tex_coords.0[1],
-                );
+                let vector = *transform
+                    * if shape.dimensions == 3 {
+                        [
+                            shape.vertices[offset],
+                            shape.vertices[offset + 1],
+                            shape.vertices[offset + 2],
+                        ]
+                    } else {
+                        [shape.vertices[offset], shape.vertices[offset + 1], 0.0]
+                    };
+
+                self.vertices.push(vector[0]);
+                self.vertices.push(vector[1]);
+                if shape.dimensions == 3 {
+                    self.vertices.push(vector[2]);
+                }
+
+                // Check to see if there is extra texture coordinate data.
+                if shape.dimensions + shape.components + 2 == shape.stride {
+                    self.vertices.push(
+                        shape.vertices[offset + shape.dimensions as usize]
+                            * tex_coords.1[0]
+                            + tex_coords.0[0],
+                    );
+                    self.vertices.push(
+                        shape.vertices[offset + shape.dimensions as usize + 1]
+                            * tex_coords.1[1]
+                            + tex_coords.0[1],
+                    );
+                }
+
+                for i in (shape.stride - shape.components)..shape.stride {
+                    self.vertices.push(shape.vertices[offset + i as usize]);
+                }
             }
+        } else {
+            for (i, index) in shape.indices.iter().enumerate() {
+                self.indices[location.0 + i] = index + location.1 as u32;
+            }
+            for i in 0..(shape.vertices.len() / shape.stride as usize) {
+                let offset = i * shape.stride as usize;
 
-            for i in (shape.stride - shape.components)..shape.stride {
-                self.vertices.push(shape.vertices[offset + i as usize]);
+                let vector = *transform
+                    * if shape.dimensions == 3 {
+                        [
+                            shape.vertices[offset],
+                            shape.vertices[offset + 1],
+                            shape.vertices[offset + 2],
+                        ]
+                    } else {
+                        [shape.vertices[offset], shape.vertices[offset + 1], 0.0]
+                    };
+
+                let mut j = 0;
+                let ofsj = location.1 + i * shape.stride as usize;
+                self.vertices[ofsj + j] = vector[0];
+                j += 1;
+                self.vertices[ofsj + j] = vector[1];
+                j += 1;
+                if shape.dimensions == 3 {
+                    self.vertices[ofsj + j] = vector[2];
+                    j += 1;
+                }
+
+                // Check to see if there is extra texture coordinate data.
+                if shape.dimensions + shape.components + 2 == shape.stride {
+                    self.vertices[ofsj + j] =
+                        shape.vertices[offset + shape.dimensions as usize]
+                            * tex_coords.1[0]
+                            + tex_coords.0[0];
+                    j += 1;
+                    self.vertices[ofsj + j] =
+                        shape.vertices[offset + shape.dimensions as usize + 1]
+                            * tex_coords.1[1]
+                            + tex_coords.0[1];
+                    j += 1;
+                }
+
+                for i in (shape.stride - shape.components)..shape.stride {
+                    self.vertices[ofsj + j] = shape.vertices[offset + i as usize];
+                    j += 1;
+                }
             }
         }
 
@@ -449,6 +501,8 @@ impl Ngroup for Group {
         }
 
         self.dirty_data.set(true);
+        
+        (self.indices.len(), self.vertices.len())
     }
 }
 
@@ -819,7 +873,6 @@ impl Draw for OpenGL {
             if !self.vaa_col && shader.gradient() {
                 unsafe { glEnableVertexAttribArray(GL_ATTRIB_COL) }
                 gl_assert!("glEnableVertexAttribArray#2");
-                println!("EENABLE COL {}", self.vaa_col);
                 self.vaa_col = true;
             }
             if !self.vaa_tex && shader.graphic() {

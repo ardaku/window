@@ -1,0 +1,3 @@
+^s*//s*todo\b
+^s*//s*fix\b
+^s*//s*fixme\b
