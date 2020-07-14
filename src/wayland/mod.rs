@@ -7,8 +7,8 @@ use std::{
     ffi::{CStr, CString},
     os::raw::{c_char, c_int, c_uint, c_void},
     ptr::{null, null_mut, NonNull},
-    time::Duration,
     str,
+    time::Duration,
 };
 
 /* */
@@ -1658,7 +1658,8 @@ extern "C" fn output_mode(
 
     unsafe {
         // Convert from frames per 1000 seconds to `Duration` per frame.
-        (*window).refresh_rate = Duration::from_secs(1000).div_f64(refresh as f64);
+        (*window).refresh_rate =
+            Duration::from_secs(1000).div_f64(refresh as f64);
     }
 }
 

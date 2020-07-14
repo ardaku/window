@@ -207,11 +207,13 @@ pub(super) fn key_tab(held: bool) -> Option<Input> {
             }
         }
         Mode::Game => Some(Input::Game(0, GameInput::JoyPush(held))),
-        Mode::Text => if held {
-            Some(Input::Text(TextInput::Tab))
-        } else {
-            None
-        },
+        Mode::Text => {
+            if held {
+                Some(Input::Text(TextInput::Tab))
+            } else {
+                None
+            }
+        }
     }
 }
 
@@ -239,11 +241,13 @@ pub(super) fn key_enter(held: bool) -> Option<Input> {
             }
         }
         Mode::Game => Some(Input::Game(0, GameInput::A(held))),
-        Mode::Text => if held {
-            Some(Input::Text(TextInput::Enter))
-        } else {
-            None
-        },
+        Mode::Text => {
+            if held {
+                Some(Input::Text(TextInput::Enter))
+            } else {
+                None
+            }
+        }
     }
 }
 
@@ -257,11 +261,13 @@ pub(super) fn key_up(held: bool) -> Option<Input> {
             }
         }
         Mode::Game => Some(Input::Game(0, GameInput::Up(held))),
-        Mode::Text => if held {
-            Some(Input::Text(TextInput::Up))
-        } else {
-            None
-        },
+        Mode::Text => {
+            if held {
+                Some(Input::Text(TextInput::Up))
+            } else {
+                None
+            }
+        }
     }
 }
 
@@ -275,11 +281,13 @@ pub(super) fn key_down(held: bool) -> Option<Input> {
             }
         }
         Mode::Game => Some(Input::Game(0, GameInput::Down(held))),
-        Mode::Text => if held {
-            Some(Input::Text(TextInput::Down))
-        } else {
-            None
-        },
+        Mode::Text => {
+            if held {
+                Some(Input::Text(TextInput::Down))
+            } else {
+                None
+            }
+        }
     }
 }
 
@@ -293,11 +301,13 @@ pub(super) fn key_left(held: bool) -> Option<Input> {
             }
         }
         Mode::Game => Some(Input::Game(0, GameInput::Left(held))),
-        Mode::Text => if held {
-            Some(Input::Text(TextInput::Left))
-        } else {
-            None
-        },
+        Mode::Text => {
+            if held {
+                Some(Input::Text(TextInput::Left))
+            } else {
+                None
+            }
+        }
     }
 }
 
@@ -311,11 +321,13 @@ pub(super) fn key_right(held: bool) -> Option<Input> {
             }
         }
         Mode::Game => Some(Input::Game(0, GameInput::Right(held))),
-        Mode::Text => if held {
-            Some(Input::Text(TextInput::Right))
-        } else {
-            None
-        },
+        Mode::Text => {
+            if held {
+                Some(Input::Text(TextInput::Right))
+            } else {
+                None
+            }
+        }
     }
 }
 

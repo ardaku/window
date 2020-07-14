@@ -384,8 +384,18 @@ impl Ngroup for Group {
         self.index_buf
     }
 
-    fn write(&mut self, location: (usize, usize), shape: &crate::Shape, transform: &crate::Transform) -> (usize, usize) {
-        self.write_texcoords(location, shape, transform, ([0.0, 0.0], [1.0, 1.0]))
+    fn write(
+        &mut self,
+        location: (usize, usize),
+        shape: &crate::Shape,
+        transform: &crate::Transform,
+    ) -> (usize, usize) {
+        self.write_texcoords(
+            location,
+            shape,
+            transform,
+            ([0.0, 0.0], [1.0, 1.0]),
+        )
     }
 
     fn write_texcoords(
@@ -415,7 +425,11 @@ impl Ngroup for Group {
                             shape.vertices[offset + 2],
                         ]
                     } else {
-                        [shape.vertices[offset], shape.vertices[offset + 1], 0.0]
+                        [
+                            shape.vertices[offset],
+                            shape.vertices[offset + 1],
+                            0.0,
+                        ]
                     };
 
                 self.vertices.push(vector[0]);
@@ -457,7 +471,11 @@ impl Ngroup for Group {
                             shape.vertices[offset + 2],
                         ]
                     } else {
-                        [shape.vertices[offset], shape.vertices[offset + 1], 0.0]
+                        [
+                            shape.vertices[offset],
+                            shape.vertices[offset + 1],
+                            0.0,
+                        ]
                     };
 
                 let mut j = 0;
@@ -473,20 +491,21 @@ impl Ngroup for Group {
 
                 // Check to see if there is extra texture coordinate data.
                 if shape.dimensions + shape.components + 2 == shape.stride {
-                    self.vertices[ofsj + j] =
-                        shape.vertices[offset + shape.dimensions as usize]
-                            * tex_coords.1[0]
-                            + tex_coords.0[0];
+                    self.vertices[ofsj + j] = shape.vertices
+                        [offset + shape.dimensions as usize]
+                        * tex_coords.1[0]
+                        + tex_coords.0[0];
                     j += 1;
-                    self.vertices[ofsj + j] =
-                        shape.vertices[offset + shape.dimensions as usize + 1]
-                            * tex_coords.1[1]
-                            + tex_coords.0[1];
+                    self.vertices[ofsj + j] = shape.vertices
+                        [offset + shape.dimensions as usize + 1]
+                        * tex_coords.1[1]
+                        + tex_coords.0[1];
                     j += 1;
                 }
 
                 for i in (shape.stride - shape.components)..shape.stride {
-                    self.vertices[ofsj + j] = shape.vertices[offset + i as usize];
+                    self.vertices[ofsj + j] =
+                        shape.vertices[offset + i as usize];
                     j += 1;
                 }
             }
@@ -501,7 +520,7 @@ impl Ngroup for Group {
         }
 
         self.dirty_data.set(true);
-        
+
         (self.indices.len(), self.vertices.len())
     }
 }
@@ -892,7 +911,7 @@ impl Draw for OpenGL {
                 self.vaa_tex = false;
             }
         }
-    
+
         let perspective = if shader.depth() {
             Transform::from_mat4([
                 [1.0, 0.0, 0.0, 0.0],
@@ -919,7 +938,7 @@ impl Draw for OpenGL {
                 [0.0, 0.0, 0.0, 1.0],
             ])
         };
-    
+
         let shaderdata = self.shaders.get_mut(&shader.program()).unwrap();
         if shaderdata.dirty_transform {
             let matrix = (Transform::from_mat4(shaderdata.matrix))

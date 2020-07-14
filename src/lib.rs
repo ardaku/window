@@ -127,7 +127,12 @@ trait Ngroup {
     fn len(&self) -> i32;
     fn bind(&self);
     fn id(&self) -> u32;
-    fn write(&mut self, location: (usize, usize), shape: &crate::Shape, transform: &crate::Transform) -> (usize ,usize);
+    fn write(
+        &mut self,
+        location: (usize, usize),
+        shape: &crate::Shape,
+        transform: &crate::Transform,
+    ) -> (usize, usize);
     fn write_texcoords(
         &mut self,
         location: (usize, usize),
@@ -142,7 +147,12 @@ pub struct Group(Box<dyn Ngroup>);
 
 impl Group {
     /// Push a shape into the group.
-    pub fn write(&mut self, location: (usize, usize), shape: &crate::Shape, transform: &crate::Transform) -> (usize, usize) {
+    pub fn write(
+        &mut self,
+        location: (usize, usize),
+        shape: &crate::Shape,
+        transform: &crate::Transform,
+    ) -> (usize, usize) {
         self.0.write(location, shape, transform)
     }
 
@@ -154,7 +164,8 @@ impl Group {
         transform: &crate::Transform,
         tex_coords: ([f32; 2], [f32; 2]),
     ) -> (usize, usize) {
-        self.0.write_texcoords(location, shape, transform, tex_coords)
+        self.0
+            .write_texcoords(location, shape, transform, tex_coords)
     }
 }
 
