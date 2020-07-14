@@ -4,7 +4,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://code.plopgrizzly.com/semver/).
 
-## [Unreleased]
+## [0.4.0] - 2020-07-13
+### Added
+- `input()` for getting user input from the window.
+
+### Changed
+- Rename `Graphic` to `RasterId`
+- Rename `Group::push()` to `Group::write()`
+- Rename `Group::push_tex()` to `Group::write_tex()`
+- `Group::write()` and `Group::write_tex()` now require location parameter, as
+  well as returning the next location
+
+### Removed
+- `Key` enum
+- `Window::toolbar()`
+- `Window::key()`
 
 ## [0.3.1] - 2020-02-14
 ### Fixed
