@@ -1396,9 +1396,7 @@ impl crate::Nwin for Wayland {
     }
 
     fn connect(&mut self, draw: &mut Box<dyn crate::Draw>) {
-        self.draw = NonNull::new(Box::into_raw(unsafe {
-            std::mem::transmute_copy(draw)
-        }));
+        self.draw = NonNull::new(&mut **draw);
 
         match draw.handle() {
             crate::DrawHandle::Gl(_c) => {
