@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://code.plopgrizzly.com/semver/).
 
+## [0.4.1] - 2020-11-20
+### Fixed
+ - Incorrect code broken by crater run for Box Custom Allocator PR.
+
 ## [0.4.0] - 2020-07-13
 ### Added
 - `input()` for getting user input from the window.

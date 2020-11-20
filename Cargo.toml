@@ -8,11 +8,11 @@
 
 [package]
 name = "window"
-version = "0.4.0"
+version = "0.4.1"
 authors = ["Jeron Aldaron Lau <jeronlau@plopgrizzly.com>"]
 edition = "2018"
 
-license = "Apache-2.0 OR Zlib"
+license = "Apache-2.0/Zlib"
 description = "Minimal Rust code for creating a window, automatically choosing a backend window manager and graphics API."
 documentation = "https://docs.rs/window"
 homepage = "https://libcala.github.io/window/"
@@ -30,7 +30,7 @@ maintenance = { status = "actively-developed" }
 [dependencies]
 dl_api = "0.4"
 human = "0.1"
-pasts = "0.4"
+pasts = "0.5"
 
 [features]
 default = []
