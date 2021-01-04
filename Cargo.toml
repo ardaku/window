@@ -29,7 +29,7 @@ maintenance = { status = "actively-developed" }
 
 [dependencies]
 dl_api = "0.4"
-human = "0.1"
+human = "0.2"
 pasts = "0.5"
 
 [features]
