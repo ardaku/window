@@ -1,3 +1,13 @@
+// Window
+// Copyright © 2019-2021 Jeron Aldaron Lau.
+//
+// Licensed under any of:
+// - Apache License, Version 2.0 (https://www.apache.org/licenses/LICENSE-2.0)
+// - MIT License (https://mit-license.org/)
+// - Boost Software License, Version 1.0 (https://www.boost.org/LICENSE_1_0.txt)
+// At your choosing (See accompanying files LICENSE_APACHE_2_0.txt,
+// LICENSE_MIT.txt and LICENSE_BOOST_1_0.txt).
+
 //! # Window
 //! Minimal Rust code for creating a window, automatically choosing a backend
 //! window manager and graphics API.
@@ -15,6 +25,9 @@
 //!
 //! # Coordinate System
 //! ![](https://raw.githubusercontent.com/libcala/window/5205e59f0cd9f37a619f590e94218900afc2395b/res/coordinate_system.svg)
+//!
+//! # Getting Started
+//! **TODO**
 
 #![warn(missing_docs)]
 #![doc(

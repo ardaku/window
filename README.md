@@ -1,67 +1,87 @@
-<p align="center">
-<a href="https://docs.rs/window"><img src="https://docs.rs/window/badge.svg"></a>
-<!--<a href="https://travis-ci.com/libcala/window"><img src="https://api.travis-ci.com/libcala/window.svg?branch=master" alt="Cala Build Status"></a>-->
-<a href="https://crates.io/crates/window"><img src="https://img.shields.io/crates/v/window.svg"></a>
-<a href="https://discord.gg/nXwF59K"><img src="https://img.shields.io/badge/discord-Cala%20Project-green.svg" alt="Discord"></a>
-<br>
-  <strong><a href="https://libcala.github.io/window">Website</a> | <a href="https://github.com/libcala/window">GitHub</a> | <a href="https://libcala.github.io/window/CHANGELOG">Changelog</a> | <a href="https://libcala.github.io/window/CONTRIBUTORS">Contributors</a> | <a href="https://libcala.github.io/cala/tutorials">Tutorials</a></strong>
-</p>
+![Window Logo](https://raw.githubusercontent.com/libcala/window/main/res/icon.svg)
 
-# Window
-Minimal Rust code for creating a window, automatically choosing a backend window manager and graphics API.
+#### [Changelog][3] | [Source][4] | [Getting Started][5]
 
-Other Rust window creation libraries require you to build for a specific backend, so I made this crate to fix the issue.  You can now make a program that runs Wayland on a machine that has Wayland installed, and will fall back to XCB if it's not installed.  And, will run OpenGLES (eventually try Vulkan first, too) if it's installed, and fall back to OpenGL if it's not installed.
+[![tests](https://github.com/libcala/window/workflows/tests/badge.svg)][2]
+[![docs](https://docs.rs/window/badge.svg)][0]
+[![crates.io](https://img.shields.io/crates/v/window.svg)][1]
 
-Since this crate is minimal, it doesn't even handle window decoration.  If you want window decoration and GUI widgets, check out [barg](https://crates.io/crates/barg) which depends on this crate.
+Minimal Rust code for creating a window, automatically choosing a backend window
+manager and graphics API.
 
-## Backends
-### Linux Window Managers
-- Wayland
+Other Rust window creation libraries require you to build for a specific
+backend, so I made this crate to fix the issue.  You can now make a program that
+runs Wayland on a machine that has Wayland installed, and will fall back to XCB
+if it's not installed.  And, will run OpenGLES (eventually try Vulkan first,
+too) if it's installed, and fall back to OpenGL if it's not installed.
 
-### Graphics APIs
-- OpenGLES
+Since this crate is minimal, it doesn't even handle window decoration.  If you
+want window decoration and GUI widgets, check out
+[cala](https://crates.io/crates/cala) which depends on this crate.
 
-## TODO
-### Other Window Managers
-- XCB
-- Windows WinAPI
-- Android
-- MacOS Cocoa
-- Redox
-- Nintendo Switch
-- XBOX
-- PlayStation
-- Wasm Canvas
+Check out the [documentation][0] for examples.
 
-### Graphics APIs
-- OpenGL
-- WebGL
-- Vulkan
+### Features
+ - Linux Wayland Support
+ - Linux OpenGLES Support
 
-## Cala
-This crate is part of the [cala](https://crates.io/crates/cala) project.
+### Planned Features
+ - XCB
+ - Windows WinAPI
+ - Android
+ - MacOS Cocoa
+ - Redox
+ - Nintendo Switch
+ - XBOX
+ - PlayStation
+ - Wasm
+ - OpenGL
+ - WebGL
+ - Vulkan
 
-<h1>Contributing</h1>
-<p>
-Contributors are always welcome!  Whether it is a bug report, bug fix, feature request, feature implementation or whatever.  Don't be shy about getting involved.  I always make time to fix bugs, so usually a patched version of the library will be out soon after a report.  Features take me longer, though.  I'll also always listen to any design critiques you have.  If you have any questions you can email me at <a href="mailto:jeronlau@plopgrizzly.com">jeronlau@plopgrizzly.com</a>.  Otherwise, <a href="https://github.com/libcala/window/issues">here's a link to the issues on GitHub</a>.
-</p>
-<p>
-And, as always, make sure to always follow the <a href="https://github.com/libcala/window/blob/master/CODEOFCONDUCT.md">code of conduct</a>.  Happy coding!
-</p>
+### Supported Platforms
+Human targets all platforms that can run Rust, including:
+ - Linux
+ - Web Assembly **doesn't work yet**
+ - Windows **doesn't work yet**
+ - Mac OS **doesn't work yet**
+ - BSD **doesn't work yet**
+ - Android (may partially or fully work, but untested) **doesn't work yet**
+ - iOS / various game consoles **doesn't work yet**
+ - Redox **doesn't work yet**
+ - Fuchsia **doesn't work yet**
+ - Others? (make a PR)
 
-<h1>License</h1>
-<p>
-This repository is licensed under either of the following:
-</p>
-<ul>
-<li>MIT License (MIT) - See accompanying file <a href="https://github.com/libcala/window/blob/master/LICENSE_MIT.txt">LICENSE_MIT.txt</a> or copy at <a href="https://opensource.org/licenses/MIT">https://opensource.org/licenses/MIT</a></li>
-<li>Boost Software License (BSL-1.0) - See accompanying file <a href="https://github.com/libcala/window/blob/master/LICENSE_BSL.txt">LICENSE_BSL.txt</a> or copy at <a href="https://www.boost.org/LICENSE_1_0.txt">https://www.boost.org/LICENSE_1_0.txt</a></li>
-</ul>
-<p>
+## License
+Licensed under any of
+ - Apache License, Version 2.0, ([LICENSE_APACHE_2_0.txt][7]
+   or [https://www.apache.org/licenses/LICENSE-2.0][8])
+ - MIT License, ([LICENSE_MIT.txt][9] or [https://mit-license.org/][10])
+ - Boost Software License, Version 1.0, ([LICENSE_BOOST_1_0.txt][11]
+   or [https://www.boost.org/LICENSE_1_0.txt][12])
+
 at your option.
-</p>
 
-<h2>Contribution Licensing</h2>
-<p>
-Unless you explicitly state otherwise, any contribution intentionally submitted for inclusion in the work by you shall be dual licensed as above without any additional terms or conditions.
-</p>
+### Contribution
+Unless you explicitly state otherwise, any contribution intentionally submitted
+for inclusion in the work by you, as defined in the Apache-2.0 license, shall be
+licensed as described above, without any additional terms or conditions.
+
+## Help
+If you want help using or contributing to this library, feel free to send me an
+email at [aldaronlau@gmail.com][13].
+
+[0]: https://docs.rs/window
+[1]: https://crates.io/crates/window
+[2]: https://github.com/libcala/window/actions?query=workflow%3Atests
+[3]: https://github.com/libcala/window/blob/main/CHANGELOG.md
+[4]: https://github.com/libcala/window/
+[5]: https://docs.rs/window#getting-started
+[6]: https://aldaronlau.com/
+[7]: https://github.com/libcala/window/blob/main/LICENSE_APACHE_2_0.txt
+[8]: https://www.apache.org/licenses/LICENSE-2.0
+[9]: https://github.com/libcala/window/blob/main/LICENSE_MIT.txt
+[10]: https://mit-license.org/
+[11]: https://github.com/libcala/window/blob/main/LICENSE_BOOST_1_0.txt
+[12]: https://www.boost.org/LICENSE_1_0.txt
+[13]: mailto:aldaronlau@gmail.com
