@@ -4,7 +4,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://code.plopgrizzly.com/semver/).
 
-## [0.5.0] - Unreleased
+## [0.5.0] - 2021-01-05
+### Changed
+ - The entire API of the `input` module.  See the
+   [human crate v0.2.0 changelog](https://github.com/libcala/human/blob/main/CHANGELOG.md#020---2021-01-03)
+   for more details.
 
 ## [0.4.1] - 2020-11-20
 ### Fixed
