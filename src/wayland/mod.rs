@@ -1,4 +1,4 @@
-use human::{Input, UiInput};
+use human::{Btn, Input, Key, Mod};
 
 use dl_api::linker;
 
@@ -1260,11 +1260,11 @@ pub(super) struct Wayland {
     input_queue: Vec<Input>,
 
     // Function to calculate if the window should move
-    move_: fn(x: f64, y: f64) -> bool,
+    move_: fn(x: f32, y: f32) -> bool,
     move_state: bool,
 }
 
-fn move_dummy(_x: f64, _y: f64) -> bool {
+fn move_dummy(_x: f32, _y: f32) -> bool {
     false
 }
 
@@ -1418,8 +1418,9 @@ impl crate::Nwin for Wayland {
         let ret =
             unsafe { (self.client.wl_display_dispatch)(self.display.as_ptr()) };
         if !self.input_queue.is_empty() {
-            unsafe { crate::ffi::push_inputs(self.input_queue.as_slice()) };
-            self.input_queue.clear();
+            let mut input_queue = Vec::new();
+            std::mem::swap(&mut input_queue, &mut self.input_queue);
+            unsafe { crate::ffi::push_inputs(input_queue) };
         }
 
         ret != -1
@@ -1625,9 +1626,10 @@ extern "C" fn toplevel_close(
     window: *mut c_void,
     _zxdg_toplevel_v6: *mut ZxdgToplevel,
 ) {
-    let window: &mut Wayland = unsafe { &mut *window.cast() };
+    let _window: &mut Wayland = unsafe { &mut *window.cast() };
 
-    window.input_queue.push(Input::Ui(UiInput::Back));
+    // FIXME: Separate type of event for closing window.
+    todo!();
 }
 
 extern "C" fn output_geometry(
@@ -1844,137 +1846,142 @@ extern "C" fn keyboard_handle_key(
         }
     } else {
         let held = state != 0;
+        let mods = Mod::new();
 
-        window.input_queue.push(
-            if let Some(input) = match key {
-                1 => crate::ffi::keyboard_back(held), // Back,
-                2 => crate::ffi::key_one(held),       // Num1,
-                3 => crate::ffi::key_two(held),       // Num2,
-                4 => crate::ffi::key_three(held),     // Num3,
-                5 => crate::ffi::key_four(held),      // Num4,
-                6 => crate::ffi::key_five(held),      // Num5,
-                7 => crate::ffi::key_six(held),       // Num6,
-                8 => crate::ffi::key_seven(held),     // Num7,
-                9 => crate::ffi::key_eight(held),     // Num8,
-                10 => crate::ffi::key_nine(held),     // Num9,
-                11 => crate::ffi::key_ten(held),      // Num0,
-                12 => crate::ffi::key_eleven(held),   // Minus,
-                13 => crate::ffi::key_twelve(held),   // Equals,
-                14 => return,                         // Backspace,
-                15 => crate::ffi::key_tab(held),      // Tab,
-                16 => return,                         // Q,
-                17 => crate::ffi::key_w(held),        // W,
-                18 => crate::ffi::key_e(held),        // E,
-                19 => crate::ffi::key_r(held),        // R,
-                20 => crate::ffi::key_t(held),        // T,
-                21 => return,                         // Y,
-                22 => crate::ffi::key_u(held),        // U,
-                23 => crate::ffi::key_i(held),        // I,
-                24 => return,                         // O,
-                25 => return,                         // P,
-                26 => return,                         // SquareBracketOpen,
-                27 => return,                         // SquareBracketClose,
-                28 => crate::ffi::key_enter(held),    // Enter,
-                29 => crate::ffi::key_ctrl(held),     // LeftCtrl,
-                30 => crate::ffi::key_a(held),        // A,
-                31 => crate::ffi::key_s(held),        // S,
-                32 => crate::ffi::key_d(held),        // D,
-                33 => crate::ffi::key_f(held),        // F,
-                34 => crate::ffi::key_g(held),        // G,
-                35 => crate::ffi::key_h(held),        // H,
-                36 => crate::ffi::key_j(held),        // J,
-                37 => crate::ffi::key_k(held),        // K,
-                38 => crate::ffi::key_l(held),        // L,
-                39 => return,                         // Semicolon,
-                40 => return,                         // Quote,
-                41 => return,                         // Backtick,
-                42 => crate::ffi::key_shift(held),    // LeftShift,
-                43 => crate::ffi::key_backslash(held), // Backslash,
-                44 => return,                         // Z,
-                45 => return,                         // X,
-                46 => return,                         // C,
-                47 => return,                         // V,
-                48 => return,                         // B,
-                49 => return,                         // N,
-                50 => return,                         // M,
-                51 => return,                         // Comma,
-                52 => return,                         // Period,
-                53 => return,                         // Slash,
-                54 => crate::ffi::key_shift(held),    // RightShift,
-                55 => crate::ffi::key_twelve(held),   // NumpadMultiply,
-                56 => crate::ffi::key_alt(held),      // LeftAlt,
-                57 => crate::ffi::key_space(held),    // Space,
-                58 => return,                         // CapsLock,
-                59 => return,                         // F1,
-                60 => return,                         // F2,
-                61 => return,                         // F3,
-                62 => return,                         // F4,
-                63 => return,                         // F5,
-                64 => return,                         // F6,
-                65 => return,                         // F7,
-                66 => return,                         // F8,
-                67 => return,                         // F9,
-                68 => return,                         // F10,
-                69 => crate::ffi::key_ten(held),      // NumpadLock,
-                70 => return,                         // ScrollLock,
-                71 => crate::ffi::key_seven(held),    // Numpad7,
-                72 => crate::ffi::key_eight(held),    // Numpad8,
-                73 => crate::ffi::key_nine(held),     // Numpad9,
-                74 => return,                         // NumpadSubtract,
-                75 => crate::ffi::key_four(held),     // Numpad4,
-                76 => crate::ffi::key_five(held),     // Numpad5,
-                77 => crate::ffi::key_six(held),      // Numpad6,
-                78 => return,                         // NumpadAdd,
-                79 => crate::ffi::key_one(held),      // Numpad1,
-                80 => crate::ffi::key_two(held),      // Numpad2,
-                81 => crate::ffi::key_three(held),    // Numpad3,
-                82 => return,                         // Numpad0,
-                83 => return,                         // NumpadDot,
-                87 => return,                         // F11,
-                88 => return,                         // F12,
-                96 => crate::ffi::key_enter(held),    // NumpadEnter,
-                97 => crate::ffi::key_ctrl(held),     // RightCtrl,
-                98 => crate::ffi::key_eleven(held),   // NumpadDivide,
-                99 => return,                         // PrintScreen,
-                100 => crate::ffi::key_alt(held),     // RightAlt,
-                102 => return,                        // Home,
-                103 => crate::ffi::key_up(held),      // Up,
-                104 => return,                        // PageUp,
-                105 => crate::ffi::key_left(held),    // Left,
-                106 => crate::ffi::key_right(held),   // Right,
-                107 => return,                        // End,
-                108 => crate::ffi::key_down(held),    // Down,
-                109 => return,                        // PageDown,
-                110 => return,                        // Insert,
-                111 => return,                        // Delete,
-                113 => return,                        // Mute,
-                114 => return,                        // VolumeDown,
-                115 => return,                        // VolumeUp,
-                119 => return,                        // Break,
-                125 => return,                        // System,
-                127 => return,                        // Menu,
-                143 => return,                        // ExtraClick,
-                163 => return,                        // FastForward,
-                164 => return,                        // PausePlay,
-                165 => return,                        // Rewind,
-                166 => return,                        // Stop,
-                190 => return,                        // MicrophoneToggle,
-                192 => return,                        // TrackpadOn,
-                193 => return,                        // TrackpadOff,
-                212 => return,                        // CameraToggle,
-                224 => return,                        // BrightnessDown,
-                225 => return,                        // BrightnessUp,
-                247 => return,                        // AirplaneMode,
-                e => {
-                    eprintln!("Error: Unknown key combination: {}", e);
-                    return; // ExtraClick
-                }
-            } {
-                input
-            } else {
+        window.input_queue.push(match key {
+            1 => Input::Key(mods, Key::Back, held),
+            2 => Input::Key(mods, Key::One, held),
+            3 => Input::Key(mods, Key::Two, held),
+            4 => Input::Key(mods, Key::Three, held),
+            5 => Input::Key(mods, Key::Four, held),
+            6 => Input::Key(mods, Key::Five, held),
+            7 => Input::Key(mods, Key::Six, held),
+            8 => Input::Key(mods, Key::Seven, held),
+            9 => Input::Key(mods, Key::Eight, held),
+            10 => Input::Key(mods, Key::Nine, held),
+            11 => Input::Key(mods, Key::Zero, held),
+            12 => Input::Key(mods, Key::Minus, held),
+            13 => Input::Key(mods, Key::Equal, held),
+            14 => Input::Key(mods, Key::Backspace, held),
+            15 => Input::Key(mods, Key::Tab, held),
+            16 => Input::Key(mods, Key::Q, held),
+            17 => Input::Key(mods, Key::W, held),
+            18 => Input::Key(mods, Key::E, held),
+            19 => Input::Key(mods, Key::R, held),
+            20 => Input::Key(mods, Key::T, held),
+            21 => Input::Key(mods, Key::Y, held),
+            22 => Input::Key(mods, Key::U, held),
+            23 => Input::Key(mods, Key::I, held),
+            24 => Input::Key(mods, Key::O, held),
+            25 => Input::Key(mods, Key::P, held),
+            26 => Input::Key(mods, Key::BracketOpen, held),
+            27 => Input::Key(mods, Key::BracketClose, held),
+            28 => Input::Key(mods, Key::Enter, held),
+            29 => Input::Key(mods, Key::LCtrl, held),
+            30 => Input::Key(mods, Key::A, held),
+            31 => Input::Key(mods, Key::S, held),
+            32 => Input::Key(mods, Key::D, held),
+            33 => Input::Key(mods, Key::F, held),
+            34 => Input::Key(mods, Key::G, held),
+            35 => Input::Key(mods, Key::H, held),
+            36 => Input::Key(mods, Key::J, held),
+            37 => Input::Key(mods, Key::K, held),
+            38 => Input::Key(mods, Key::L, held),
+            39 => Input::Key(mods, Key::Semicolon, held),
+            40 => Input::Key(mods, Key::Apostrophe, held),
+            41 => Input::Key(mods, Key::Backtick, held),
+            42 => Input::Key(mods, Key::LShift, held),
+            43 => Input::Key(mods, Key::Backslash, held),
+            44 => Input::Key(mods, Key::Z, held),
+            45 => Input::Key(mods, Key::X, held),
+            46 => Input::Key(mods, Key::C, held),
+            47 => Input::Key(mods, Key::V, held),
+            48 => Input::Key(mods, Key::B, held),
+            49 => Input::Key(mods, Key::N, held),
+            50 => Input::Key(mods, Key::M, held),
+            51 => Input::Key(mods, Key::Comma, held),
+            52 => Input::Key(mods, Key::Period, held),
+            53 => Input::Key(mods, Key::Slash, held),
+            54 => Input::Key(mods, Key::RShift, held),
+            55 => Input::Key(mods.add_shift(), Key::Eight, held), // NumMul
+            56 => Input::Key(mods, Key::LAlt, held),
+            57 => Input::Key(mods, Key::Space, held),
+            58 => Input::Key(mods, Key::CapsLock, held),
+            59 => Input::Key(mods, Key::F1, held),
+            60 => Input::Key(mods, Key::F2, held),
+            61 => Input::Key(mods, Key::F3, held),
+            62 => Input::Key(mods, Key::F4, held),
+            63 => Input::Key(mods, Key::F5, held),
+            64 => Input::Key(mods, Key::F6, held),
+            65 => Input::Key(mods, Key::F7, held),
+            66 => Input::Key(mods, Key::F8, held),
+            67 => Input::Key(mods, Key::F9, held),
+            68 => Input::Key(mods, Key::F10, held),
+            69 => Input::Key(mods, Key::Compose, held), // NumpadLock,
+            70 => Input::Key(mods, Key::Compose, held), // ScrollLock,
+            71 => Input::Key(mods, Key::Seven, held),   // Numpad7,
+            72 => Input::Key(mods, Key::Eight, held),   // Numpad8,
+            73 => Input::Key(mods, Key::Nine, held),    // Numpad9,
+            74 => Input::Key(mods, Key::Minus, held),   // NumpadSubtract,
+            75 => Input::Key(mods, Key::Four, held),    // Numpad4,
+            76 => Input::Key(mods, Key::Five, held),    // Numpad5,
+            77 => Input::Key(mods, Key::Six, held),     // Numpad6,
+            78 => Input::Key(mods.add_shift(), Key::Equal, held), // NumAdd,
+            79 => Input::Key(mods, Key::One, held),     // Numpad1,
+            80 => Input::Key(mods, Key::Two, held),     // Numpad2,
+            81 => Input::Key(mods, Key::Three, held),   // Numpad3,
+            82 => Input::Key(mods, Key::Zero, held),    // Numpad0,
+            83 => Input::Key(mods, Key::Period, held),  // NumpadDot,
+            84 => Input::Key(mods, Key::Compose, held), // RESERVED
+            85 => Input::Key(mods, Key::Compose, held), // KEY_ZENKAKUHANKAKU
+            86 => Input::Key(mods, Key::Compose, held), // KEY_102ND
+            87 => Input::Key(mods, Key::F11, held),
+            88 => Input::Key(mods, Key::F12, held),
+            89 => Input::Key(mods, Key::Compose, held), // KEY_RO
+            90 => Input::Key(mods, Key::Compose, held), // KEY_KATAKANA
+            91 => Input::Key(mods, Key::Compose, held), // KEY_HIRAGANA
+            92 => Input::Key(mods, Key::Compose, held), // KEY_HENKAN
+            93 => Input::Key(mods, Key::Compose, held), // KEY_KATAKANAHIRAGANA
+            94 => Input::Key(mods, Key::Compose, held), // KEY_MUHENKAN
+            95 => Input::Key(mods, Key::Compose, held), // KEY_KPJPCOMMA
+            96 => Input::Key(mods, Key::Enter, held),   // NumpadEnter,
+            97 => Input::Key(mods, Key::RCtrl, held),   // RightCtrl,
+            98 => Input::Key(mods, Key::Slash, held),   // NumpadDivide,
+            99 => return,                               // PrintScreen,
+            100 => Input::Key(mods, Key::RAlt, held),
+            101 => Input::Key(mods, Key::Enter, held), // KEY_LINEFEED
+            102 => Input::Key(mods, Key::Home, held),
+            103 => Input::Key(mods, Key::Up, held),
+            104 => Input::Key(mods, Key::PageUp, held),
+            105 => Input::Key(mods, Key::Left, held),
+            106 => Input::Key(mods, Key::Right, held),
+            107 => Input::Key(mods, Key::End, held),
+            108 => Input::Key(mods, Key::Down, held),
+            109 => Input::Key(mods, Key::PageDown, held),
+            110 => Input::Key(mods, Key::Insert, held),
+            111 => Input::Key(mods, Key::Delete, held),
+            112 => Input::Key(mods, Key::Compose, held), // KEY_MACRO
+            113 => return,                               // Mute,
+            114 => return,                               // VolumeDown,
+            115 => return,                               // VolumeUp,
+            116 => return,                               // KEY_POWER
+            117 => return,                               // KEY_KPEQUAL
+            118 => return,                               // KEY_KPPLUSMINUS
+            119 => return,                               // Break,
+            120 => return,                               // KEY_SCALE
+            121 => return,                               // KEY_KPCOMMA
+            122 => return,                               // KEY_HANGEUL
+            123 => return,                               // KEY_HANJA
+            124 => return,                               // KEY_YEN
+            125 => Input::Key(mods, Key::LCtrl, held),   // Left Meta
+            126 => Input::Key(mods, Key::RCtrl, held),   // Right Meta
+            127 => Input::Key(mods, Key::Compose, held),
+            // Extra Keys
+            e => {
+                eprintln!("Error: Unknown key: {}", e);
                 return;
-            },
-        );
+            }
+        });
     }
 }
 
@@ -2040,15 +2047,15 @@ extern "C" fn pointer_handle_motion(
 ) {
     let wayland: &mut Wayland = unsafe { &mut *window.cast() };
 
-    let w = (wayland.window_width as f64 * 256.0).recip();
+    let w = (wayland.window_width as f32 * 256.0).recip();
 
-    let x = x as f64 * w;
-    let y = y as f64 * w;
+    let x = x as f32 * w;
+    let y = y as f32 * w;
 
     wayland.move_state = (wayland.move_)(x, y);
 
-    wayland.input_queue.push(Input::Ui(UiInput::MoveX(x)));
-    wayland.input_queue.push(Input::Ui(UiInput::MoveY(y)));
+    wayland.input_queue.push(Input::PointerX(x));
+    wayland.input_queue.push(Input::PointerY(y));
 }
 
 extern "C" fn pointer_handle_button(
@@ -2062,28 +2069,31 @@ extern "C" fn pointer_handle_button(
     let window: &mut Wayland = unsafe { &mut *window.cast() };
     let pressed = state != 0;
 
-    match button {
-        0x110 /*BTN_LEFT*/ => {
-            window.input_queue.push(Input::Ui(if pressed {
-                UiInput::Press
-            } else {
-                UiInput::Release
-            }));
-            if window.move_state {
-                unsafe {
-                    (window.client.wl_proxy_marshal)(
-                        window.toplevel.cast(),
-                        5, /*ZXDG_TOPLEVEL_V6_MOVE*/
-                        window.seat,
-                        serial,
-                    );
-                }
+    // FIXME: which is which? DPI,EXTRA,TASK,SIDE
+    let mods = Mod::new();
+    let mut input = match button {
+        0x110 /*BTN_LEFT*/ => Some(Input::Click(mods, Btn::Left, pressed)),
+        0x111 /*BTN_RIGHT*/ => Some(Input::Click(mods, Btn::Right, pressed)),
+        0x112 /*BTN_MIDDLE*/ => Some(Input::Click(mods, Btn::Middle, pressed)),
+        0x113 /*BTN_SIDE*/ => Some(Input::Click(mods, Btn::Dpi, pressed)),
+        0x114 /*BTN_EXTRA*/ => Some(Input::Click(mods, Btn::Extra, pressed)),
+        0x115 /*BTN_FORWARD*/ => Some(Input::Click(mods, Btn::Next, pressed)),
+        0x116 /*BTN_BACK*/ => Some(Input::Click(mods, Btn::Back, pressed)),
+        0x117 /*BTN_TASK*/ => Some(Input::Click(mods, Btn::Extra, pressed)),
+        _ => None,
+    };
+    if let Some(input) = input.take() {
+        if matches!(input, Input::Click(_mods, Btn::Left, true)) {
+            unsafe {
+                (window.client.wl_proxy_marshal)(
+                    window.toplevel.cast(),
+                    5, /*ZXDG_TOPLEVEL_V6_MOVE*/
+                    window.seat,
+                    serial,
+                );
             }
         }
-        0x111 /*BTN_RIGHT*/ => {}
-        0x112 /*BTN_MIDDLE*/ => {}
-        0x113 /*BTN_SIDE*/ => {}
-        _ => eprintln!("Unknown"),
+        window.input_queue.push(input);
     }
 }
 
@@ -2096,14 +2106,16 @@ extern "C" fn pointer_handle_axis(
 ) {
     let window: &mut Wayland = unsafe { &mut *window.cast() };
 
-    window.input_queue.push(Input::Ui(match axis {
-        0 => UiInput::ScrollY(value as f64 / 2560.0),
-        1 => UiInput::ScrollX(value as f64 / 2560.0),
+    window.input_queue.push(match axis {
+        // FIXME: Mods should reflect modifiers that are held down (for whole
+        // file not just here).
+        0 => Input::ScrollY(Mod::new(), value as f32 / 2560.0),
+        1 => Input::ScrollX(Mod::new(), value as f32 / 2560.0),
         x => {
             eprintln!("Unknown Wayland Axis {}", x);
             return;
         }
-    }));
+    });
 }
 
 extern "C" fn redraw_wl(

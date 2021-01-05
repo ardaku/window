@@ -792,7 +792,7 @@ impl Draw for OpenGL {
             eglCreateWindowSurface(
                 self.display,
                 self.config,
-                std::mem::transmute(connection),
+                connection as usize,
                 std::ptr::null(),
             )
         };

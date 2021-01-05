@@ -1,9 +1,17 @@
 //! # Window
-//! Minimal Rust code for creating a window, automatically choosing a backend window manager and graphics API.
+//! Minimal Rust code for creating a window, automatically choosing a backend
+//! window manager and graphics API.
 //!
-//! Other Rust window creation libraries require you to build for a specific backend, so I made this crate to fix the issue.  You can now make a program that runs Wayland on a machine that has Wayland installed, and will fall back to XCB if it's not installed.  And, will run OpenGLES (eventually try Vulkan first, too) if it's installed, and fall back to OpenGL if it's not installed.
+//! Other Rust window creation libraries require you to build for a specific
+//! backend, so I made this crate to fix the issue.  You can now make a program
+//! that runs Wayland on a machine that has Wayland installed, and will fall
+//! back to XCB if it's not installed.  And, will run OpenGLES (eventually try
+//! Vulkan first, too) if it's installed, and fall back to OpenGL if it's not
+//! installed.
 //!
-//! Since this crate is minimal, it doesn't even handle window decoration.  If you want window decoration, GUI widgets, and other hardware abstractions check out [cala](https://crates.io/crates/cala).
+//! Since this crate is minimal, it doesn't even handle window decoration.  If
+//! you want window decoration, GUI widgets, and other hardware abstractions
+//! check out [cala](https://crates.io/crates/cala).
 //!
 //! # Coordinate System
 //! ![](https://raw.githubusercontent.com/libcala/window/5205e59f0cd9f37a619f590e94218900afc2395b/res/coordinate_system.svg)
@@ -250,7 +258,7 @@ impl Window {
         // Hopefully find a backend.
         let mut nwin = Err("No backends built!".to_string())
             .or_else(|_| wayland::Wayland::new(name, run))
-            .or_else(|e| Err(format!("Couldn't find a window manager: {}", e)))
+            .map_err(|e| format!("Couldn't find a window manager: {}", e))
             .unwrap();
 
         /**********************/
