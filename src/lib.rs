@@ -103,9 +103,10 @@ fn library() -> Option<LinGLib> {
     match env {
         DesktopEnv::Gnome|DesktopEnv::Lxde|
             DesktopEnv::Openbox|DesktopEnv::Mate|
-            DesktopEnv::Xfce|DesktopEnv::Cinnamon   =>LinGLib::GTK,
-        DesktopEnv::Kde                             =>LinGLib::Qt,
-        DesktopEnv::Ermine                          =>LinGLib::Flutter,
+            DesktopEnv::Xfce|DesktopEnv::Cinnamon|   
+            DesktopEnv::Ubuntu                      =>Some(LinGLib::GTK),
+        DesktopEnv::Kde                             =>Some(LinGLib::Qt),
+        DesktopEnv::Ermine                          =>Some(LinGLib::Flutter),
         _                                           =>None,
     }
 }
