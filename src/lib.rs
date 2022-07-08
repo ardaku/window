@@ -36,6 +36,7 @@
 )]
 
 use std::ffi::c_void;
+use whoami::{desktop_env, DesktopEnv};
 
 /// Load a generated shader from the `res` crate.
 #[macro_export]
@@ -85,6 +86,27 @@ enum DrawHandle {
     /// Metal
     #[cfg(any(target_os = "macos", target_os = "ios"))]
     Metal(*mut c_void),
+}
+
+/// Enum for Linux GUI libraries
+enum LinGLib {
+    GTK,
+    Qt,
+    None,
+}
+
+/// Get the GUI Library 
+fn library() -> LinGLib {
+    // get the desktop env using whoami
+    let env = desktop_env();
+    
+    match env {
+        DesktopEnv::Gnome|DesktopEnv::Lxde|
+            DesktopEnv::Openbox|DesktopEnv::Mate|
+            DesktopEnv::Xfce|DesktopEnv::Cinnamon   =>LinGLib::GTK,
+        DesktopEnv::Kde|DesktopEnv::Ermine          =>LinGLib::Qt,
+        _                                           =>LinGLib::None,
+    }
 }
 
 trait Nwin {
