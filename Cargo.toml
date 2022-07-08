@@ -26,6 +26,7 @@ categories = ["graphics", "gui", "multimedia", "rendering", "rendering::engine"]
 [dependencies]
 dl_api = "0.4"
 human = "0.2"
+whoami = "1.2.1"
 
 [features]
 default = []
