@@ -92,11 +92,10 @@ enum DrawHandle {
 enum LinGLib {
     GTK,
     Qt,
-    None,
 }
 
 /// Get the GUI Library 
-fn library() -> LinGLib {
+fn library() -> Option<LinGLib> {
     // get the desktop env using whoami
     let env = desktop_env();
     
@@ -105,7 +104,7 @@ fn library() -> LinGLib {
             DesktopEnv::Openbox|DesktopEnv::Mate|
             DesktopEnv::Xfce|DesktopEnv::Cinnamon   =>LinGLib::GTK,
         DesktopEnv::Kde|DesktopEnv::Ermine          =>LinGLib::Qt,
-        _                                           =>LinGLib::None,
+        _                                           =>None,
     }
 }
 
