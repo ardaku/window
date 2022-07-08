@@ -92,6 +92,7 @@ enum DrawHandle {
 enum LinGLib {
     GTK,
     Qt,
+    Flutter,
 }
 
 /// Get the GUI Library 
@@ -103,7 +104,8 @@ fn library() -> Option<LinGLib> {
         DesktopEnv::Gnome|DesktopEnv::Lxde|
             DesktopEnv::Openbox|DesktopEnv::Mate|
             DesktopEnv::Xfce|DesktopEnv::Cinnamon   =>LinGLib::GTK,
-        DesktopEnv::Kde|DesktopEnv::Ermine          =>LinGLib::Qt,
+        DesktopEnv::Kde                             =>LinGLib::Qt,
+        DesktopEnv::Ermine                          =>LinGLib::Flutter,
         _                                           =>None,
     }
 }
