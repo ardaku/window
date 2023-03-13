@@ -338,9 +338,24 @@ impl Window {
 
         Window { nwin, draw }
     }
-
+    
+    /// Start frame loop
+    pub fn run(&mut self, fps: u64) {  // `fps` could probably be moved to a struct field
+        let delay = 1 / fps;
+        
+        let mut last_frame = std::time::Instant::now();
+        
+        loop {
+            // Run next frame after delay
+            if last_frame.elapsed().as_secs() >= delay {
+                self.run_frame();
+                last_frame = std::time::Instant::now();
+            }
+        }
+    }
+    
     /// Run the next frame in the window.
-    pub fn run(&mut self) -> bool {
+    pub fn run_frame(&mut self) -> bool {
         let this: *mut _ = self;
         self.nwin.run(this)
     }
