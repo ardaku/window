@@ -347,7 +347,7 @@ impl Window {
         
         loop {
             // Run next frame after delay
-            if last_frame.elapsed.as_secs() >= delay {
+            if last_frame.elapsed().as_secs() >= delay {
                 self.run_frame();
                 last_frame = std::time::Instant::now();
             }
